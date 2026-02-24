@@ -19,7 +19,9 @@ const router = createRouter({
     },
     {
       path: '/hero',
+      name: 'Hero',
       component: HeroLanding,
+      meta: { hideNavbar: true }, // Mark this route
     },
     {
       path: '/login',
