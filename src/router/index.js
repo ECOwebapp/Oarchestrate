@@ -1,17 +1,22 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import Tasks from '@/views/Tasks.vue'
+import Analytics from '@/views/Analytics.vue'
 import Dashboard from '@/views/Dashboard.vue'
 import Design from '@/views/Design.vue'
+import HeroLanding from '@/views/HeroLanding.vue'
 import Organization from '@/views/Organization.vue'
-import Analytics from '@/views/Analytics.vue'
 import Profile from '@/views/Profile.vue'
+import Tasks from '@/views/Tasks.vue'
+import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      redirect: '/dashboard',
+      redirect: '/hero',
+    },
+    {
+      path: '/hero',
+      component: HeroLanding,
     },
     {
       path: '/dashboard',
