@@ -1,9 +1,10 @@
 <script setup>
+import Main from './views/Main.vue';
 
 </script>
 
 <template>
-  <router-view />
+  <Main />
 </template>
 
 <style scoped></style>
