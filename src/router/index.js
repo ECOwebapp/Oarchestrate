@@ -5,8 +5,6 @@ import HeroLanding from '@/views/HeroLanding.vue'
 import Organization from '@/views/Organization.vue'
 import Profile from '@/views/Profile.vue'
 import Tasks from '@/views/Tasks.vue'
-import Login from '@/views/Login.vue'
-
 import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
@@ -21,32 +19,38 @@ const router = createRouter({
       component: HeroLanding,
     },
     {
-      path: '/login',
-      component: Login,
-    },
-    {
       path: '/dashboard',
+      name: 'Dashboard',
       component: Dashboard,
     },
     {
       path: '/tasks',
+      name: 'Tasks',
       component: Tasks,
     },
     {
       path: '/design',
+      name: 'Design',
       component: Design,
     },
     {
-      path: '/organisation',
+      path: '/organization',
+      name: 'Organization',
       component: Organization,
     },
     {
       path: '/analytics',
+      name: 'Analytics',
       component: Analytics,
     },
     {
       path: '/profile',
+      name: 'Profile',
       component: Profile,
+    },
+    {
+      path: '/logout',
+      redirect: '/login',
     },
   ],
 })
