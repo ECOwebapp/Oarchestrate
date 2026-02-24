@@ -3,13 +3,15 @@
 </script>
 
 <template>
-    <nav class="flex flex-col justify-evenly">
-        <ul>Dashboard</ul>
-        <ul>Tasks</ul>
-        <ul>Design</ul>
-        <ul>Organisation</ul>
-        <ul>Analytics</ul>
-        <ul>Profile</ul>
-        <ul>Logout</ul>
+    <nav>
+        <ul class="flex flex-col justify-between">
+            <li>Dashboard</li>
+            <li>Tasks</li>
+            <li>Design</li>
+            <li>Organisation</li>
+            <li>Analytics</li>
+            <li>Profile</li>
+            <li>Logout</li>
+        </ul>
     </nav>
 </template>
