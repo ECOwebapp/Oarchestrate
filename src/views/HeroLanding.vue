@@ -17,7 +17,7 @@
           <a href="#about" @click.prevent="scrollTo('about')">About</a>
           <a href="#features" @click.prevent="scrollTo('features')">Features</a>
           <a href="#developers" @click.prevent="scrollTo('developers')">Team</a>
-          <button class="nav-cta">Sign In</button>
+          <router-link to="/login" class="nav-cta">Sign In</router-link>
         </div>
         <button class="hamburger" @click="menuOpen = !menuOpen" :class="{ open: menuOpen }">
           <span></span><span></span><span></span>
@@ -27,17 +27,13 @@
         <a href="#about" @click="menuOpen = false">About</a>
         <a href="#features" @click="menuOpen = false">Features</a>
         <a href="#developers" @click="menuOpen = false">Team</a>
-        <button class="nav-cta">Sign In</button>
+        <router-link to="/login" class="nav-cta" @click="menuOpen = false">Sign In</router-link>
       </div>
     </nav>
 
     <!-- ─── HERO ─── -->
     <section class="hero" ref="heroRef">
       <div class="hero-bg">
-        <div class="bg-mesh"></div>
-        <div class="bg-orb orb-1"></div>
-        <div class="bg-orb orb-2"></div>
-        <div class="bg-orb orb-3"></div>
         <Antigravity
           :count="300"
           :magnetRadius="10"
@@ -630,39 +626,6 @@ onUnmounted(() => observers.forEach(o => o.disconnect()))
   position: absolute;
   inset: 0;
   overflow: hidden;
-}
-
-/* Decorative gradient orbs */
-.bg-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.35;
-}
-.orb-1 {
-  width: 500px; height: 500px;
-  background: radial-gradient(circle, #009900, transparent 70%);
-  top: -100px; left: -100px;
-  animation: orbFloat 8s ease-in-out infinite;
-}
-.orb-2 {
-  width: 400px; height: 400px;
-  background: radial-gradient(circle, #F9DC07, transparent 70%);
-  bottom: -80px; right: -80px;
-  animation: orbFloat 10s ease-in-out infinite reverse;
-  opacity: 0.25;
-}
-.orb-3 {
-  width: 300px; height: 300px;
-  background: radial-gradient(circle, #FF9900, transparent 70%);
-  top: 50%; right: 10%;
-  animation: orbFloat 12s ease-in-out infinite;
-  opacity: 0.18;
-}
-@keyframes orbFloat {
-  0%, 100% { transform: translate(0, 0); }
-  33% { transform: translate(30px, -20px); }
-  66% { transform: translate(-20px, 20px); }
 }
 
 /* Subtle grid */

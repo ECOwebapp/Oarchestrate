@@ -5,6 +5,8 @@ import HeroLanding from '@/views/HeroLanding.vue'
 import Organization from '@/views/Organization.vue'
 import Profile from '@/views/Profile.vue'
 import Tasks from '@/views/Tasks.vue'
+import Login from '@/views/Login.vue'
+
 import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
@@ -17,6 +19,10 @@ const router = createRouter({
     {
       path: '/hero',
       component: HeroLanding,
+    },
+    {
+      path: '/login',
+      component: Login,
     },
     {
       path: '/dashboard',
