@@ -2,10 +2,13 @@ import Analytics from '@/views/Analytics.vue'
 import Dashboard from '@/views/Dashboard.vue'
 import Design from '@/views/Design.vue'
 import HeroLanding from '@/views/HeroLanding.vue'
+import Login from '@/views/Login.vue'
 import Organization from '@/views/Organization.vue'
 import Profile from '@/views/Profile.vue'
 import Tasks from '@/views/Tasks.vue'
 import { createRouter, createWebHistory } from 'vue-router'
+
+import Register from '@/views/Register.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -17,6 +20,17 @@ const router = createRouter({
     {
       path: '/hero',
       component: HeroLanding,
+    },
+    {
+      path: '/login',
+      name: 'Login',
+      component: Login,
+      meta: { hideNavbar: true }, // Mark this route
+    },
+    {
+      path: '/register',
+      name: 'Register',
+      component: Register,
     },
     {
       path: '/dashboard',
