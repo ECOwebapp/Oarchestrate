@@ -17,11 +17,13 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/hero',
+      redirect: '/dashboard',
     },
     {
       path: '/hero',
+      name: 'Hero',
       component: HeroLanding,
+      meta: { hideNavbar: true }, // Mark this route
     },
     {
       path: '/login',

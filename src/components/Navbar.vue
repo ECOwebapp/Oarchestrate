@@ -1,4 +1,4 @@
-<script setup vapor>
+<script setup>
 import { ref } from 'vue'
 import Icons from './Icons.vue';
 
@@ -23,7 +23,7 @@ const version = "0.1 alpha"
 </script>
 
 <template>
-    <nav class="flex flex-col bg-white drop-shadow-md h-screen">
+    <nav class="flex flex-col bg-white drop-shadow-md">
         <div class="flex flex-col justify-center items-center
                 w-full h-60 bg-[url('/images/bg_profile.jpg')] 
                 contrast-100 bg-cover bg-top-left">
@@ -41,7 +41,7 @@ const version = "0.1 alpha"
                 </RouterLink>
             </li>
         </ul>
-        <div class="flex border-t py-5 justify-center">
+        <div class="flex border-t h-12 items-center justify-center">
             <p>v{{ version }}</p>
         </div>
     </nav>
