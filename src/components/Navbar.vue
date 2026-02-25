@@ -41,7 +41,7 @@ const version = "0.1 alpha"
                 </RouterLink>
             </li>
         </ul>
-        <div class="flex border-t py-5 justify-center">
+        <div class="flex border-t h-12 items-center justify-center">
             <p>v{{ version }}</p>
         </div>
     </nav>
