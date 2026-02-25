@@ -5,10 +5,12 @@ import HeroLanding from '@/views/HeroLanding.vue'
 import Login from '@/views/Login.vue'
 import Organization from '@/views/Organization.vue'
 import Profile from '@/views/Profile.vue'
+import Register from '@/views/Register.vue'
 import Tasks from '@/views/Tasks.vue'
+
 import { createRouter, createWebHistory } from 'vue-router'
 
-import Register from '@/views/Register.vue'
+
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
