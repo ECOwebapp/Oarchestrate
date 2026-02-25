@@ -33,7 +33,7 @@
     </nav>
 
     <!-- ─── HERO ─── -->
-    <section class="hero" ref="heroRef">
+    <section class="hero w-screen" ref="heroRef">
       <div class="hero-bg">
         <div class="bg-mesh"></div>
         <div class="bg-orb orb-1"></div>
