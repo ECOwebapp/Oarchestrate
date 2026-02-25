@@ -1,6 +1,5 @@
 <script setup vapor>
 import { computed } from 'vue'
-import SvgIcon from '@jamescoyle/vue-icon';
 import {
     mdiMonitorDashboard,
     mdiFormatListBulleted,
@@ -8,7 +7,9 @@ import {
     mdiAccountGroup,
     mdiPoll,
     mdiAccountCircleOutline,
-    mdiLogout
+    mdiLogout,
+    mdiPlus,
+    mdiMagnify
 } from '@mdi/js';
 
 const { icon } = defineProps(['icon'])
@@ -19,7 +20,9 @@ const nav = {
     organization: mdiAccountGroup,
     analytics: mdiPoll,
     profile: mdiAccountCircleOutline,
-    logout: mdiLogout
+    logout: mdiLogout,
+    add: mdiPlus,
+    search: mdiMagnify
 }
 
 // Computed property that maps the nav array based on icon prop input
@@ -27,5 +30,7 @@ const path = computed(() => nav[icon] || null);
 </script>
 
 <template>
-    <svg-icon type="mdi" :path="path" />
+    <svg v-if="path" viewBox="0 0 24 24" class="w-6 h-6 fill-current">
+        <path :d="path" />
+    </svg>
 </template>

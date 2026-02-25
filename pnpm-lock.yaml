@@ -23,9 +23,6 @@ importers:
 
   .:
     dependencies:
-      '@jamescoyle/vue-icon':
-        specifier: ^0.1.2
-        version: 0.1.2
       '@mdi/js':
         specifier: ^7.4.47
         version: 7.4.47
@@ -437,9 +434,6 @@ packages:
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
     engines: {node: '>=12'}
-
-  '@jamescoyle/vue-icon@0.1.2':
-    resolution: {integrity: sha512-KFrImXx5TKIi6iQXlnyLEBl4rNosNKbTeRnr70ucTdUaciVmd9qK9d/pZAaKt1Ob/8xNnX2GMp8LisyHdKtEgw==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -2125,8 +2119,6 @@ snapshots:
       strip-ansi-cjs: strip-ansi@6.0.1
       wrap-ansi: 8.1.0
       wrap-ansi-cjs: wrap-ansi@7.0.0
-
-  '@jamescoyle/vue-icon@0.1.2': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
