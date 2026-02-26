@@ -1,7 +1,8 @@
 <script setup>
-import { ref } from 'vue'
+import { useRoute } from 'vue-router'
 import Icons from './Icons.vue';
 
+const route = useRoute()
 const navNames = [
     'Dashboard',
     'Tasks',
@@ -35,7 +36,8 @@ const version = "0.1 alpha"
 
         <ul class="flex flex-col flex-1 bg-[url('/images/csu.png')] bg-cover bg-center">
             <li v-for="names in navNames" :key="names" :class="names === 'Logout' ? 'mt-auto' : ''">
-                <RouterLink :to="getPath(names)" class="flex flex-row py-5 hover:bg-green-950 hover:text-white">
+                <RouterLink :to="getPath(names)" class="flex flex-row py-5 hover:bg-gray-400/50 hover:text-black"
+                    :class="route.name === names ? 'bg-green-950 text-white hover:bg-green-950 hover:text-white' : ''">
                     <Icons :icon="names.toLowerCase()" class="mx-5" />
                     <span class="mx-5">{{ names }}</span>
                 </RouterLink>

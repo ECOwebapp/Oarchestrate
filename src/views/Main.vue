@@ -8,13 +8,13 @@ const route = useRoute()
 </script>
 
 <template>
-    <div class="flex flex-row w-full h-screen overflow-hidden" v-if="!route.meta.hideNavbar">
+    <div class="flex flex-row w-full h-screen overflow-hidden absolute" v-if="!route.meta.hideNavbar">
         <Navbar class="w-64 h-full flex-shrink-0" />
         <div class="flex flex-col flex-1 min-w-0">
             <header class="w-full content-center flex-shrink-0">
                 <Header :pageName="route.name" />
             </header>
-            <main class="flex-1 overflow-hidden bg-gray-50">
+            <main class="flex flex-col h-full overflow-hidden flex-1 bg-gray-100">
                 <router-view />
             </main>
             <footer class="w-full content-center flex-shrink-0">
