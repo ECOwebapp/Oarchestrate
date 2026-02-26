@@ -9,7 +9,7 @@ const route = useRoute()
 
 <template>
     <div class="flex flex-row w-full h-screen overflow-hidden absolute" v-if="!route.meta.hideNavbar">
-        <Navbar class="w-64 h-full flex-shrink-0" />
+        <Navbar class="w-64 h-full flex-shrink-0 hidden xl:flex" />
         <div class="flex flex-col flex-1 min-w-0">
             <header class="w-full content-center flex-shrink-0">
                 <Header :pageName="route.name" />

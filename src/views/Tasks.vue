@@ -1,11 +1,160 @@
 <script setup vapor>
 import GridTasks from '@/components/GridTasks.vue';
+import TableTasks from '@/components/TableTasks.vue';
 import Icons from '@/components/Icons.vue';
+import { describe } from 'vitest';
 
 const dropdown = {
     filter: ["Regular", "Insertion", "Urgent", "Revision", "Pending", "Ongoing", "Completed"],
     sort: ["Name", "Date Due", "Recently Assigned", "Recently Completed"]
 }
+
+const tasks = [
+    {
+        name: "Preparations for the upcoming State Opening of Parliament",
+        description: "Her Royal Majesty the Queen will address Parliament next week. Ensure the preparations \
+            are timely within the Westminster building.",
+        assigner: "Austin Rey A. Manlangit",
+        assignee: "June Luis S. Barneso",
+        from: "2025-02-02",
+        to: "2025-03-01",
+        type: "Regular",
+        revision: false,
+        urgent: true,
+        status: "Ongoing",
+        modal: "View Details"
+    },
+    {
+        name: "Fix Navbar Overflow",
+        description: "Correct the w-screen issue causing horizontal scroll.",
+        assigner: "Grace",
+        assignee: "John Doe",
+        from: "2026-02-20",
+        to: "2026-03-01",
+        type: "Insertion",
+        revision: true,
+        urgent: true,
+        status: "Ongoing",
+        modal: "View Details"
+    },
+    {
+        name: "Vapor Component Migration",
+        description: "Convert standard VNode components into pure Vapor Mode.",
+        assigner: "Grace",
+        assignee: "Jane Smith",
+        from: "2026-02-22",
+        to: "2026-03-05",
+        type: "Regular",
+        revision: false,
+        urgent: false,
+        status: "Pending",
+        modal: "View Details"
+    },
+    {
+        name: "SVG Icon Refactor",
+        description: "Replace JamesCoyle icons with native SVG paths.",
+        assigner: "Grace",
+        assignee: "Dev Team",
+        from: "2026-02-24",
+        to: "2026-02-28",
+        type: "Insertion",
+        revision: true,
+        urgent: true,
+        status: "Ongoing",
+        modal: "View Details"
+    },
+    {
+        name: "Database Schema Update",
+        description: "Add profile images and social media link fields.",
+        assigner: "Admin",
+        assignee: "Jane Smith",
+        from: "2026-02-25",
+        to: "2026-03-10",
+        type: "Regular",
+        revision: false,
+        urgent: false,
+        status: "Pending",
+        modal: "View Details"
+    },
+    {
+        name: "Analytics Dashboard",
+        description: "Integrate Chart.js for completion rate visualization.",
+        assigner: "Grace",
+        assignee: "John Doe",
+        from: "2026-02-21",
+        to: "2026-03-15",
+        type: "Regular",
+        revision: true,
+        urgent: false,
+        status: "Ongoing",
+        modal: "View Details"
+    },
+    {
+        name: "Authentication Audit",
+        description: "Review JWT and token refresh logic security.",
+        assigner: "Admin",
+        assignee: "Security Lead",
+        from: "2026-02-23",
+        to: "2026-03-02",
+        type: "Insertion",
+        revision: false,
+        urgent: true,
+        status: "Ongoing",
+        modal: "View Details"
+    },
+    {
+        name: "Tailwind Theme Config",
+        description: "Define custom primary colors and spacing units.",
+        assigner: "Grace",
+        assignee: "UI Designer",
+        from: "2026-02-25",
+        to: "2026-03-12",
+        type: "Regular",
+        revision: false,
+        urgent: false,
+        status: "Completed",
+        modal: "View Details"
+    },
+    {
+        name: "API Documentation",
+        description: "Update Swagger docs for new organization endpoints.",
+        assigner: "Tech Lead",
+        assignee: "Jane Smith",
+        from: "2026-02-26",
+        to: "2026-03-08",
+        type: "Regular",
+        revision: true,
+        urgent: false,
+        status: "Pending",
+        modal: "View Details"
+    },
+    {
+        name: "Unit Testing",
+        description: "Increase test coverage for task service to 85%.",
+        assigner: "Grace",
+        assignee: "Dev Team",
+        from: "2026-02-20",
+        to: "2026-03-20",
+        type: "Regular",
+        revision: false,
+        urgent: false,
+        status: "Ongoing",
+        modal: "View Details"
+    },
+    {
+        name: "SEO Optimization",
+        description: "Add meta tags and structured data for landing page.",
+        assigner: "Marketing",
+        assignee: "John Doe",
+        from: "2026-02-24",
+        to: "2026-03-05",
+        type: "Regular",
+        revision: false,
+        urgent: false,
+        status: "Pending",
+        modal: "View Details"
+    }
+];
 
 </script>
 
@@ -42,13 +191,13 @@ const dropdown = {
         </div> -->
     </div>
 
-    <div class="flex-1 overflow-y-auto bg-white mx-10 py-5 rounded-xl shadow-md">
-        <GridTasks />
+    <div class="flex-1 overflow-auto bg-white mx-10 rounded-xl shadow-md">
+        <TableTasks :tasks="tasks" />
     </div>
 
     <div class="flex flex-row justify-center items-center gap-5 my-3">
         <button v-for="btn in ['Grid View', 'Table View', 'Chart View']"
-            class="flex flex-row justify-evenly items-center text-sm font-bold h-10 w-30 rounded-xl"
+            class="flex flex-row justify-evenly items-center text-sm font-bold h-10 w-30 rounded-xl cursor-pointer"
             :class="btn === 'Grid View' ? 'bg-green-950 text-white' : 'outline-2 outline-green-950 text-green-950 bg-white hover:bg-green-950 hover:text-white'">
             {{ btn }}
         </button>

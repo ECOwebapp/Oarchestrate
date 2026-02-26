@@ -39,7 +39,7 @@ const version = "0.1 alpha"
                 <RouterLink :to="getPath(names)" class="flex flex-row py-5 hover:bg-gray-400/50 hover:text-black"
                     :class="route.name === names ? 'bg-green-950 text-white hover:bg-green-950 hover:text-white' : ''">
                     <Icons :icon="names.toLowerCase()" class="mx-5" />
-                    <span class="mx-5">{{ names }}</span>
+                    <span class="mx-5">{{ names }} {{ names === 'Design' ? 'Review' : '' }}</span>
                 </RouterLink>
             </li>
         </ul>
