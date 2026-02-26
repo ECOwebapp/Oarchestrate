@@ -14,7 +14,7 @@ const route = useRoute()
             <header class="w-full content-center flex-shrink-0">
                 <Header :pageName="route.name" />
             </header>
-            <main class="flex-1 overflow-y-auto bg-gray-50 p-6">
+            <main class="flex-1 overflow-hidden bg-gray-50">
                 <router-view />
             </main>
             <footer class="w-full content-center flex-shrink-0">

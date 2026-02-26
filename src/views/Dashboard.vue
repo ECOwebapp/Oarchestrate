@@ -1,5 +1,6 @@
 <script setup vapor>
 import { ref, computed } from 'vue'
+import Icons from '@/components/Icons.vue'
 
 const r = 45
 const C = 2 * Math.PI * r
@@ -204,13 +205,22 @@ const hoveredChart = ref(null)
 
 // Modal state
 const selectedTask = ref(null)
-const openTask = (task) => { selectedTask.value = task }
+const openTask = (task) => {
+  if (task.status === 'approved') task.progress = 'completed'
+  selectedTask.value = task
+}
 const closeTask = () => { selectedTask.value = null }
+const approveTask = () => {
+  if (selectedTask.value) {
+    selectedTask.value.progress = 'completed'
+    selectedTask.value.status = 'approved'
+  }
+}
 
 const badgeClass = (value) => {
   const map = {
     ongoing: 'bg-green-800 text-white',
-    completed: 'bg-gray-500 text-white',
+    completed: 'bg-blue-600 text-white',
     urgent: 'bg-[#7b1c1c] text-white',
     regular: 'bg-amber-500 text-white',
     insertion: 'bg-[#7b1c1c] text-white',
@@ -237,13 +247,13 @@ const notifications = [
     <div class="flex flex-1 min-h-0 overflow-hidden">
 
       <!-- Main Content -->
-      <main class="flex-1 bg-gray-50 p-6 overflow-hidden">
+      <main class="flex-1 bg-gray-50 p-4 overflow-hidden flex flex-col gap-3">
 
         <!-- Donut Charts -->
-        <div class="bg-white rounded-xl shadow-sm p-6 mb-6 flex justify-around">
+        <div class="flex-shrink-0 bg-white rounded-xl shadow-sm p-3 flex justify-around">
           <div v-for="summary in taskSummaries" :key="summary.label" class="flex flex-col items-center cursor-pointer"
             @mouseenter="hoveredChart = summary.label" @mouseleave="hoveredChart = null">
-            <div class="relative w-44 h-44 flex items-center justify-center">
+            <div class="relative w-32 h-32 flex items-center justify-center">
               <!-- Pending label: top-right, only on hover -->
               <span class="absolute top-1 right-0 text-xs text-right leading-tight transition-opacity duration-200"
                 :class="hoveredChart === summary.label ? 'opacity-100' : 'opacity-0'">
@@ -257,7 +267,7 @@ const notifications = [
                 <span class="text-gray-400">Approved</span>
               </span>
               <!-- SVG Donut -->
-              <svg width="130" height="130" viewBox="0 0 120 120">
+              <svg width="100" height="100" viewBox="0 0 120 120">
                 <circle cx="60" cy="60" r="45" fill="none" stroke="#e5e7eb" stroke-width="14" />
                 <g transform="rotate(-90 60 60)">
                   <circle v-for="(seg, i) in getSegments(summary.approved, summary.pendingApproval, summary.pending)"
@@ -279,8 +289,8 @@ const notifications = [
         </div>
 
         <!-- Regular Tasks -->
-        <section class="bg-white rounded-xl shadow-sm p-5 mb-4">
-          <h2 class="font-extrabold text-base tracking-widest mb-3 text-gray-800">REGULAR TASKS</h2>
+        <section class="flex-1 min-h-0 bg-white rounded-xl shadow-sm p-4 flex flex-col">
+          <h2 class="font-extrabold text-base tracking-widest mb-2 text-gray-800 flex-shrink-0">REGULAR TASKS</h2>
           <div class="flex gap-3 items-stretch">
             <div v-for="(task, i) in regularTasks" :key="i"
               class="flex-1 rounded p-3 bg-white text-sm shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
@@ -299,8 +309,8 @@ const notifications = [
         </section>
 
         <!-- Insertion Tasks -->
-        <section class="bg-white rounded-xl shadow-sm p-5">
-          <h2 class="font-extrabold text-base tracking-widest mb-3 text-gray-800">INSERTION TASKS</h2>
+        <section class="flex-1 min-h-0 bg-white rounded-xl shadow-sm p-4 flex flex-col">
+          <h2 class="font-extrabold text-base tracking-widest mb-2 text-gray-800 flex-shrink-0">INSERTION TASKS</h2>
           <div class="flex gap-3 items-stretch">
             <div v-for="(task, i) in insertionTasks" :key="i"
               class="flex-1 rounded p-3 bg-white text-sm shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
@@ -356,91 +366,173 @@ const notifications = [
         <!-- Body -->
         <div class="flex gap-8 px-8 py-6 flex-1 overflow-hidden">
 
-          <!-- Left column -->
-          <div class="flex-1 min-w-0">
-            <!-- Description -->
-            <h3 class="text-sm font-semibold text-gray-700 mb-2">Description</h3>
-            <div class="border border-gray-200 rounded-lg p-4 mb-5 min-h-28 text-sm text-gray-600">
-              {{ selectedTask.description }}
+          <!-- ── SINGLE TASK (no subtasks) ── -->
+          <template v-if="selectedTask.subtasks.length === 0">
+
+            <!-- Left: Description fills full height -->
+            <div class="flex-1 min-w-0 flex flex-col">
+              <h3 class="text-sm font-semibold text-gray-700 mb-2">Description</h3>
+              <div class="border border-gray-200 rounded-lg p-4 flex-1 text-sm text-gray-600 leading-relaxed">
+                {{ selectedTask.description }}
+              </div>
             </div>
 
-            <!-- Badges -->
-            <div class="flex gap-2 mb-5">
-              <span class="px-4 py-1.5 text-xs font-bold rounded-full capitalize"
-                :class="badgeClass(selectedTask.progress)">
-                {{ selectedTask.progress }}
-              </span>
-              <span class="px-4 py-1.5 text-xs font-bold rounded-full capitalize"
-                :class="badgeClass(selectedTask.urgency)">
-                {{ selectedTask.urgency }}
-              </span>
-              <span class="px-4 py-1.5 text-xs font-bold rounded-full capitalize"
-                :class="badgeClass(selectedTask.type)">
-                {{ selectedTask.type }}
-              </span>
-            </div>
+            <!-- Right: badges · dates · assigned · submission -->
+            <div class="w-72 flex-shrink-0 flex flex-col gap-4">
 
-            <!-- Dates -->
-            <p class="text-sm text-gray-700 italic">Task given on <span class="font-semibold">{{ selectedTask.taskGiven
-            }}</span></p>
-            <p class="text-sm text-gray-700 italic mb-5">Submit before <span class="font-semibold">{{
-              selectedTask.submitBefore }}</span></p>
+              <!-- Badges -->
+              <div class="flex gap-2 flex-wrap">
+                <span class="px-4 py-1.5 text-xs font-bold rounded-full capitalize"
+                  :class="badgeClass(selectedTask.progress)">
+                  {{ selectedTask.progress }}
+                </span>
+                <span v-if="selectedTask.urgency === 'urgent'" class="px-4 py-1.5 text-xs font-bold rounded-full capitalize"
+                  :class="badgeClass(selectedTask.urgency)">
+                  {{ selectedTask.urgency }}
+                </span>
+                <span class="px-4 py-1.5 text-xs font-bold rounded-full capitalize"
+                  :class="badgeClass(selectedTask.type)">
+                  {{ selectedTask.type }}
+                </span>
+              </div>
 
-            <!-- Assigned -->
-            <div class="flex gap-8">
-              <div>
-                <p class="text-sm font-semibold text-gray-700 mb-2">Assigned by</p>
-                <div class="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2">
-                  <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                      <path
-                        d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-                    </svg>
+              <!-- Dates -->
+              <div class="text-sm text-gray-700 space-y-1">
+                <p><span class="font-semibold">Task given on</span> {{ selectedTask.taskGiven }}</p>
+                <p><span class="font-semibold">Submit before</span> {{ selectedTask.submitBefore }}</p>
+              </div>
+
+              <!-- Assigned by / Assigned to -->
+              <div class="flex gap-3">
+                <div class="flex-1">
+                  <p class="text-sm font-semibold text-gray-700 mb-1">Assigned by</p>
+                  <div class="flex items-center justify-center border border-gray-200 rounded-lg h-12">
+                    <Icons :icon="'account'" class="text-gray-400" />
                   </div>
-                  <span class="text-xs text-gray-600">{{ selectedTask.assignedBy }}</span>
+                </div>
+                <div class="flex-1">
+                  <p class="text-sm font-semibold text-gray-700 mb-1">Assigned to</p>
+                  <div class="flex items-center justify-center border border-gray-200 rounded-lg h-12">
+                    <Icons :icon="'account'" class="text-gray-400" />
+                  </div>
                 </div>
               </div>
-              <div>
-                <p class="text-sm font-semibold text-gray-700 mb-2">Assigned to</p>
-                <div class="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2">
-                  <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                      <path
-                        d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-                    </svg>
+
+              <!-- Submission area -->
+              <!-- Approved: file attachment preview -->
+              <div v-if="selectedTask.status === 'approved'"
+                class="relative flex flex-col items-center justify-center gap-2 border border-gray-200 rounded-lg p-4 flex-1">
+                <Icons :icon="'attachment'" class="absolute top-2 right-2 text-gray-400 w-4 h-4" />
+                <Icons :icon="'file'" class="text-gray-400 w-14 h-14" />
+                <div class="flex items-center justify-between w-full text-xs text-gray-600 px-1">
+                  <span class="font-medium">{{ selectedTask.submittedFile?.name || 'Task_submission.pdf' }}</span>
+                  <span class="text-gray-400">{{ selectedTask.submittedFile?.size || '8.00 MB' }}</span>
+                </div>
+              </div>
+              <!-- Pending: submitted message + view file button -->
+              <div v-else
+                class="flex flex-col items-center justify-center gap-3 border border-gray-200 rounded-lg p-4 flex-1">
+                <p class="text-sm text-gray-600 text-center">
+                  <span class="font-medium">{{ selectedTask.submittedBy }}</span> has submitted a task
+                </p>
+                <button class="px-6 py-2 rounded-full bg-green-950 text-white text-sm font-semibold hover:bg-green-800 transition-colors">
+                  view file
+                </button>
+              </div>
+
+            </div>
+          </template>
+
+          <!-- ── BULK TASK (has subtasks) ── -->
+          <template v-else>
+
+            <!-- Left column -->
+            <div class="flex-1 min-w-0">
+              <!-- Description -->
+              <h3 class="text-sm font-semibold text-gray-700 mb-2">Description</h3>
+              <div class="border border-gray-200 rounded-lg p-4 mb-5 min-h-28 text-sm text-gray-600">
+                {{ selectedTask.description }}
+              </div>
+
+              <!-- Badges -->
+              <div class="flex gap-2 mb-5">
+                <span class="px-4 py-1.5 text-xs font-bold rounded-full capitalize"
+                  :class="badgeClass(selectedTask.progress)">
+                  {{ selectedTask.progress }}
+                </span>
+                <span v-if="selectedTask.urgency === 'urgent'" class="px-4 py-1.5 text-xs font-bold rounded-full capitalize"
+                  :class="badgeClass(selectedTask.urgency)">
+                  {{ selectedTask.urgency }}
+                </span>
+                <span class="px-4 py-1.5 text-xs font-bold rounded-full capitalize"
+                  :class="badgeClass(selectedTask.type)">
+                  {{ selectedTask.type }}
+                </span>
+              </div>
+
+              <!-- Dates -->
+              <p class="text-sm text-gray-700 italic">Task given on <span class="font-semibold">{{ selectedTask.taskGiven }}</span></p>
+              <p class="text-sm text-gray-700 italic mb-5">Submit before <span class="font-semibold">{{ selectedTask.submitBefore }}</span></p>
+
+              <!-- Assigned -->
+              <div class="flex gap-8">
+                <div>
+                  <p class="text-sm font-semibold text-gray-700 mb-2">Assigned by</p>
+                  <div class="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2">
+                    <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                      <Icons :icon="'account'" class="text-gray-400" />
+                    </div>
+                    <span class="text-xs text-gray-600">{{ selectedTask.assignedBy }}</span>
                   </div>
-                  <span class="text-xs text-gray-600">{{ selectedTask.assignedTo }}</span>
+                </div>
+                <div>
+                  <p class="text-sm font-semibold text-gray-700 mb-2">Assigned to</p>
+                  <div class="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2">
+                    <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                      <Icons :icon="'account'" class="text-gray-400" />
+                    </div>
+                    <span class="text-xs text-gray-600">{{ selectedTask.assignedTo }}</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Right column: Sub-tasks -->
-          <div class="w-72 flex-shrink-0 flex flex-col overflow-hidden">
-            <h3 class="text-sm font-semibold text-gray-700 mb-2 flex-shrink-0">Sub-tasks</h3>
-            <div class="overflow-y-auto flex-1">
-              <div v-if="selectedTask.subtasks.length === 0" class="text-sm text-gray-400 italic">No sub-tasks</div>
-              <div v-for="(sub, i) in selectedTask.subtasks" :key="i"
-                class="flex items-center gap-3 border border-gray-200 rounded-lg p-3 mb-2 hover:bg-gray-50 cursor-pointer">
-                <p class="flex-1 text-xs text-gray-700 leading-snug">{{ sub }}</p>
-                <span
-                  class="w-6 h-6 flex items-center justify-center rounded-full bg-yellow-600 text-white text-xs font-bold flex-shrink-0">›</span>
+            <!-- Right column: Sub-tasks -->
+            <div class="w-72 flex-shrink-0 flex flex-col overflow-hidden">
+              <h3 class="text-sm font-semibold text-gray-700 mb-2 flex-shrink-0">Sub-tasks</h3>
+              <div class="overflow-y-auto flex-1">
+                <div v-for="(sub, i) in selectedTask.subtasks" :key="i"
+                  class="flex items-center gap-3 border border-gray-200 rounded-lg p-3 mb-2 hover:bg-gray-50 cursor-pointer">
+                  <p class="flex-1 text-xs text-gray-700 leading-snug">{{ sub }}</p>
+                  <span class="w-6 h-6 flex items-center justify-center rounded-full bg-yellow-600 text-white text-xs font-bold flex-shrink-0">›</span>
+                </div>
               </div>
             </div>
-          </div>
+
+          </template>
 
         </div>
 
-        <!-- Footer buttons -->
-        <div class="flex justify-end gap-3 px-8 pb-6">
-          <button
-            class="px-6 py-2 rounded-lg border-2 border-red-500 text-red-500 font-bold text-sm hover:bg-red-50 transition-colors">
-            Revise All
-          </button>
-          <button
-            class="px-6 py-2 rounded-lg bg-green-900 text-white font-bold text-sm hover:bg-green-800 transition-colors">
-            Approve All
-          </button>
+        <!-- Footer buttons (hidden once approved) -->
+        <div v-if="selectedTask.status !== 'approved'" class="flex justify-end gap-3 px-8 pb-6">
+          <template v-if="selectedTask.subtasks.length === 0">
+            <button class="px-6 py-2 rounded-full border-2 border-yellow-500 text-yellow-600 font-bold text-sm hover:bg-yellow-50 transition-colors">
+              Revise
+            </button>
+            <button class="px-6 py-2 rounded-full bg-green-950 text-white font-bold text-sm hover:bg-green-800 transition-colors"
+              @click="approveTask">
+              Approve
+            </button>
+          </template>
+          <template v-else>
+            <button class="px-6 py-2 rounded-lg border-2 border-red-500 text-red-500 font-bold text-sm hover:bg-red-50 transition-colors">
+              Revise All
+            </button>
+            <button class="px-6 py-2 rounded-lg bg-green-900 text-white font-bold text-sm hover:bg-green-800 transition-colors"
+              @click="approveTask">
+              Approve All
+            </button>
+          </template>
         </div>
 
       </div>

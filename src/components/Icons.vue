@@ -9,7 +9,10 @@ import {
     mdiAccountCircleOutline,
     mdiLogout,
     mdiPlus,
-    mdiMagnify
+    mdiMagnify,
+    mdiClose,
+    mdiFileDocumentOutline,
+    mdiPaperclip
 } from '@mdi/js';
 
 const { icon } = defineProps(['icon'])
@@ -22,7 +25,11 @@ const nav = {
     profile: mdiAccountCircleOutline,
     logout: mdiLogout,
     add: mdiPlus,
-    search: mdiMagnify
+    search: mdiMagnify,
+    close: mdiClose,
+    account: mdiAccountCircleOutline,
+    file: mdiFileDocumentOutline,
+    attachment: mdiPaperclip
 }
 
 // Computed property that maps the nav array based on icon prop input
