@@ -15,7 +15,7 @@ import {
     mdiPaperclip
 } from '@mdi/js';
 
-const { icon } = defineProps(['icon'])
+const props = defineProps(['icon'])
 const nav = {
     dashboard: mdiMonitorDashboard,
     tasks: mdiFormatListBulleted,
@@ -33,7 +33,7 @@ const nav = {
 }
 
 // Computed property that maps the nav array based on icon prop input
-const path = computed(() => nav[icon] || null);
+const path = computed(() => nav[props.icon] || null);
 </script>
 
 <template>
