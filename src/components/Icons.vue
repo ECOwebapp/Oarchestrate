@@ -12,7 +12,8 @@ import {
     mdiMagnify,
     mdiClose,
     mdiFileDocumentOutline,
-    mdiPaperclip
+    mdiPaperclip,
+    mdiFullscreen
 } from '@mdi/js';
 
 const props = defineProps(['icon'])
@@ -29,7 +30,8 @@ const nav = {
     close: mdiClose,
     account: mdiAccountCircleOutline,
     file: mdiFileDocumentOutline,
-    attachment: mdiPaperclip
+    attachment: mdiPaperclip,
+    fullscreen: mdiFullscreen
 }
 
 // Computed property that maps the nav array based on icon prop input

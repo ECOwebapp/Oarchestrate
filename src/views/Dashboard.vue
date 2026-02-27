@@ -18,7 +18,6 @@ const getSegments = (approved, pendingApproval, pending) => {
   ]
 }
 
-// Task data with full details for modal
 const regularTasks = ref([
   {
     title: 'ESTABLISHMENT OF THE ECO INT...',
@@ -203,7 +202,6 @@ const taskSummaries = computed(() => [
 
 const hoveredChart = ref(null)
 
-// Modal state
 const selectedTask = ref(null)
 const openTask = (task) => {
   if (task.status === 'approved') task.progress = 'completed'
@@ -243,17 +241,15 @@ const notifications = [
 <template>
   <div class="flex flex-col w-full h-full">
 
-    <!-- Body -->
     <div class="flex flex-1 min-h-0 overflow-hidden">
 
-      <!-- Main Content -->
       <main class="flex-1 bg-gray-50 p-4 overflow-hidden flex flex-col gap-3">
 
         <!-- Donut Charts -->
         <div class="flex-shrink-0 bg-white rounded-xl shadow-sm p-3 flex justify-around">
           <div v-for="summary in taskSummaries" :key="summary.label" class="flex flex-col items-center cursor-pointer"
             @mouseenter="hoveredChart = summary.label" @mouseleave="hoveredChart = null">
-            <div class="relative w-32 h-32 flex items-center justify-center">
+            <div class="relative w-44 h-44 flex items-center justify-center">
               <!-- Pending label: top-right, only on hover -->
               <span class="absolute top-1 right-0 text-xs text-right leading-tight transition-opacity duration-200"
                 :class="hoveredChart === summary.label ? 'opacity-100' : 'opacity-0'">
@@ -267,7 +263,7 @@ const notifications = [
                 <span class="text-gray-400">Approved</span>
               </span>
               <!-- SVG Donut -->
-              <svg width="100" height="100" viewBox="0 0 120 120">
+              <svg width="140" height="140" viewBox="0 0 120 120">
                 <circle cx="60" cy="60" r="45" fill="none" stroke="#e5e7eb" stroke-width="14" />
                 <g transform="rotate(-90 60 60)">
                   <circle v-for="(seg, i) in getSegments(summary.approved, summary.pendingApproval, summary.pending)"
