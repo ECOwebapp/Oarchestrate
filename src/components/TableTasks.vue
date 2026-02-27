@@ -33,7 +33,8 @@ const prop = defineProps(['tasks'])
             <tbody class="overflow-auto border border-collapse border-gray-500">
                 <tr v-for="task in tasks" :key="task.name">
                     <template v-for="(value, key) in task" :key="key">
-                        <td v-if="key !== 'modal'" class="border border-gray-500 p-2">
+                        <td v-if="key !== 'modal'" class="border border-gray-500 p-2"
+                            :class="key === 'name' ? 'font-bold' : ''">
                             {{ value }}
                         </td>
                     </template>

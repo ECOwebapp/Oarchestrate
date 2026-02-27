@@ -1,6 +1,7 @@
 <script setup vapor>
 import GridTasks from '@/components/GridTasks.vue';
 import TableTasks from '@/components/TableTasks.vue';
+import ChartTasks from '@/components/ChartTasks.vue';
 import Icons from '@/components/Icons.vue';
 import { describe } from 'vitest';
 
@@ -192,7 +193,7 @@ const tasks = [
     </div>
 
     <div class="flex-1 overflow-auto bg-white mx-10 rounded-xl shadow-md">
-        <TableTasks :tasks="tasks" />
+        <ChartTasks :tasks="tasks" />
     </div>
 
     <div class="flex flex-row justify-center items-center gap-5 my-3">

@@ -4,8 +4,8 @@ import TaskCard from './TaskCard.vue';
 const props = defineProps(['tasks'])
 
 const getProgress = (task) => {
-    const start = new Date(task.dateAssigned).getTime()
-    const end = new Date(task.deadline).getTime()
+    const start = new Date(task.from).getTime()
+    const end = new Date(task.to).getTime()
     const now = new Date().getTime()
 
     if (now < start) return 0;
@@ -19,7 +19,7 @@ const getProgress = (task) => {
 
 const getDue = (task) => {
     const today = new Date();
-    const target = new Date(task.deadline);
+    const target = new Date(task.to);
 
     // Set time to midnight for both to compare just the calendar days
     today.setHours(0, 0, 0, 0);

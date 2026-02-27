@@ -389,35 +389,35 @@ const developers = [
   {
     name: 'June Luis Bermudez',
     initials: 'JL',
-    role: 'Full-Stack Developer',
+    role: 'Chairperson, ECO Interns Council / Full-Stack Developer',
     bio: 'Architected the Supabase schema and Vue frontend integration.',
     gradient: 'linear-gradient(135deg, #003300, #009900)'
   },
   {
     name: 'Austine Rey Manlangit',
     initials: 'AR',
-    role: 'UI/UX Designer',
-    bio: 'Designed the system interface and user experience flows.',
+    role: 'First Vice Chairperson / Full-Stack Developer',
+    bio: 'Designed user experience using optimized systems.',
     gradient: 'linear-gradient(135deg, #005500, #F9DC07)'
   },
   {
     name: 'Jacky Barneso',
     initials: 'J',
-    role: 'Co Developer',
+    role: 'Second Vice Chairperson / Back-end Developer',
     bio: 'Built the authentication, RLS policies, and approval logic.',
     gradient: 'linear-gradient(135deg, #003300, #FF9900)'
   },
   {
     name: 'Nheron Louise Cedro',
     initials: 'NL',
-    role: 'Co Developer',
+    role: 'Member / Back-end Developer',
     bio: 'Developed the task management and dashboard views in Vue.',
     gradient: 'linear-gradient(135deg, #007700, #009900)'
   },
   {
     name: 'Cyrel John Rollo',
     initials: 'CJ',
-    role: 'QA & Documentation',
+    role: 'Member / QA & Documentation',
     bio: 'Handled testing, documentation, and system deployment.',
     gradient: 'linear-gradient(135deg, #004400, #FF9900)'
   }
