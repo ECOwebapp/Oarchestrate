@@ -32,9 +32,6 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.2.1
         version: 4.2.1(vite@7.3.1(@types/node@25.3.0)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.8.2))
-      jordium-gantt-vue3:
-        specifier: ^1.9.1
-        version: 1.9.1(vue@3.6.0-beta.6)
       pinia:
         specifier: ^3.0.4
         version: 3.0.4(vue@3.6.0-beta.6)
@@ -1245,11 +1242,6 @@ packages:
   jiti@2.6.1:
     resolution: {integrity: sha512-ekilCSN1jwRvIbgeg/57YFh8qQDNbwDb9xT/qu2DAHbFFZUicIl4ygVaAvzveMhMVr3LnpSKTNnwt8PoOfmKhQ==}
     hasBin: true
-
-  jordium-gantt-vue3@1.9.1:
-    resolution: {integrity: sha512-vg2QpaXFG9ooJgvM/lCU0pouuwFcHgraRJb9BYE3fRafVUE9GtGh6ytutCiN29OQNZxuZheXhoxTMwlWHk+T4w==}
-    peerDependencies:
-      vue: ^3.5.13
 
   js-beautify@1.15.4:
     resolution: {integrity: sha512-9/KXeZUKKJwqCXUdBxFJ3vPh467OCckSBmYDwSK/EtV090K+iMJ7zx2S3HLVDIWFQdqMIsZWbnaGiba18aWhaA==}
@@ -3024,13 +3016,6 @@ snapshots:
       '@pkgjs/parseargs': 0.11.0
 
   jiti@2.6.1: {}
-
-  jordium-gantt-vue3@1.9.1(vue@3.6.0-beta.6):
-    dependencies:
-      date-fns: 4.1.0
-      html2canvas: 1.4.1
-      jspdf: 4.2.0
-      vue: 3.6.0-beta.6
 
   js-beautify@1.15.4:
     dependencies:
