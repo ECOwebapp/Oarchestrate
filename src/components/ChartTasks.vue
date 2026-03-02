@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import { computed, ref } from 'vue'
 import { GanttChart, TaskListColumn } from 'jordium-gantt-vue3'
 import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
@@ -30,55 +30,65 @@ const ganttTasks = computed(() => {
         progress: getProgress(task),
         assigner: task.assigner,
         assignee: task.assignee,     // Custom field for the sidebar
-        color: task.urgent ? '#dc2626' : '#052e16' // Urgent = Red, Else = Green
+        barColor: task.urgent ? '#dc2626' : '#052e16' // Urgent = Red, Else = Green
     }))
 })
 
-const getDue = (task) => {
-    const today = new Date();
-    const target = new Date(task.to);
-
-    // Set time to midnight for both to compare just the calendar days
-    today.setHours(0, 0, 0, 0);
-    target.setHours(0, 0, 0, 0);
-
-    // Difference in milliseconds
-    const diffTime = target.getTime() - today.getTime();
-
-    // Convert ms to days: ms / (1000ms * 60s * 60m * 24h)
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    return diffDays;
-};
+const formatKey = (key) => {
+    return key
+      .replace(/([A-Z])/g, ' $1') // Adds space before capital letters
+      .replace(/^./, (str) => str.toUpperCase()); // Capitalizes the first letter
+  };
 </script>
 
 <template>
     <div class="h-full border border-gray-200 rounded-xl overflow-hidden shadow-sm">
         <GanttChart 
             :tasks="ganttTasks" 
-            :show-today-button="false"
-            :use-default-drawer="false" 
             :show-toolbar="false"
-            :row-height="500"
             :auto-sort-by-start-date="true"
             :allow-drag-and-resize="false"
-            :show-taskbar-tab="false"
             :enable-task-list-collapsible="false"
+            :enable-task-bar-context-menu="false"
+            :enable-task-list-context-menu="false"
+            :show-actual-taskbar="true"
+            :use-default-drawer="false"
             time-scale="day"
             view-mode="task" 
             locale="en-US"
             task-list-column-render-mode="declarative"
-            theme="dark">
+            theme="light">
             
             <TaskListColumn v-for="task in ['name', 'description', 'assigner', 'assignee', 'startDate', 'endDate']" 
                 :key="task" :prop="task" :label="task.toUpperCase()" width="30%" css-class="text-wrap"
                 :align="task !== 'name' && task !=='description' ? 'center' : 'left'" />
 
-            <template #task-list-column-days="{ task }">
-                <span class="text-[10px] font-bold text-gray-500">
-                    {{ getDue(task) }}
-                </span>
+            <!-- Tooltip -->
+            <template #taskbar-tooltip="{ task }">
+                <div class="color-white p-2 z-9999999999 min-w-50 max-w-70 ">
+                    <div class="font-bold text-[13px] mb-[8px] pb-[6px] border-b border-b-gray-200 color-white">{{ task.name }}</div>
+                    <div v-for="(value, key) in task" :key="key">
+                        <div v-if="!['name', 'description', 'id', 'color', 'isParent', 'level'].includes(key)"
+                        class="flex flex-row justify-between items-center min-h-[22px] gap-4">
+                        
+                            <span class="opacity-80 min-w-[80px] text-white text-[10px] uppercase font-bold">
+                                {{ formatKey(key) }}:
+                            </span>
+                            
+                            <span class="text-right text-white text-[11px] truncate">
+                                {{ value }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </template>
         </GanttChart>
     </div>
 </template>
+
+<style>
+.sample{
+    background: rgba(0, 0, 0, 0.9)
+}
+
+</style>
