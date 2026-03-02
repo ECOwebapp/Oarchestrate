@@ -11,10 +11,11 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "@1.9.2": "link:jordium-gantt-vue3/@1.9.2",
     "@mdi/js": "^7.4.47",
     "@supabase/supabase-js": "^2.97.0",
     "@tailwindcss/vite": "^4.2.1",
-    "jordium-gantt-vue3": "^1.9.1",
+    "jordium-gantt-vue3": "^1.9.2",
     "pinia": "^3.0.4",
     "tailwindcss": "^4.2.1",
     "three": "^0.183.1",
@@ -27,7 +28,6 @@
     "@vitejs/plugin-vue": "^6.0.4",
     "@vue/test-utils": "^2.4.6",
     "jsdom": "^28.1.0",
-    "prettier": "3.8.1",
     "vite": "^7.3.1",
     "vite-plugin-vue-devtools": "^8.0.6",
     "vitest": "^4.0.18"
