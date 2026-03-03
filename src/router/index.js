@@ -35,6 +35,7 @@ const router = createRouter({
       path: '/register',
       name: 'Register',
       component: Register,
+      meta: { hideNavbar: true },
     },
     {
       path: '/dashboard',

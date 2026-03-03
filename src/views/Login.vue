@@ -3,7 +3,7 @@
     <!-- Background image with blur overlay -->
     <div
       class="absolute inset-0 bg-cover bg-center"
-      style="background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Caraga_State_University_main_building.jpg/1280px-Caraga_State_University_main_building.jpg');"
+      style="background: url('../img/CSU-LOGO-ANIMATION.mp4');"
     ></div>
     <div class="absolute inset-0 backdrop-blur-sm bg-black/20"></div>
 
@@ -14,15 +14,9 @@
       <!-- Logos -->
       <div class="flex justify-center items-center gap-3 mb-5">
         <img
-          src="../img/csu_logo.png"
-          class="w-16 h-16 object-contain drop-shadow"
+          src="../../public/images/csu_logo.png"
+          class="w-32 h-32 object-contain drop-shadow"
         />
-        <!-- ECOmmunicate placeholder badge -->
-        <div
-          class="w-16 h-16 rounded-full bg-green-800 flex items-center justify-center shadow-md border-2 border-yellow-400"
-        >
-          <span class="text-white text-[9px] font-bold text-center leading-tight px-1">ECOmmunicate</span>
-        </div>
       </div>
 
       <!-- Title -->
@@ -66,7 +60,12 @@
         <!-- Create account link -->
         <p class="text-center text-sm text-gray-500">
           Don't have account yet?
-          <a href="#" class="text-green-800 font-semibold hover:underline">Create account.</a>
+          <RouterLink
+            to="/register"
+            class="text-green-800 font-semibold hover:underline"
+          >
+            Create account.
+          </RouterLink>
         </p>
 
         <!-- Sign In button -->
@@ -81,8 +80,9 @@
   </div>
 </template>
 
-<script setup>
+<script setup vapor>
 import { reactive } from 'vue';
+import { RouterLink } from 'vue-router';
 
 const form = reactive({
   idNumber: '',
