@@ -3,10 +3,12 @@ import GridTasks from '@/components/GridTasks.vue';
 import TableTasks from '@/components/TableTasks.vue';
 import ChartTasks from '@/components/ChartTasks.vue';
 import Icons from '@/components/Icons.vue';
+import AddTask from '@/components/AddTask.vue';
 import { ref } from 'vue';
 import { describe } from 'vitest';
 
 const state = ref('Grid View')
+const addTask = ref(false)
 const dropdown = {
     filter: ["Regular", "Insertion", "Urgent", "Revision", "Pending", "Ongoing", "Completed"],
     sort: ["Name", "Date Due", "Recently Assigned", "Recently Completed"]
@@ -171,10 +173,15 @@ const handleScroll = (e) => {
 <template>
     <div class="flex flex-cols justify-between items-start px-10 my-5">
         <button
-            class="flex flex-row justify-evenly items-center bg-green-950 text-white font-bold h-13 w-40 rounded-2xl">
+            @click="addTask = !addTask"
+            class="flex flex-row justify-evenly items-center bg-green-950 text-white font-bold h-13 w-40 rounded-2xl cursor-pointer">
             <Icons :icon="'add'" />
             Add Task
         </button>
+
+        <div v-if="addTask == true" class="fixed inset-0 z-9999 flex items-center justify-center bg-black/50" @click.self="addTask = !addTask">
+            <AddTask :add-task="addTask" />
+        </div>
 
         <form @submit.prevent="">
             <!-- Code for the search bar: https://tailwindcss.com/plus/ui-blocks/application-ui/forms/input-groups -->
