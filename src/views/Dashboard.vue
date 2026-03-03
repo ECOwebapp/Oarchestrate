@@ -18,6 +18,24 @@ const getSegments = (approved, pendingApproval, pending) => {
   ]
 }
 
+const getDue = (task) => {
+  const today = new Date()
+  const target = new Date(task.submitBefore)
+  today.setHours(0, 0, 0, 0)
+  target.setHours(0, 0, 0, 0)
+  const diffDays = Math.ceil((target - today) / (1000 * 60 * 60 * 24))
+  return diffDays
+}
+
+const getProgress = (task) => {
+  const start = new Date(task.taskGiven).getTime()
+  const end = new Date(task.submitBefore).getTime()
+  const now = Date.now()
+  if (now < start) return 0
+  if (now > end) return 100
+  return Math.round(((now - start) / (end - start)) * 100)
+}
+
 const regularTasks = ref([
   {
     title: 'ESTABLISHMENT OF THE ECO INT...',
@@ -30,8 +48,8 @@ const regularTasks = ref([
     type: 'regular',
     progress: 'ongoing',
     urgency: 'urgent',
-    taskGiven: 'Month dd, yyyy',
-    submitBefore: 'Month dd, yyyy',
+    taskGiven: '2026-02-20',
+    submitBefore: '2026-03-05',
     assignedBy: '<Unit Member Name>',
     assignedTo: '<Unit Member Name>',
     subtasks: [
@@ -47,12 +65,12 @@ const regularTasks = ref([
     submittedBy: '<Unit Member Name>',
     submittedOn: '<Date Submitted>, <Time Submitted>',
     status: 'approved',
-    highlight: false,
+    highlight: true,
     type: 'regular',
     progress: 'ongoing',
-    urgency: 'regular',
-    taskGiven: 'Month dd, yyyy',
-    submitBefore: 'Month dd, yyyy',
+    urgency: 'urgent',
+    taskGiven: '2026-02-10',
+    submitBefore: '2026-03-01',
     assignedBy: '<Unit Member Name>',
     assignedTo: '<Unit Member Name>',
     subtasks: [
@@ -70,8 +88,8 @@ const regularTasks = ref([
     type: 'regular',
     progress: 'ongoing',
     urgency: 'regular',
-    taskGiven: 'Month dd, yyyy',
-    submitBefore: 'Month dd, yyyy',
+    taskGiven: '2026-02-25',
+    submitBefore: '2026-03-10',
     assignedBy: '<Unit Member Name>',
     assignedTo: '<Unit Member Name>',
     subtasks: [],
@@ -90,8 +108,8 @@ const urgentTasks = ref([
     type: 'regular',
     progress: 'ongoing',
     urgency: 'urgent',
-    taskGiven: 'Month dd, yyyy',
-    submitBefore: 'Month dd, yyyy',
+    taskGiven: '2026-02-25',
+    submitBefore: '2026-03-04',
     assignedBy: '<Unit Member Name>',
     assignedTo: '<Unit Member Name>',
     subtasks: ['Subtask description here.'],
@@ -107,8 +125,8 @@ const urgentTasks = ref([
     type: 'regular',
     progress: 'ongoing',
     urgency: 'regular',
-    taskGiven: 'Month dd, yyyy',
-    submitBefore: 'Month dd, yyyy',
+    taskGiven: '2026-02-15',
+    submitBefore: '2026-03-08',
     assignedBy: '<Unit Member Name>',
     assignedTo: '<Unit Member Name>',
     subtasks: [],
@@ -127,8 +145,8 @@ const insertionTasks = ref([
     type: 'insertion',
     progress: 'ongoing',
     urgency: 'urgent',
-    taskGiven: 'Month dd, yyyy',
-    submitBefore: 'Month dd, yyyy',
+    taskGiven: '2026-02-22',
+    submitBefore: '2026-03-02',
     assignedBy: '<Unit Member Name>',
     assignedTo: '<Unit Member Name>',
     subtasks: [
@@ -152,8 +170,8 @@ const insertionTasks = ref([
     type: 'insertion',
     progress: 'ongoing',
     urgency: 'regular',
-    taskGiven: 'Month dd, yyyy',
-    submitBefore: 'Month dd, yyyy',
+    taskGiven: '2026-02-28',
+    submitBefore: '2026-03-15',
     assignedBy: '<Unit Member Name>',
     assignedTo: '<Unit Member Name>',
     subtasks: [],
@@ -169,8 +187,8 @@ const insertionTasks = ref([
     type: 'insertion',
     progress: 'ongoing',
     urgency: 'regular',
-    taskGiven: 'Month dd, yyyy',
-    submitBefore: 'Month dd, yyyy',
+    taskGiven: '2026-02-18',
+    submitBefore: '2026-03-06',
     assignedBy: '<Unit Member Name>',
     assignedTo: '<Unit Member Name>',
     subtasks: [],
@@ -289,12 +307,33 @@ const notifications = [
           <h2 class="font-extrabold text-base tracking-widest mb-2 text-gray-800 flex-shrink-0">REGULAR TASKS</h2>
           <div class="flex gap-3 items-stretch">
             <div v-for="(task, i) in regularTasks" :key="i"
-              class="flex-1 rounded p-3 bg-white text-sm shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
-              :class="task.highlight ? 'border-l-4 border-l-red-500' : ''" @click="openTask(task)">
-              <p class="font-bold truncate" :class="task.highlight ? 'text-red-600' : 'text-gray-800'">{{ task.title }}
-              </p>
-              <p class="text-gray-500 text-xs italic mt-1">Submitted by {{ task.submittedBy }}</p>
-              <p class="text-gray-500 text-xs italic">Submitted on {{ task.submittedOn }}</p>
+              class="relative flex flex-col flex-1 min-w-70 h-28 rounded-2xl py-2 px-4 overflow-hidden bg-white cursor-pointer transition-shadow"
+              :class="task.urgency === 'urgent'
+                ? 'outline-3 outline-red-900 text-red-900 shadow-md shadow-red-900/90 hover:shadow-lg hover:shadow-red-900/70'
+                : 'outline-2 outline-green-950 text-green-950 shadow-md shadow-green-950/90 hover:shadow-lg hover:shadow-green-950/70'"
+              @click="openTask(task)">
+              <!-- Urgent Ribbon -->
+              <div v-if="task.urgency === 'urgent'" class="absolute top-0 right-0 h-16 w-16">
+                <div class="absolute transform rotate-45 bg-red-800 text-white text-1xl font-bold py-1 w-40 bottom-4 -right-12 text-center shadow-sm uppercase">
+                  Urgent
+                </div>
+              </div>
+              <p class="truncate uppercase font-bold mb-2">{{ task.title }}</p>
+              <p class="line-clamp-2 italic text-sm">{{ task.description }}</p>
+              <div class="flex flex-row items-center justify-evenly mt-auto gap-1">
+                <div class="w-40 bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div class="h-full transition-all duration-500 ease-out"
+                    :class="task.urgency === 'urgent' ? 'bg-red-800' : 'bg-green-950'"
+                    :style="{ width: getProgress(task) + '%' }">
+                  </div>
+                </div>
+                <div>
+                  <p class="text-xs font-bold italic">
+                    {{ getDue(task) >= 0 ? 'Due' : 'Overdue' }}:
+                    {{ getDue(task) < 0 ? getDue(task) * -1 : getDue(task) !== 0 ? getDue(task) : 'Today' }} {{ getDue(task) > 1 ||
+                        getDue(task) * -1 > 1 ? 'days' : 'day' }}</p>
+                </div>
+              </div>
             </div>
             <div
               class="flex flex-col items-center justify-center px-2 text-gray-400 hover:text-gray-600 cursor-pointer">
@@ -309,12 +348,33 @@ const notifications = [
           <h2 class="font-extrabold text-base tracking-widest mb-2 text-gray-800 flex-shrink-0">INSERTION TASKS</h2>
           <div class="flex gap-3 items-stretch">
             <div v-for="(task, i) in insertionTasks" :key="i"
-              class="flex-1 rounded p-3 bg-white text-sm shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
-              :class="task.highlight ? 'border-l-4 border-l-red-500' : ''" @click="openTask(task)">
-              <p class="font-bold truncate" :class="task.highlight ? 'text-red-600' : 'text-gray-800'">{{ task.title }}
-              </p>
-              <p class="text-gray-500 text-xs italic mt-1">Submitted by {{ task.submittedBy }}</p>
-              <p class="text-gray-500 text-xs italic">Submitted on {{ task.submittedOn }}</p>
+              class="relative flex flex-col flex-1 min-w-70 h-28 rounded-2xl py-2 px-4 overflow-hidden bg-white cursor-pointer transition-shadow"
+              :class="task.urgency === 'urgent'
+                ? 'outline-3 outline-red-900 text-red-900 shadow-md shadow-red-900/90 hover:shadow-lg hover:shadow-red-900/70'
+                : 'outline-2 outline-green-950 text-green-950 shadow-md shadow-green-950/90 hover:shadow-lg hover:shadow-green-950/70'"
+              @click="openTask(task)">
+              <!-- Urgent Ribbon -->
+              <div v-if="task.urgency === 'urgent'" class="absolute top-0 right-0 h-16 w-16">
+                <div class="absolute transform rotate-45 bg-red-800 text-white text-1xl font-bold py-1 w-40 bottom-4 -right-12 text-center shadow-sm uppercase">
+                  Urgent
+                </div>
+              </div>
+              <p class="truncate uppercase font-bold mb-2">{{ task.title }}</p>
+              <p class="line-clamp-2 italic text-sm">{{ task.description }}</p>
+              <div class="flex flex-row items-center justify-evenly mt-auto gap-1">
+                <div class="w-40 bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div class="h-full transition-all duration-500 ease-out"
+                    :class="task.urgency === 'urgent' ? 'bg-red-800' : 'bg-green-950'"
+                    :style="{ width: getProgress(task) + '%' }">
+                  </div>
+                </div>
+                <div>
+                  <p class="text-xs font-bold italic">
+                    {{ getDue(task) >= 0 ? 'Due' : 'Overdue' }}:
+                    {{ getDue(task) < 0 ? getDue(task) * -1 : getDue(task) !== 0 ? getDue(task) : 'Today' }} {{ getDue(task) > 1 ||
+                        getDue(task) * -1 > 1 ? 'days' : 'day' }}</p>
+                </div>
+              </div>
             </div>
             <div
               class="flex flex-col items-center justify-center px-2 text-gray-400 hover:text-gray-600 cursor-pointer">
