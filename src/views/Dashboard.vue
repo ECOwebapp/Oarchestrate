@@ -1,7 +1,7 @@
 <script setup vapor>
 import { ref, computed } from 'vue'
 import TaskCard from '@/components/TaskCard.vue'
-import TaskDetailModal from '@/components/TaskDetailModal.vue'
+import TaskDetail from '@/components/TaskDetail.vue'
 
 const r = 45
 const C = 2 * Math.PI * r
