@@ -2,10 +2,13 @@
     import { ref, computed } from 'vue'
     import Icons from '@/components/Icons.vue'
     import AnalyticsChart from '@/components/AnalyticsChart.vue'
+    import AccomplishmentReport from '@/components/AccomplishmentReport.vue'
 
     const expandedChart = ref(null)
     const openModal = (key) => { expandedChart.value = key }
     const closeModal = () => { expandedChart.value = null }
+
+    const showReport = ref(false)
 
     const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -106,7 +109,8 @@
 
         <div class="mt-auto">
             <button
-            class="w-full py-2.5 bg-green-950 text-white text-sm font-bold rounded-lg hover:bg-green-800 transition-colors cursor-pointer">
+            class="w-full py-2.5 bg-green-950 text-white text-sm font-bold rounded-lg hover:bg-green-800 transition-colors cursor-pointer"
+            @click="showReport = true">
             Generate Report
             </button>
         </div>
@@ -260,6 +264,9 @@
 
         </div>
     </div>
+
+    <!-- ── Accomplishment Report Modal ── -->
+    <AccomplishmentReport :show="showReport" @close="showReport = false" />
 
     <!-- ── Expanded Chart View (component) ── -->
     <AnalyticsChart
