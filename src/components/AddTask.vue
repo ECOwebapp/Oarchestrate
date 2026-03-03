@@ -28,9 +28,9 @@ const subTasks = ref([''])
                 <span class="mt-1 mb-5 text-xs text-red-600 italic">(Max 500 characters)</span>
 
                 <label>Sub-tasks</label>
-                <div class="flex flex-col mb-5 max-h-50 overflow-y-auto">
+                <div class="flex flex-col mb-5 max-h-50 overflow-y-auto mask-y-from-92% mask-y-to-100%">
 
-                    <div class="flex flex-row items-center gap-3 py-1" v-for="(item, index) in subTasks" :key="item">
+                    <div class="flex flex-row items-center gap-3 py-3" v-for="(item, index) in subTasks" :key="item">
                         <span class="text-gray-500">{{ index + 1 }}</span>
                         <textarea v-model="item" :name="'subtask' + index" type="text"
                             class="max-h-30 w-full mr-5 resize-none border border-2 border-gray-400 rounded-md p-2" rows="1"
