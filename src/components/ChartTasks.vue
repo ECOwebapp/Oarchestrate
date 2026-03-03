@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue'
 import { GanttChart, TaskListColumn } from 'jordium-gantt-vue3'
 import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
-
 const props = defineProps(['tasks'])
 
 const getProgress = (task) => {
@@ -24,13 +23,13 @@ const ganttTasks = computed(() => {
     return props.tasks.map((task, index) => ({
         id: index + 1,               // Mandatory: Unique ID
         name: task.name,             // Mandatory: Task Title
-        description: task.description,
         startDate: task.from,        // Format: 'YYYY-MM-DD'
         endDate: task.to,            // Format: 'YYYY-MM-DD'
         progress: getProgress(task),
         assigner: task.assigner,
         assignee: task.assignee,     // Custom field for the sidebar
-        barColor: task.urgent ? '#dc2626' : '#052e16' // Urgent = Red, Else = Green
+        type: task.type,
+        barColor: task.urgent ? 'var(--color-red-900)' : '#003300' // Urgent = Red, Else = Green
     }))
 })
 
@@ -59,19 +58,15 @@ const formatKey = (key) => {
             task-list-column-render-mode="declarative"
             theme="light">
             
-            <TaskListColumn v-for="task in ['name', 'description', 'assigner', 'assignee', 'startDate', 'endDate']" 
-                :key="task" :prop="task" :label="task.toUpperCase()" width="30%" css-class="text-wrap"
-                :align="task !== 'name' && task !=='description' ? 'center' : 'left'" />
-
             <!-- Tooltip -->
             <template #taskbar-tooltip="{ task }">
                 <div class="color-white p-2 z-9999999999 min-w-50 max-w-70 ">
                     <div class="font-bold text-[13px] mb-[8px] pb-[6px] border-b border-b-gray-200 color-white">{{ task.name }}</div>
                     <div v-for="(value, key) in task" :key="key">
-                        <div v-if="!['name', 'description', 'id', 'color', 'isParent', 'level'].includes(key)"
+                        <div v-if="['startDate', 'endDate', 'assigner', 'assignee', 'type'].includes(key)"
                         class="flex flex-row justify-between items-center min-h-[22px] gap-4">
                         
-                            <span class="opacity-80 min-w-[80px] text-white text-[10px] uppercase font-bold">
+                            <span class="opacity-80 min-w-[80px] text-white text-[10px] font-bold">
                                 {{ formatKey(key) }}:
                             </span>
                             

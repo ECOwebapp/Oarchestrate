@@ -3,8 +3,10 @@ import GridTasks from '@/components/GridTasks.vue';
 import TableTasks from '@/components/TableTasks.vue';
 import ChartTasks from '@/components/ChartTasks.vue';
 import Icons from '@/components/Icons.vue';
+import { ref } from 'vue';
 import { describe } from 'vitest';
 
+const state = ref('Grid View')
 const dropdown = {
     filter: ["Regular", "Insertion", "Urgent", "Revision", "Pending", "Ongoing", "Completed"],
     sort: ["Name", "Date Due", "Recently Assigned", "Recently Completed"]
@@ -157,6 +159,13 @@ const tasks = [
     }
 ];
 
+const isScrolled = ref(false)
+
+const handleScroll = (e) => {
+  // If the user has scrolled down more than 10px, show the top fade
+  isScrolled.value = e.target.scrollTop > 10
+}
+
 </script>
 
 <template>
@@ -193,15 +202,29 @@ const tasks = [
     </div>
 
     <div class="flex-1 overflow-auto bg-white mx-10 rounded-xl shadow-md">
-        <ChartTasks :tasks="tasks" />
+        <GridTasks v-if="state === 'Grid View'" :tasks="tasks" />
+        <TableTasks v-else-if="state === 'Table View'" :tasks="tasks" />
+        <ChartTasks v-else-if="state === 'Chart View'" :tasks="tasks" />
     </div>
 
     <div class="flex flex-row justify-center items-center gap-5 my-3">
         <button v-for="btn in ['Grid View', 'Table View', 'Chart View']"
+            @click="state = btn"
             class="flex flex-row justify-evenly items-center text-sm font-bold h-10 w-30 rounded-xl cursor-pointer"
-            :class="btn === 'Grid View' ? 'bg-green-950 text-white' : 'outline-2 outline-green-950 text-green-950 bg-white hover:bg-green-950 hover:text-white'">
+            :class="state === btn ? 'bg-green-950 text-white' : 'outline-2 outline-green-950 text-green-950 bg-white hover:bg-green-950 hover:text-white'">
             {{ btn }}
         </button>
     </div>
 
 </template>
+
+<style scoped>
+.scroll-fade-v {
+  mask-image: linear-gradient(to bottom, 
+    transparent, 
+    black 40px, 
+    black calc(100% - 40px), 
+    transparent
+  );
+}
+</style>
