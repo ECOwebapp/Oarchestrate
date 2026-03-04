@@ -37,6 +37,7 @@ const submitForm = () => {
             id: Math.random() + (index + 1), // Unique ID
             parentId: finalData.id,       // Points back to the parent!
             description: st.text,
+            endDate: finalData.endDate,
             type: finalData.type
             // Copy other relevant fields from parent if needed
         };
