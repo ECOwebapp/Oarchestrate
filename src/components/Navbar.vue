@@ -1,5 +1,6 @@
 <script setup>
 import { useRoute } from 'vue-router'
+import { ref, onMounted, onUnmounted } from 'vue'
 import Icons from './Icons.vue';
 
 const route = useRoute()
@@ -20,7 +21,33 @@ const getPath = (name) => {
 const profile = "/images/profile.jpg"
 const name = "Austin Rey A. Manlangit"
 const position = "Director"
-const version = "0.1 alpha"
+
+const currentTime = ref('')
+
+const updateTime = () => {
+  const now = new Date()
+  
+  // Format: dd/mm/yyyy, HH:mm:ss AM/PM
+  currentTime.value = new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  }).format(now).replace(',', '') // Removes the comma between date and time
+}
+
+let timer
+onMounted(() => {
+  updateTime() // Set initial time
+  timer = setInterval(updateTime, 1000) // Update every second
+})
+
+onUnmounted(() => {
+  clearInterval(timer)
+})
 </script>
 
 <template>
@@ -44,7 +71,7 @@ const version = "0.1 alpha"
             </li>
         </ul>
         <div class="flex border-t h-12 items-center justify-center">
-            <p>v{{ version }}</p>
+            <p>{{ currentTime }}</p>
         </div>
     </nav>
 </template>
