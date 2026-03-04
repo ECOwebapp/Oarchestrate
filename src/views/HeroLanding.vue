@@ -255,7 +255,7 @@
   </div>
 </template>
 
-<script setup vapor>
+<script setup>
 import Antigravity from '@/components/Antigravity.vue'
 import { onMounted, onUnmounted, ref } from 'vue'
 

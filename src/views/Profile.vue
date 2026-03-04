@@ -1,4 +1,4 @@
-<script setup vapor>
+<script setup>
 import { ref } from 'vue'
 import Icons from '@/components/Icons.vue'
 

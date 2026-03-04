@@ -1,448 +1,635 @@
-<script setup vapor>
-import Icons from '@/components/Icons.vue';
-import { supabase } from '@/lib/supabaseClient';
-import { computed, onMounted, ref } from 'vue';
+<script setup>
+import Icons from '@/components/Icons.vue'
+import { supabase } from '@/lib/supabaseClient'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { computed, onMounted, ref } from 'vue'
 
-const CURRENT_USER_ID = ref('a1000000-0000-0000-0000-000000000001')
+const auth = useAuthStore()
 
-const regularTasks   = ref([])
-const urgentTasks    = ref([])
-const insertionTasks = ref([])
-const notifications  = ref([])
-const loading        = ref(true)
-const error          = ref(null)
+// Position IDs that go DIRECTLY to director (no unit head step needed)
+// Director, Assistant Director, Office Chief, Documentation Officer, Technical Admin/Clerical
+const DIRECT_TO_DIRECTOR_POSITIONS = [1, 2, 3, 9, 10]
 
-const r = 45
-const C = 2 * Math.PI * r
+// ── State ──
+const tasks         = ref([])
+const loading       = ref(true)
+const error         = ref(null)
+const selectedTask  = ref(null)
+const approvingId   = ref(null)
+const revisingId    = ref(null)
 
-const getSegments = (approved, pendingApproval, pending) => {
-  const total = approved + pendingApproval + pending
-  if (total === 0) return []
-  const approvedLen        = C * (approved / total)
-  const pendingApprovalLen = C * (pendingApproval / total)
-  const pendingLen         = C * (pending / total)
-  return [
-    { color: '#16a34a', length: approvedLen,         offset: 0 },
-    { color: '#eab308', length: pendingApprovalLen,   offset: -approvedLen },
-    { color: '#d1d5db', length: pendingLen,           offset: -(approvedLen + pendingApprovalLen) },
-  ]
+// ── Month navigation ──
+const selectedMonth = ref(new Date().getMonth())
+const selectedYear  = ref(new Date().getFullYear())
+
+const MONTHS_FULL = ['January','February','March','April','May','June',
+                     'July','August','September','October','November','December']
+
+const isCurrentMonth = computed(() =>
+  selectedMonth.value === new Date().getMonth() &&
+  selectedYear.value  === new Date().getFullYear()
+)
+const prevMonth = () => {
+  if (selectedMonth.value === 0) { selectedMonth.value = 11; selectedYear.value-- }
+  else selectedMonth.value--
+}
+const nextMonth = () => {
+  if (selectedMonth.value === 11) { selectedMonth.value = 0; selectedYear.value++ }
+  else selectedMonth.value++
 }
 
-const deriveStatus = (unitHead, director) => {
-  if (unitHead && director) return 'approved'
-  if (!unitHead)            return 'pending_approval'
-  return 'pending'
-}
+// ── Helpers ──
+const fmt = (d) => d
+  ? new Date(d).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' })
+  : '—'
 
-const timeAgo = (dateStr) => {
-  const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000)
-  if (diff < 60)    return `${diff} seconds ago`
-  if (diff < 3600)  return `${Math.floor(diff / 60)} minutes ago`
-  if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`
-  return `${Math.floor(diff / 86400)} days ago`
-}
-
-const formatDate = (dateStr) =>
-  dateStr
-    ? new Date(dateStr).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
-    : '—'
-
-// Build UUID -> full name map via a separate user_profile query
-const buildProfileMap = async (uuids) => {
-  const unique = [...new Set(uuids.filter(Boolean))]
-  if (!unique.length) return {}
-  const { data, error: err } = await supabase
-    .from('user_profile')
-    .select('user_id, fname, lname')
-    .in('user_id', unique)
-  if (err) { console.error('profileMap error:', err); return {} }
-  return Object.fromEntries(
-    (data || []).map(p => [p.user_id, `${p.fname ?? ''} ${p.lname ?? ''}`.trim()])
-  )
-}
-
-// Fetch tasks — no user_profile joins in main query to avoid FK hint issues
-const fetchTasks = async (userId) => {
+// ── Fetch all tasks awaiting director approval ──
+const fetchTasks = async () => {
   loading.value = true
   error.value   = null
   try {
-    const { data, error: err } = await supabase
+    // Step 1: get task_approval rows where director not yet approved
+    const { data: approvalRows, error: approvalErr } = await supabase
+      .from('task_approval')
+      .select('id, unit_head, director')
+      .eq('director', false)
+
+    if (approvalErr) throw approvalErr
+    if (!approvalRows?.length) { tasks.value = []; return }
+
+    // Step 2: get assignee positions to determine direct-to-director staff
+    const { data: posRows, error: posErr } = await supabase
+      .from('position')
+      .select('user_id, pos_id')
+
+    if (posErr) throw posErr
+    const posMap = Object.fromEntries((posRows||[]).map(p => [p.user_id, p.pos_id]))
+
+    // Only keep approvals where unit_head=true OR assignee is direct-to-director
+    // We'll cross-reference after fetching tasks
+    const approvalIds = approvalRows.map(a => a.id)
+
+    // Step 3: fetch tasks matching those approval IDs
+    const { data, error: taskErr } = await supabase
       .from('task')
       .select(`
-        id,
-        parent_id,
-        assigner,
-        assignee,
-        design,
-        task_profile (
-          title,
-          description,
-          urgent,
-          revision,
-          task_type_ref:task_type ( task_type )
-        ),
-        task_approval ( unit_head, director ),
+        id, parent_id, assigner, assignee,
+        task_profile ( title, description, urgent, task_type_ref:task_type(task_type) ),
+        task_approval ( id, unit_head, director ),
         task_duration ( created, deadline ),
         task_output   ( link ),
-        subtasks:task!parent_id (
-          id,
-          task_profile ( description )
-        )
+        subtasks:task!parent_id ( id, task_profile(description) )
       `)
       .is('parent_id', null)
-      .or(`assigner.eq.${userId},assignee.eq.${userId}`)
-      .order('id')
+      .in('id', approvalIds)
 
-    if (err) throw err
+    if (taskErr) throw taskErr
 
-    const allUuids   = (data || []).flatMap(t => [t.assigner, t.assignee])
-    const profileMap = await buildProfileMap(allUuids)
+    // Step 4: build name map
+    const uuids = [...new Set((data||[]).flatMap(t => [t.assigner, t.assignee]).filter(Boolean))]
+    let nameMap = {}
+    if (uuids.length) {
+      const { data: profs } = await supabase
+        .from('user_profile')
+        .select('id, fname, lname')
+        .in('id', uuids)
+      nameMap = Object.fromEntries((profs||[]).map(p => [p.id, `${p.fname||''} ${p.lname||''}`.trim()]))
+    }
 
-    const mapped = (data || []).map(row => ({
-      id:           row.id,
-      title:        (row.task_profile?.title || 'UNTITLED').toUpperCase().substring(0, 28) + '...',
-      fullTitle:    row.task_profile?.title        || 'Untitled',
-      description:  row.task_profile?.description  || '',
-      submittedBy:  profileMap[row.assignee]       || 'Unknown',
-      submittedOn:  formatDate(row.task_duration?.created),
-      status:       deriveStatus(row.task_approval?.unit_head, row.task_approval?.director),
-      highlight:    !row.task_approval?.unit_head,
-      type:         row.task_profile?.task_type_ref?.task_type?.toLowerCase() || 'regular',
-      progress:     (row.task_approval?.unit_head && row.task_approval?.director) ? 'completed' : 'ongoing',
-      urgency:      row.task_profile?.urgent ? 'urgent' : 'regular',
-      taskGiven:    formatDate(row.task_duration?.created),
-      submitBefore: formatDate(row.task_duration?.deadline),
-      assignedBy:   profileMap[row.assigner]       || 'Unknown',
-      assignedTo:   profileMap[row.assignee]       || 'Unknown',
-      subtasks:     (row.subtasks || []).map(s => s.task_profile?.description || ''),
-      outputLink:   row.task_output?.link          || null,
-    }))
+    // Step 5: filter — unit head approved OR direct-to-director position
+    tasks.value = (data||[])
+      .filter(t => {
+        const isDirect = DIRECT_TO_DIRECTOR_POSITIONS.includes(posMap[t.assignee])
+        return isDirect || t.task_approval?.unit_head === true
+      })
+      .map(t => ({
+        id:          t.id,
+        title:       t.task_profile?.title       || 'Untitled',
+        description: t.task_profile?.description || '',
+        urgent:      !!t.task_profile?.urgent,
+        type:        t.task_profile?.task_type_ref?.task_type?.toLowerCase() || 'regular',
+        created:     t.task_duration?.created    || null,
+        deadline:    t.task_duration?.deadline   || null,
+        assignedBy:  nameMap[t.assigner]         || 'Unknown',
+        assignedTo:  nameMap[t.assignee]         || 'Unknown',
+        unitHeadOk:  !!t.task_approval?.unit_head,
+        outputLink:  t.task_output?.link         || null,
+        subtasks:    (t.subtasks||[]).map(s => s.task_profile?.description || ''),
+      }))
 
-    regularTasks.value   = mapped.filter(t => t.type === 'regular' && t.urgency === 'regular')
-    urgentTasks.value    = mapped.filter(t => t.urgency === 'urgent')
-    insertionTasks.value = mapped.filter(t => t.type === 'insertion')
-
-  } catch (e) {
+  } catch(e) {
     error.value = e.message
-    console.error('fetchTasks error:', e)
+    console.error('[Dashboard] fetch error:', e)
   } finally {
     loading.value = false
   }
 }
 
-// Fetch notifications — separate user_profile query for sender names
-const fetchNotifications = async () => {
+// ── Filtered by selected month ──
+const tasksForMonth = computed(() =>
+  tasks.value.filter(t => {
+    if (!t.created) return false
+    const d = new Date(t.created)
+    return d.getMonth() === selectedMonth.value && d.getFullYear() === selectedYear.value
+  })
+)
+
+const regularTasks = computed(() =>
+  tasksForMonth.value
+    .filter(t => t.type !== 'insertion')
+    .sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0))
+)
+const insertionTasks = computed(() =>
+  tasksForMonth.value
+    .filter(t => t.type === 'insertion')
+    .sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0))
+)
+
+// ── Donut chart ──
+const R    = 42
+const CX   = 56
+const CY   = 56
+const CIRC = 2 * Math.PI * R
+
+const chartData = computed(() => ({
+  regular:   tasksForMonth.value.filter(t => t.type !== 'insertion' && !t.urgent).length,
+  urgent:    tasksForMonth.value.filter(t => t.urgent).length,
+  insertion: tasksForMonth.value.filter(t => t.type === 'insertion').length,
+}))
+
+const donutSegments = computed(() => {
+  const { regular, urgent, insertion } = chartData.value
+  const total = regular + urgent + insertion || 1
+  const defs  = [
+    { value: regular,   color: '#15803d', label: 'Regular'   },
+    { value: urgent,    color: '#b91c1c', label: 'Urgent'    },
+    { value: insertion, color: '#b45309', label: 'Insertion' },
+  ]
+  let offset = 0
+  return defs.map(s => {
+    const len = CIRC * (s.value / total)
+    const seg = { ...s, len, offset: -offset }
+    offset += len
+    return seg
+  })
+})
+
+// ── Actions ──
+const approveTask = async (task) => {
+  approvingId.value = task.id
   try {
-    const { data, error: err } = await supabase
-      .from('comment_section')
-      .select('id, comment, date_created, task_id, user_id')
-      .order('date_created', { ascending: false })
-      .limit(8)
-    if (err) throw err
-
-    const profileMap = await buildProfileMap((data || []).map(n => n.user_id))
-    notifications.value = (data || []).map(n => ({
-      from:    profileMap[n.user_id] || 'Unknown',
-      message: n.comment,
-      time:    timeAgo(n.date_created),
-    }))
-  } catch (e) {
-    console.error('fetchNotifications error:', e)
-  }
+    const { error: e } = await supabase
+      .from('task_approval').update({ director: true }).eq('id', task.id)
+    if (e) throw e
+    tasks.value = tasks.value.filter(t => t.id !== task.id)
+    if (selectedTask.value?.id === task.id) selectedTask.value = null
+  } catch(e) { console.error(e) }
+  finally    { approvingId.value = null }
 }
 
-const countBy = (list, status) => list.value.filter(t => t.status === status).length
-
-const taskSummaries = computed(() => [
-  { label: 'REGULAR TASKS',   approved: countBy(regularTasks, 'approved'),   pendingApproval: countBy(regularTasks, 'pending_approval'),   pending: countBy(regularTasks, 'pending') },
-  { label: 'URGENT TASKS',    approved: countBy(urgentTasks, 'approved'),    pendingApproval: countBy(urgentTasks, 'pending_approval'),    pending: countBy(urgentTasks, 'pending') },
-  { label: 'INSERTION TASKS', approved: countBy(insertionTasks, 'approved'), pendingApproval: countBy(insertionTasks, 'pending_approval'), pending: countBy(insertionTasks, 'pending') },
-])
-
-const hoveredChart = ref(null)
-const selectedTask = ref(null)
-
-const openTask  = (task) => { selectedTask.value = { ...task }; if (task.status === 'approved') selectedTask.value.progress = 'completed' }
-const closeTask = () => { selectedTask.value = null }
-
-const approveTask = async () => {
-  if (!selectedTask.value) return
-  const { error: err } = await supabase
-    .from('task_approval')
-    .update({ unit_head: true, director: true })
-    .eq('id', selectedTask.value.id)
-  if (err) { console.error('approve error:', err); return }
-  selectedTask.value.status   = 'approved'
-  selectedTask.value.progress = 'completed'
-  await fetchTasks(CURRENT_USER_ID.value)
+const reviseTask = async (task) => {
+  revisingId.value = task.id
+  try {
+    const { error: e } = await supabase
+      .from('task_approval').update({ unit_head: false }).eq('id', task.id)
+    if (e) throw e
+    tasks.value = tasks.value.filter(t => t.id !== task.id)
+    if (selectedTask.value?.id === task.id) selectedTask.value = null
+  } catch(e) { console.error(e) }
+  finally    { revisingId.value = null }
 }
 
-const badgeClass = (value) => ({
-  ongoing: 'bg-green-800 text-white', completed: 'bg-blue-600 text-white',
-  urgent: 'bg-[#7b1c1c] text-white',  regular: 'bg-amber-500 text-white',
-  insertion: 'bg-[#7b1c1c] text-white',
-}[value] || 'bg-gray-300 text-gray-800')
+const openTask  = (t) => { selectedTask.value = t }
+const closeTask = () =>  { selectedTask.value = null }
 
-const userOptions = [
-  { label: 'Director',  id: 'a1000000-0000-0000-0000-000000000001' },
-  { label: 'Unit Head', id: 'a1000000-0000-0000-0000-000000000002' },
-  { label: 'Nheron',    id: 'a1000000-0000-0000-0000-000000000003' },
-  { label: 'Ana',       id: 'a1000000-0000-0000-0000-000000000004' },
-  { label: 'Carlo',     id: 'a1000000-0000-0000-0000-000000000005' },
-]
+const isOverdue = (d) => d && new Date(d) < new Date()
 
-const switchUser = async (id) => {
-  CURRENT_USER_ID.value = id
-  await Promise.all([fetchTasks(id), fetchNotifications()])
-}
-
-onMounted(() => switchUser(CURRENT_USER_ID.value))
+onMounted(fetchTasks)
 </script>
 
 <template>
-  <div class="flex flex-col w-full h-full">
+  <div class="director-dash flex flex-col w-full h-full overflow-hidden bg-gray-50">
 
-    <!-- Dev User Switcher -->
-    <div class="flex items-center gap-2 bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-xs flex-shrink-0 flex-wrap">
-      <span class="font-bold text-yellow-700">🧪 View as:</span>
-      <button v-for="u in userOptions" :key="u.id" @click="switchUser(u.id)"
-        :class="['px-3 py-1 rounded-full border font-semibold transition-colors',
-          CURRENT_USER_ID === u.id ? 'bg-yellow-600 text-white border-yellow-600' : 'bg-white text-yellow-700 border-yellow-400 hover:bg-yellow-100']">
-        {{ u.label }}
-      </button>
-    </div>
-
-    <!-- Loading -->
-    <div v-if="loading" class="flex-1 flex items-center justify-center text-gray-400 text-sm gap-2">
-      <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="10" stroke="#d1d5db" stroke-width="3"/>
-        <path d="M12 2a10 10 0 0 1 10 10" stroke="#6b7280" stroke-width="3" stroke-linecap="round"/>
+    <!-- ══ LOADING ══ -->
+    <div v-if="loading" class="flex-1 flex items-center justify-center gap-3">
+      <svg class="animate-spin w-5 h-5 text-green-700" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="10" stroke="#d1fae5" stroke-width="3"/>
+        <path d="M12 2a10 10 0 0 1 10 10" stroke="#15803d" stroke-width="3" stroke-linecap="round"/>
       </svg>
-      Loading tasks…
+      <span class="text-sm text-gray-500 tracking-wide">Loading…</span>
     </div>
 
-    <!-- Error -->
-    <div v-else-if="error" class="flex-1 flex items-center justify-center">
-      <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-600 max-w-md">
-        <strong>Error:</strong> {{ error }}
+    <!-- ══ ERROR ══ -->
+    <div v-else-if="error" class="flex-1 flex items-center justify-center p-8">
+      <div class="bg-red-50 border border-red-200 rounded-2xl p-6 text-sm text-red-600 max-w-sm text-center">
+        <p class="font-bold mb-1">Failed to load tasks</p>
+        <p class="text-xs">{{ error }}</p>
       </div>
     </div>
 
-    <!-- Body -->
-    <div v-else class="flex flex-1 min-h-0 overflow-hidden">
+    <!-- ══ CONTENT ══ -->
+    <div v-else class="flex flex-col flex-1 min-h-0">
 
-      <main class="flex-1 bg-gray-50 p-4 overflow-hidden flex flex-col gap-3">
+      <!-- Top bar -->
+      <div class="flex items-center justify-between px-5 py-3 bg-white border-b border-gray-100 flex-shrink-0 fade-in">
+        <div>
+          <p class="text-xs text-gray-400 uppercase tracking-widest">Director</p>
+          <p class="text-base font-bold text-gray-800">Tasks Awaiting Your Approval</p>
+        </div>
 
-        <!-- Donut Charts -->
-        <div class="flex-shrink-0 bg-white rounded-xl shadow-sm p-3 flex justify-around">
-          <div v-for="summary in taskSummaries" :key="summary.label"
-            class="flex flex-col items-center cursor-pointer"
-            @mouseenter="hoveredChart = summary.label" @mouseleave="hoveredChart = null">
-            <div class="relative w-32 h-32 flex items-center justify-center">
-              <span class="absolute top-1 right-0 text-xs text-right leading-tight transition-opacity duration-200"
-                :class="hoveredChart === summary.label ? 'opacity-100' : 'opacity-0'">
-                <span class="text-gray-600 font-semibold">{{ summary.pending }}</span><br/>
-                <span class="text-gray-400">Pending</span>
-              </span>
-              <span class="absolute bottom-1 left-0 text-xs leading-tight transition-opacity duration-200"
-                :class="hoveredChart === summary.label ? 'opacity-100' : 'opacity-0'">
-                <span class="text-gray-600 font-semibold">{{ summary.approved }}</span><br/>
-                <span class="text-gray-400">Approved</span>
-              </span>
-              <svg width="100" height="100" viewBox="0 0 120 120">
-                <circle cx="60" cy="60" r="45" fill="none" stroke="#e5e7eb" stroke-width="14"/>
-                <g transform="rotate(-90 60 60)">
-                  <circle v-for="(seg, i) in getSegments(summary.approved, summary.pendingApproval, summary.pending)"
-                    :key="i" cx="60" cy="60" r="45" fill="none" :stroke="seg.color" stroke-width="14"
-                    :stroke-dasharray="`${seg.length} ${C - seg.length}`" :stroke-dashoffset="seg.offset"/>
+        <!-- Month navigator -->
+        <div class="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-xl px-2 py-1">
+          <button @click="prevMonth"
+            class="w-7 h-7 rounded-lg hover:bg-gray-200 transition-colors text-gray-500 text-lg leading-none flex items-center justify-center">
+            ‹
+          </button>
+          <span class="text-sm font-semibold text-gray-700 w-36 text-center select-none">
+            {{ MONTHS_FULL[selectedMonth] }} {{ selectedYear }}
+          </span>
+          <button @click="nextMonth" :disabled="isCurrentMonth"
+            class="w-7 h-7 rounded-lg hover:bg-gray-200 transition-colors text-gray-500 text-lg leading-none flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed">
+            ›
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrollable body -->
+      <div class="flex-1 min-h-0 overflow-y-auto">
+        <div class="p-4 md:p-6 flex flex-col gap-6">
+
+          <!-- ── Summary row ── -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+            <!-- Donut -->
+            <div class="col-span-2 lg:col-span-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col items-center slide-up" style="animation-delay:0ms">
+              <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3 self-start">Monthly Overview</p>
+              <svg :width="CX*2" :height="CY*2" :viewBox="`0 0 ${CX*2} ${CY*2}`" class="overflow-visible">
+                <circle :cx="CX" :cy="CY" :r="R" fill="none" stroke="#f3f4f6" stroke-width="12"/>
+                <g :transform="`rotate(-90 ${CX} ${CY})`">
+                  <circle
+                    v-for="(seg, i) in donutSegments" :key="i"
+                    :cx="CX" :cy="CY" :r="R"
+                    fill="none" :stroke="seg.color" stroke-width="12" stroke-linecap="butt"
+                    :stroke-dasharray="`${seg.len} ${CIRC - seg.len}`"
+                    :stroke-dashoffset="seg.offset"
+                    class="donut-seg" :style="`animation-delay:${i*100}ms`"
+                  />
                 </g>
-                <text x="60" y="55" text-anchor="middle" font-size="20" font-weight="bold" fill="#111827"
-                  :opacity="hoveredChart === summary.label ? 1 : 0" style="transition:opacity 0.2s">{{ summary.pendingApproval }}</text>
-                <text x="60" y="67" text-anchor="middle" font-size="7.5" fill="#6b7280"
-                  :opacity="hoveredChart === summary.label ? 1 : 0" style="transition:opacity 0.2s">Pending for</text>
-                <text x="60" y="77" text-anchor="middle" font-size="7.5" fill="#6b7280"
-                  :opacity="hoveredChart === summary.label ? 1 : 0" style="transition:opacity 0.2s">Approval</text>
+                <text :x="CX" :y="CY - 5" text-anchor="middle" font-size="24" font-weight="800" fill="#111827">
+                  {{ tasksForMonth.length }}
+                </text>
+                <text :x="CX" :y="CY + 11" text-anchor="middle" font-size="9" fill="#9ca3af">pending</text>
               </svg>
-            </div>
-            <p class="mt-2 font-extrabold text-sm tracking-widest text-gray-800">{{ summary.label }}</p>
-          </div>
-        </div>
-
-        <!-- Regular Tasks -->
-        <section class="flex-1 min-h-0 bg-white rounded-xl shadow-sm p-4 flex flex-col">
-          <h2 class="font-extrabold text-base tracking-widest mb-2 text-gray-800 flex-shrink-0">REGULAR TASKS</h2>
-          <div v-if="regularTasks.length === 0" class="text-xs text-gray-400 italic">No regular tasks.</div>
-          <div v-else class="flex gap-3 items-stretch">
-            <div v-for="task in regularTasks" :key="task.id"
-              class="flex-1 rounded p-3 bg-white text-sm shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
-              :class="task.highlight ? 'border-l-4 border-l-red-500' : ''" @click="openTask(task)">
-              <p class="font-bold truncate" :class="task.highlight ? 'text-red-600' : 'text-gray-800'">{{ task.title }}</p>
-              <p class="text-gray-500 text-xs italic mt-1">Submitted by {{ task.submittedBy }}</p>
-              <p class="text-gray-500 text-xs italic">{{ task.taskGiven }}</p>
-            </div>
-            <div class="flex flex-col items-center justify-center px-2 text-gray-400 hover:text-gray-600 cursor-pointer">
-              <span class="text-3xl leading-none">›</span>
-              <span class="text-xs">View more</span>
-            </div>
-          </div>
-        </section>
-
-        <!-- Insertion Tasks -->
-        <section class="flex-1 min-h-0 bg-white rounded-xl shadow-sm p-4 flex flex-col">
-          <h2 class="font-extrabold text-base tracking-widest mb-2 text-gray-800 flex-shrink-0">INSERTION TASKS</h2>
-          <div v-if="insertionTasks.length === 0" class="text-xs text-gray-400 italic">No insertion tasks.</div>
-          <div v-else class="flex gap-3 items-stretch">
-            <div v-for="task in insertionTasks" :key="task.id"
-              class="flex-1 rounded p-3 bg-white text-sm shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
-              :class="task.highlight ? 'border-l-4 border-l-red-500' : ''" @click="openTask(task)">
-              <p class="font-bold truncate" :class="task.highlight ? 'text-red-600' : 'text-gray-800'">{{ task.title }}</p>
-              <p class="text-gray-500 text-xs italic mt-1">Submitted by {{ task.submittedBy }}</p>
-              <p class="text-gray-500 text-xs italic">{{ task.taskGiven }}</p>
-            </div>
-            <div class="flex flex-col items-center justify-center px-2 text-gray-400 hover:text-gray-600 cursor-pointer">
-              <span class="text-3xl leading-none">›</span>
-              <span class="text-xs">View more</span>
-            </div>
-          </div>
-        </section>
-
-      </main>
-
-      <!-- Notifications -->
-      <aside class="w-60 border-l bg-white flex-shrink-0 flex flex-col overflow-hidden">
-        <div class="px-4 pt-4 pb-2 flex-shrink-0">
-          <h3 class="font-bold text-sm italic">Notifications</h3>
-        </div>
-        <div class="overflow-y-auto flex-1 px-4 pb-4">
-          <div v-if="notifications.length === 0" class="text-xs text-gray-400 italic">No notifications.</div>
-          <div v-for="(notif, i) in notifications" :key="i"
-            class="mb-2 border border-gray-200 rounded p-3 text-xs shadow-sm">
-            <p class="font-bold text-gray-800">{{ notif.from }}</p>
-            <p class="text-gray-600">{{ notif.message }}</p>
-            <p class="text-gray-400 mt-1">{{ notif.time }}</p>
-          </div>
-        </div>
-      </aside>
-
-    </div>
-
-    <!-- Task Modal -->
-    <div v-if="selectedTask" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="closeTask">
-      <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] mx-4 relative flex flex-col">
-
-        <button class="absolute top-5 right-5 text-3xl text-gray-400 hover:text-gray-700 leading-none" @click="closeTask">×</button>
-
-        <div class="px-8 pt-8 pb-4">
-          <h2 class="text-2xl font-bold text-center text-gray-900 leading-snug">{{ selectedTask.fullTitle }}</h2>
-        </div>
-        <hr class="mx-8"/>
-
-        <div class="flex gap-8 px-8 py-6 flex-1 overflow-hidden">
-
-          <!-- No subtasks -->
-          <template v-if="selectedTask.subtasks.length === 0">
-            <div class="flex-1 min-w-0 flex flex-col">
-              <h3 class="text-sm font-semibold text-gray-700 mb-2">Description</h3>
-              <div class="border border-gray-200 rounded-lg p-4 flex-1 text-sm text-gray-600 leading-relaxed">{{ selectedTask.description }}</div>
-            </div>
-            <div class="w-72 flex-shrink-0 flex flex-col gap-4">
-              <div class="flex gap-2 flex-wrap">
-                <span class="px-4 py-1.5 text-xs font-bold rounded-full capitalize" :class="badgeClass(selectedTask.progress)">{{ selectedTask.progress }}</span>
-                <span v-if="selectedTask.urgency === 'urgent'" class="px-4 py-1.5 text-xs font-bold rounded-full capitalize" :class="badgeClass(selectedTask.urgency)">{{ selectedTask.urgency }}</span>
-                <span class="px-4 py-1.5 text-xs font-bold rounded-full capitalize" :class="badgeClass(selectedTask.type)">{{ selectedTask.type }}</span>
-              </div>
-              <div class="text-sm text-gray-700 space-y-1">
-                <p><span class="font-semibold">Task given on</span> {{ selectedTask.taskGiven }}</p>
-                <p><span class="font-semibold">Submit before</span> {{ selectedTask.submitBefore }}</p>
-              </div>
-              <div class="flex gap-3">
-                <div class="flex-1">
-                  <p class="text-sm font-semibold text-gray-700 mb-1">Assigned by</p>
-                  <div class="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2">
-                    <Icons :icon="'account'" class="text-gray-400"/>
-                    <span class="text-xs text-gray-600 truncate">{{ selectedTask.assignedBy }}</span>
+              <div class="flex flex-col gap-1.5 w-full mt-3 px-1">
+                <div v-for="seg in donutSegments" :key="seg.label" class="flex items-center justify-between text-xs">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full" :style="`background:${seg.color}`"/>
+                    <span class="text-gray-500">{{ seg.label }}</span>
                   </div>
-                </div>
-                <div class="flex-1">
-                  <p class="text-sm font-semibold text-gray-700 mb-1">Assigned to</p>
-                  <div class="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2">
-                    <Icons :icon="'account'" class="text-gray-400"/>
-                    <span class="text-xs text-gray-600 truncate">{{ selectedTask.assignedTo }}</span>
-                  </div>
+                  <span class="font-bold text-gray-800">{{ seg.value }}</span>
                 </div>
               </div>
-              <div v-if="selectedTask.status === 'approved'"
-                class="relative flex flex-col items-center justify-center gap-2 border border-gray-200 rounded-lg p-4 flex-1">
-                <Icons :icon="'file'" class="text-gray-400 w-14 h-14"/>
-                <a v-if="selectedTask.outputLink" :href="selectedTask.outputLink" target="_blank"
-                  class="text-xs text-blue-600 hover:underline font-medium">View Output</a>
-                <span v-else class="text-xs text-gray-400">No output uploaded</span>
-              </div>
-              <div v-else class="flex flex-col items-center justify-center gap-3 border border-gray-200 rounded-lg p-4 flex-1">
-                <p class="text-sm text-gray-600 text-center"><span class="font-medium">{{ selectedTask.submittedBy }}</span> has submitted a task</p>
-                <a v-if="selectedTask.outputLink" :href="selectedTask.outputLink" target="_blank"
-                  class="px-6 py-2 rounded-full bg-green-950 text-white text-sm font-semibold hover:bg-green-800 transition-colors">view file</a>
-                <button v-else class="px-6 py-2 rounded-full bg-green-950 text-white text-sm font-semibold hover:bg-green-800 transition-colors">view file</button>
-              </div>
             </div>
-          </template>
 
-          <!-- Has subtasks -->
-          <template v-else>
-            <div class="flex-1 min-w-0">
-              <h3 class="text-sm font-semibold text-gray-700 mb-2">Description</h3>
-              <div class="border border-gray-200 rounded-lg p-4 mb-5 min-h-28 text-sm text-gray-600">{{ selectedTask.description }}</div>
-              <div class="flex gap-2 mb-5">
-                <span class="px-4 py-1.5 text-xs font-bold rounded-full capitalize" :class="badgeClass(selectedTask.progress)">{{ selectedTask.progress }}</span>
-                <span v-if="selectedTask.urgency === 'urgent'" class="px-4 py-1.5 text-xs font-bold rounded-full capitalize" :class="badgeClass(selectedTask.urgency)">{{ selectedTask.urgency }}</span>
-                <span class="px-4 py-1.5 text-xs font-bold rounded-full capitalize" :class="badgeClass(selectedTask.type)">{{ selectedTask.type }}</span>
+            <!-- Regular stat -->
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col justify-between slide-up" style="animation-delay:60ms">
+              <div class="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center mb-4">
+                <svg viewBox="0 0 24 24" class="w-5 h-5 fill-green-700">
+                  <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9l2 2 4-4"/>
+                </svg>
               </div>
-              <p class="text-sm text-gray-700 italic">Task given on <span class="font-semibold">{{ selectedTask.taskGiven }}</span></p>
-              <p class="text-sm text-gray-700 italic mb-5">Submit before <span class="font-semibold">{{ selectedTask.submitBefore }}</span></p>
-              <div class="flex gap-8">
-                <div>
-                  <p class="text-sm font-semibold text-gray-700 mb-2">Assigned by</p>
-                  <div class="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2">
-                    <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center"><Icons :icon="'account'" class="text-gray-400"/></div>
-                    <span class="text-xs text-gray-600">{{ selectedTask.assignedBy }}</span>
-                  </div>
+              <div>
+                <p class="text-4xl font-black text-gray-900 tabular-nums">{{ regularTasks.length }}</p>
+                <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Regular Tasks</p>
+              </div>
+              <p class="text-xs text-gray-400 mt-3 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
+                {{ regularTasks.filter(t=>t.urgent).length }} urgent priority
+              </p>
+            </div>
+
+            <!-- Insertion stat -->
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col justify-between slide-up" style="animation-delay:120ms">
+              <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center mb-4">
+                <svg viewBox="0 0 24 24" class="w-5 h-5 fill-amber-700">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+              </div>
+              <div>
+                <p class="text-4xl font-black text-gray-900 tabular-nums">{{ insertionTasks.length }}</p>
+                <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Insertion Tasks</p>
+              </div>
+              <p class="text-xs text-gray-400 mt-3 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
+                {{ insertionTasks.filter(t=>t.urgent).length }} urgent priority
+              </p>
+            </div>
+
+            <!-- Urgent stat -->
+            <div class="bg-white rounded-2xl border border-red-100 shadow-sm p-5 flex flex-col justify-between slide-up" style="animation-delay:180ms">
+              <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center mb-4">
+                <svg viewBox="0 0 24 24" class="w-5 h-5 fill-red-700">
+                  <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                </svg>
+              </div>
+              <div>
+                <p class="text-4xl font-black text-red-700 tabular-nums">{{ tasksForMonth.filter(t=>t.urgent).length }}</p>
+                <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Urgent Tasks</p>
+              </div>
+              <p class="text-xs text-red-400 mt-3 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
+                Needs priority review
+              </p>
+            </div>
+          </div>
+
+          <!-- ── Regular Tasks ── -->
+          <section class="slide-up" style="animation-delay:220ms">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-xs font-extrabold uppercase tracking-[0.15em] text-gray-500">
+                Regular Tasks
+              </h2>
+              <span class="text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-2.5 py-0.5">
+                {{ regularTasks.length }} pending
+              </span>
+            </div>
+
+            <div v-if="regularTasks.length === 0"
+              class="bg-white border border-dashed border-gray-200 rounded-2xl p-10 text-center">
+              <p class="text-sm text-gray-400">No regular tasks pending for {{ MONTHS_FULL[selectedMonth] }}.</p>
+            </div>
+
+            <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              <div
+                v-for="(task, i) in regularTasks" :key="task.id"
+                class="task-card bg-white rounded-2xl border shadow-sm cursor-pointer group overflow-hidden"
+                :class="task.urgent ? 'border-red-200' : 'border-gray-100'"
+                :style="`animation-delay:${240 + i*35}ms`"
+                @click="openTask(task)">
+
+                <!-- Top ribbon -->
+                <div class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold"
+                  :class="task.urgent ? 'bg-red-600 text-white' : 'bg-green-800 text-white'">
+                  <svg v-if="task.urgent" viewBox="0 0 24 24" class="w-3 h-3 fill-current">
+                    <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  </svg>
+                  {{ task.urgent ? 'URGENT' : 'REGULAR' }}
                 </div>
-                <div>
-                  <p class="text-sm font-semibold text-gray-700 mb-2">Assigned to</p>
-                  <div class="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2">
-                    <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center"><Icons :icon="'account'" class="text-gray-400"/></div>
-                    <span class="text-xs text-gray-600">{{ selectedTask.assignedTo }}</span>
+
+                <div class="p-4">
+                  <p class="font-bold text-gray-900 text-sm leading-snug mb-1.5 line-clamp-2
+                             group-hover:text-green-800 transition-colors duration-150">
+                    {{ task.title }}
+                  </p>
+                  <p class="text-xs text-gray-400 line-clamp-2 mb-4 leading-relaxed">{{ task.description }}</p>
+
+                  <div class="flex items-center justify-between text-xs text-gray-400 border-t border-gray-50 pt-3">
+                    <span class="truncate max-w-[60%]">{{ task.assignedTo }}</span>
+                    <span>{{ fmt(task.created) }}</span>
+                  </div>
+
+                  <p v-if="isOverdue(task.deadline)"
+                    class="mt-2 flex items-center gap-1 text-xs text-red-500 font-medium">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>
+                    Overdue · due {{ fmt(task.deadline) }}
+                  </p>
+                  <p v-else-if="task.deadline" class="mt-2 text-xs text-gray-400">
+                    Due {{ fmt(task.deadline) }}
+                  </p>
+
+                  <!-- Hover actions -->
+                  <div class="flex gap-2 mt-3 opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-200">
+                    <button @click.stop="reviseTask(task)" :disabled="revisingId === task.id"
+                      class="flex-1 py-1.5 text-xs font-bold rounded-lg border-2 border-amber-400 text-amber-600
+                             hover:bg-amber-50 transition-colors disabled:opacity-40">
+                      {{ revisingId === task.id ? '…' : 'Revise' }}
+                    </button>
+                    <button @click.stop="approveTask(task)" :disabled="approvingId === task.id"
+                      class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-green-800 text-white
+                             hover:bg-green-700 transition-colors disabled:opacity-40">
+                      {{ approvingId === task.id ? '…' : 'Approve' }}
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
-            <div class="w-72 shrink-0 flex flex-col overflow-hidden">
-              <h3 class="text-sm font-semibold text-gray-700 mb-2 flex-shrink-0">Sub-tasks</h3>
-              <div class="overflow-y-auto flex-1">
-                <div v-for="(sub, i) in selectedTask.subtasks" :key="i"
-                  class="flex items-center gap-3 border border-gray-200 rounded-lg p-3 mb-2 hover:bg-gray-50 cursor-pointer">
-                  <p class="flex-1 text-xs text-gray-700 leading-snug">{{ sub }}</p>
-                  <span class="w-6 h-6 flex items-center justify-center rounded-full bg-yellow-600 text-white text-xs font-bold flex-shrink-0">›</span>
+          </section>
+
+          <!-- ── Insertion Tasks ── -->
+          <section class="slide-up pb-4" style="animation-delay:260ms">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-xs font-extrabold uppercase tracking-[0.15em] text-gray-500">
+                Insertion Tasks
+              </h2>
+              <span class="text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-2.5 py-0.5">
+                {{ insertionTasks.length }} pending
+              </span>
+            </div>
+
+            <div v-if="insertionTasks.length === 0"
+              class="bg-white border border-dashed border-gray-200 rounded-2xl p-10 text-center">
+              <p class="text-sm text-gray-400">No insertion tasks pending for {{ MONTHS_FULL[selectedMonth] }}.</p>
+            </div>
+
+            <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              <div
+                v-for="(task, i) in insertionTasks" :key="task.id"
+                class="task-card bg-white rounded-2xl border shadow-sm cursor-pointer group overflow-hidden"
+                :class="task.urgent ? 'border-red-200' : 'border-amber-100'"
+                :style="`animation-delay:${280 + i*35}ms`"
+                @click="openTask(task)">
+
+                <div class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold"
+                  :class="task.urgent ? 'bg-red-600 text-white' : 'bg-amber-600 text-white'">
+                  <svg v-if="task.urgent" viewBox="0 0 24 24" class="w-3 h-3 fill-current">
+                    <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  </svg>
+                  {{ task.urgent ? 'URGENT INSERTION' : 'INSERTION' }}
+                </div>
+
+                <div class="p-4">
+                  <p class="font-bold text-gray-900 text-sm leading-snug mb-1.5 line-clamp-2
+                             group-hover:text-amber-700 transition-colors duration-150">
+                    {{ task.title }}
+                  </p>
+                  <p class="text-xs text-gray-400 line-clamp-2 mb-4 leading-relaxed">{{ task.description }}</p>
+
+                  <div class="flex items-center justify-between text-xs text-gray-400 border-t border-gray-50 pt-3">
+                    <span class="truncate max-w-[60%]">{{ task.assignedTo }}</span>
+                    <span>{{ fmt(task.created) }}</span>
+                  </div>
+
+                  <p v-if="isOverdue(task.deadline)"
+                    class="mt-2 flex items-center gap-1 text-xs text-red-500 font-medium">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>
+                    Overdue · due {{ fmt(task.deadline) }}
+                  </p>
+                  <p v-else-if="task.deadline" class="mt-2 text-xs text-gray-400">
+                    Due {{ fmt(task.deadline) }}
+                  </p>
+
+                  <div class="flex gap-2 mt-3 opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-200">
+                    <button @click.stop="reviseTask(task)" :disabled="revisingId === task.id"
+                      class="flex-1 py-1.5 text-xs font-bold rounded-lg border-2 border-amber-400 text-amber-600
+                             hover:bg-amber-50 transition-colors disabled:opacity-40">
+                      {{ revisingId === task.id ? '…' : 'Revise' }}
+                    </button>
+                    <button @click.stop="approveTask(task)" :disabled="approvingId === task.id"
+                      class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-green-800 text-white
+                             hover:bg-green-700 transition-colors disabled:opacity-40">
+                      {{ approvingId === task.id ? '…' : 'Approve' }}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </template>
+          </section>
 
         </div>
-
-        <div v-if="selectedTask.status !== 'approved'" class="flex justify-end gap-3 px-8 pb-6">
-          <template v-if="selectedTask.subtasks.length === 0">
-            <button class="px-6 py-2 rounded-full border-2 border-yellow-500 text-yellow-600 font-bold text-sm hover:bg-yellow-50 transition-colors">Revise</button>
-            <button class="px-6 py-2 rounded-full bg-green-950 text-white font-bold text-sm hover:bg-green-800 transition-colors" @click="approveTask">Approve</button>
-          </template>
-          <template v-else>
-            <button class="px-6 py-2 rounded-lg border-2 border-red-500 text-red-500 font-bold text-sm hover:bg-red-50 transition-colors">Revise All</button>
-            <button class="px-6 py-2 rounded-lg bg-green-900 text-white font-bold text-sm hover:bg-green-800 transition-colors" @click="approveTask">Approve All</button>
-          </template>
-        </div>
-
       </div>
     </div>
+
+    <!-- ══ TASK DETAIL MODAL ══ -->
+    <Transition name="modal">
+      <div v-if="selectedTask"
+        class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+        @click.self="closeTask">
+
+        <div class="modal-card bg-white w-full max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
+
+          <!-- Header -->
+          <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-gray-100 flex-shrink-0">
+            <div class="flex-1 min-w-0 pr-4">
+              <div class="flex flex-wrap items-center gap-2 mb-2">
+                <span v-if="selectedTask.urgent"
+                  class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-red-100 text-red-700">URGENT</span>
+                <span class="px-2.5 py-0.5 text-xs font-bold rounded-full capitalize"
+                  :class="selectedTask.type === 'insertion' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'">
+                  {{ selectedTask.type }}
+                </span>
+                <span v-if="selectedTask.unitHeadOk"
+                  class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-100 text-blue-700">
+                  ✓ Unit Head Approved
+                </span>
+              </div>
+              <h2 class="text-xl font-bold text-gray-900 leading-snug">{{ selectedTask.title }}</h2>
+            </div>
+            <button @click="closeTask"
+              class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors text-xl flex-shrink-0">
+              ×
+            </button>
+          </div>
+
+          <!-- Body -->
+          <div class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+            <div>
+              <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">Description</p>
+              <p class="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-4">
+                {{ selectedTask.description || 'No description provided.' }}
+              </p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-gray-50 rounded-xl p-3">
+                <p class="text-xs text-gray-400 mb-1.5">Assigned by</p>
+                <div class="flex items-center gap-2">
+                  <Icons icon="account" class="w-4 h-4 text-gray-400 flex-shrink-0"/>
+                  <span class="text-sm font-semibold text-gray-800 truncate">{{ selectedTask.assignedBy }}</span>
+                </div>
+              </div>
+              <div class="bg-gray-50 rounded-xl p-3">
+                <p class="text-xs text-gray-400 mb-1.5">Assigned to</p>
+                <div class="flex items-center gap-2">
+                  <Icons icon="account" class="w-4 h-4 text-gray-400 flex-shrink-0"/>
+                  <span class="text-sm font-semibold text-gray-800 truncate">{{ selectedTask.assignedTo }}</span>
+                </div>
+              </div>
+              <div class="bg-gray-50 rounded-xl p-3">
+                <p class="text-xs text-gray-400 mb-1.5">Created</p>
+                <span class="text-sm font-semibold text-gray-800">{{ fmt(selectedTask.created) }}</span>
+              </div>
+              <div class="rounded-xl p-3" :class="isOverdue(selectedTask.deadline) ? 'bg-red-50' : 'bg-gray-50'">
+                <p class="text-xs text-gray-400 mb-1.5">Deadline</p>
+                <span class="text-sm font-semibold" :class="isOverdue(selectedTask.deadline) ? 'text-red-600' : 'text-gray-800'">
+                  {{ fmt(selectedTask.deadline) }}
+                  <span v-if="isOverdue(selectedTask.deadline)" class="ml-1 text-xs">⚠ Overdue</span>
+                </span>
+              </div>
+            </div>
+
+            <div v-if="selectedTask.subtasks.length">
+              <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">
+                Sub-tasks ({{ selectedTask.subtasks.length }})
+              </p>
+              <div class="space-y-2">
+                <div v-for="(sub, i) in selectedTask.subtasks" :key="i"
+                  class="flex items-start gap-3 bg-gray-50 rounded-xl p-3 text-sm text-gray-700">
+                  <span class="w-5 h-5 rounded-full bg-green-100 text-green-800 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+                    {{ i+1 }}
+                  </span>
+                  {{ sub }}
+                </div>
+              </div>
+            </div>
+
+            <div v-if="selectedTask.outputLink">
+              <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">Output File</p>
+              <a :href="selectedTask.outputLink" target="_blank"
+                class="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3
+                       text-sm text-blue-700 font-semibold hover:bg-blue-100 transition-colors">
+                <Icons icon="file" class="w-4 h-4 flex-shrink-0"/>
+                View Submitted File
+              </a>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="flex gap-3 px-6 pb-6 pt-4 border-t border-gray-100 flex-shrink-0">
+            <button @click="reviseTask(selectedTask)" :disabled="revisingId === selectedTask.id"
+              class="flex-1 py-3 rounded-xl border-2 border-amber-400 text-amber-600 font-bold text-sm
+                     hover:bg-amber-50 transition-colors disabled:opacity-40">
+              {{ revisingId === selectedTask.id ? 'Sending back…' : '↩ Send for Revision' }}
+            </button>
+            <button @click="approveTask(selectedTask)" :disabled="approvingId === selectedTask.id"
+              class="flex-1 py-3 rounded-xl bg-green-800 text-white font-bold text-sm
+                     hover:bg-green-700 transition-colors disabled:opacity-40">
+              {{ approvingId === selectedTask.id ? 'Approving…' : '✓ Approve' }}
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </Transition>
 
   </div>
 </template>
+
+<style scoped>
+@keyframes fadeIn  { from { opacity:0 } to { opacity:1 } }
+@keyframes slideUp { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:translateY(0) } }
+@keyframes donutIn { from { stroke-dashoffset:340; opacity:0 } to { opacity:1 } }
+
+.fade-in  { animation: fadeIn  0.35s ease both }
+.slide-up { animation: slideUp 0.45s cubic-bezier(.16,1,.3,1) both }
+
+.task-card {
+  animation: slideUp 0.45s cubic-bezier(.16,1,.3,1) both;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+.task-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px -6px rgba(0,0,0,0.11);
+}
+.donut-seg { animation: donutIn 0.65s cubic-bezier(.16,1,.3,1) both }
+
+.modal-enter-active { animation: fadeIn  0.25s ease both }
+.modal-leave-active { animation: fadeIn  0.18s ease reverse }
+.modal-card         { animation: slideUp 0.32s cubic-bezier(.16,1,.3,1) both }
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style>

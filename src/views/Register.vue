@@ -1,4 +1,4 @@
-<script setup vapor>
+<script setup>
 import { supabase } from '@/lib/supabaseClient';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
@@ -217,7 +217,7 @@ const handleRegister = async () => {
   if (!validateStep2()) return
   loading.value = true
   try {
-    const internalEmail = `${form.idNumber.trim().toLowerCase().replace(/[^a-z0-9]/g, '-')}@cpmo.internal`
+    const internalEmail = `${form.idNumber.trim().toLowerCase().replace(/[^a-z0-9]/g, '-')}@carsu.edu.ph`
 
     const { data: authData, error: authErr } = await supabase.auth.signUp({
       email:    internalEmail,

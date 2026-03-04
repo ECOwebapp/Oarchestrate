@@ -1,7 +1,7 @@
-<script setup vapor>
-import { reactive, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
-import { supabase } from '@/lib/supabaseClient'
+<script setup>
+import { supabase } from '@/lib/supabaseClient';
+import { reactive, ref } from 'vue';
+import { RouterLink, useRouter } from 'vue-router';
 
 const router = useRouter()
 
@@ -35,7 +35,7 @@ const handleSubmit = async () => {
 
   try {
     // Reconstruct internal email from ID number (same formula used at registration)
-    const internalEmail = `${form.idNumber.trim().toLowerCase().replace(/[^a-z0-9]/g, '-')}@cpmo.internal`
+    const internalEmail = `${form.idNumber.trim().toLowerCase().replace(/[^a-z0-9]/g, '-')}@carsu.edu.ph`
 
     // Sign in directly — no email lookup needed
     const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
@@ -80,7 +80,6 @@ const handleSubmit = async () => {
       return
     }
 
-    // 4. Approved — go to dashboard
     router.push('/dashboard')
 
   } catch (e) {

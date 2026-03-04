@@ -8,7 +8,7 @@ import Profile from '@/views/Profile.vue'
 import Register from '@/views/Register.vue'
 import Tasks from '@/views/Tasks.vue'
 
-import { supabase } from '@/lib/supabaseClient'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
@@ -17,6 +17,7 @@ const routes = [
     redirect: '/hero',
   },
 
+  // ── Guest-only ──
   {
     path: '/hero',
     name: 'Hero',
@@ -36,6 +37,7 @@ const routes = [
     meta: { guestOnly: true, hideNavbar: true },
   },
 
+  // ── Protected ──
   {
     path: '/dashboard',
     name: 'Dashboard',
@@ -73,15 +75,7 @@ const routes = [
     meta: { requiresAuth: true },
   },
 
-  {
-    path: '/logout',
-    name: 'Logout',
-    redirect: () => {
-      supabase.auth.signOut()
-      return { name: 'Login' }
-    },
-  },
-
+  // ── Fallback ──
   {
     path: '/:pathMatch(.*)*',
     redirect: { name: 'Login' },
@@ -95,33 +89,28 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  const { data: { session } } = await supabase.auth.getSession()
-  const isLoggedIn = !!session?.user
+  const auth = useAuthStore()
+
+  // Wait for init() to finish if app just loaded
+  if (!auth.initialized) await auth.init()
+
+  const loggedIn = auth.isLoggedIn
 
   // 1. Logged-in users can't visit guest-only pages
-  if (to.meta.guestOnly && isLoggedIn) {
+  if (to.meta.guestOnly && loggedIn) {
     return { name: 'Dashboard' }
   }
 
   // 2. Protected pages require an active session
   if (to.meta.requiresAuth) {
-    if (!isLoggedIn) {
-      return { name: 'Login' }
-    }
+    if (!loggedIn) return { name: 'Login' }
 
-    // 3. Even with a valid session, re-verify account_status
-    //    Handles the case where a user is denied after already logging in
-    const { data: statusData } = await supabase
-      .from('account_status')
-      .select('status')
-      .eq('user_id', session.user.id)
-      .single()
-
-    const status = statusData?.status ?? 'pending'
-
-    if (status !== 'approved') {
-      await supabase.auth.signOut()
-      return { name: 'Login' }
+    // 3. Re-verify account_status on every protected navigation.
+    //    Catches users who were denied after already logging in.
+    const status = auth.accountStatus
+    if (status && status !== 'approved') {
+      await auth.logout(router)
+      return false  // navigation already handled by logout()
     }
   }
 })

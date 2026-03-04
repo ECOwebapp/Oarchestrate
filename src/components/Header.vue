@@ -1,5 +1,5 @@
-<script setup vapor>
-import { computed } from 'vue'
+<script setup>
+import { computed } from 'vue';
 
 const props = defineProps(['pageName']);
 

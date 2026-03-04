@@ -1,4 +1,4 @@
-<script setup vapor>
+<script setup>
 import TaskCard from './TaskCard.vue';
 
 const props = defineProps(['tasks'])

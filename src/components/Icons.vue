@@ -1,20 +1,20 @@
-<script setup vapor>
-import { computed } from 'vue'
+<script setup>
 import {
-    mdiMonitorDashboard,
-    mdiFormatListBulleted,
-    mdiDraw,
-    mdiAccountGroup,
-    mdiPoll,
     mdiAccountCircleOutline,
-    mdiLogout,
-    mdiPlus,
-    mdiMagnify,
+    mdiAccountGroup,
     mdiClose,
+    mdiDraw,
     mdiFileDocumentOutline,
+    mdiFormatListBulleted,
+    mdiFullscreen,
+    mdiLogout,
+    mdiMagnify,
+    mdiMonitorDashboard,
     mdiPaperclip,
-    mdiFullscreen
+    mdiPlus,
+    mdiPoll
 } from '@mdi/js';
+import { computed } from 'vue';
 
 const props = defineProps(['icon'])
 const nav = {

@@ -1,4 +1,4 @@
-<script setup vapor>
+<script setup>
 import { computed, ref } from 'vue'
 import { GanttChart, TaskListColumn } from 'jordium-gantt-vue3'
 import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'

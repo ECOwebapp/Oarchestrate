@@ -1,4 +1,4 @@
-<script setup vapor>
+<script setup>
 
 const props = defineProps(['name', 'description', 'urgent', 'progress', 'due'])
 

@@ -1,4 +1,4 @@
-<script setup vapor>
+<script setup>
 import GridTasks from '@/components/GridTasks.vue';
 import TableTasks from '@/components/TableTasks.vue';
 import ChartTasks from '@/components/ChartTasks.vue';
