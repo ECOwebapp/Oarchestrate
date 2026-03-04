@@ -2,10 +2,11 @@
 import TaskCard from './TaskCard.vue';
 
 const props = defineProps(['tasks'])
+const taskList = props.tasks.filter(task => task.parentId === 0)
 
 const getProgress = (task) => {
-    const start = new Date(task.from).getTime()
-    const end = new Date(task.to).getTime()
+    const start = new Date(task?.startDate).getTime()
+    const end = new Date(task?.endDate).getTime()
     const now = new Date().getTime()
 
     if (now < start) return 0;
@@ -19,7 +20,7 @@ const getProgress = (task) => {
 
 const getDue = (task) => {
     const today = new Date();
-    const target = new Date(task.to);
+    const target = new Date(task?.endDate);
 
     // Set time to midnight for both to compare just the calendar days
     today.setHours(0, 0, 0, 0);
@@ -38,7 +39,7 @@ const getDue = (task) => {
 <template>
     <div
         class="h-full grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 justify-items-center mask-y-from-95% mask-y-to-97% px-10 py-7 gap-10 overflow-y-auto">
-        <TaskCard v-for="(task, index) in tasks" :key="task" :name="task.name" :description="task.description"
-            :urgent="task.urgent" :progress="getProgress(task)" :due="getDue(task)" :style="{ order: index + 1 }" />
+        <TaskCard v-for="(task, index) in taskList" :key="task" :name="task?.name" :description="task?.description"
+            :urgent="task?.urgent" :progress="getProgress(task)" :due="getDue(task)" :style="{ order: index + 1 }" />
     </div>
 </template>
