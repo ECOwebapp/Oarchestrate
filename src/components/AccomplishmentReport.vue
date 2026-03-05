@@ -14,27 +14,27 @@ const samplePrograms = [
       {
         taskName: 'Finalization of the highlights of the Green Campus Development Plan (first draft)',
         subtasks: [
-          { name: 'Review of ECOSMART writeshop outputs',        assignedTo: ['Nheron', 'Jacky'], startDate: '01/20/2026', endDate: '02/05/2026', duration: 2, progress: 100, status: 'approved',         mov: { label: 'Output 1',          url: 'https://drive.google.com' }, remarks: '' },
-          { name: 'Consolidation of the writeshop outputs',      assignedTo: ['June', 'Austin'],  startDate: '02/08/2026', endDate: '02/17/2026', duration: 2, progress: 100, status: 'approved',         mov: { label: 'Consolidated Doc',  url: 'https://drive.google.com' }, remarks: '' },
-          { name: 'Formatting and Structuring of the Highlight', assignedTo: ['Jacky', 'Cyrel'],  startDate: '02/15/2026', endDate: '02/21/2026', duration: 3, progress: 50,  status: 'revision',         mov: null, remarks: '' },
-          { name: 'Review and Editing',                          assignedTo: ['Cyrel', 'June'],   startDate: '02/20/2026', endDate: '02/26/2026', duration: 3, progress: 50,  status: 'pending_approval', mov: null, remarks: '' },
-          { name: 'Finalization of First Draft Highlights',      assignedTo: ['Cyrel', 'Nheron'], startDate: '02/28/2026', endDate: '03/05/2026', duration: 3, progress: 0,   status: 'pending',          mov: null, remarks: '' },
+          { name: 'Review of ECOSMART writeshop outputs',        assignedTo: ['Nheron', 'Jacky'], startDate: '01/20/2026', endDate: '02/05/2026', duration: 2, status: 'approved',         mov: { label: 'Output 1',          url: 'https://drive.google.com' }, remarks: '' },
+          { name: 'Consolidation of the writeshop outputs',      assignedTo: ['June', 'Austin'],  startDate: '02/08/2026', endDate: '02/17/2026', duration: 2, status: 'approved',         mov: { label: 'Consolidated Doc',  url: 'https://drive.google.com' }, remarks: '' },
+          { name: 'Formatting and Structuring of the Highlight', assignedTo: ['Jacky', 'Cyrel'],  startDate: '02/15/2026', endDate: '02/21/2026', duration: 3,  status: 'revision',         mov: null, remarks: '' },
+          { name: 'Review and Editing',                          assignedTo: ['Cyrel', 'June'],   startDate: '02/20/2026', endDate: '02/26/2026', duration: 3,  status: 'pending_approval', mov: null, remarks: '' },
+          { name: 'Finalization of First Draft Highlights',      assignedTo: ['Cyrel', 'Nheron'], startDate: '02/28/2026', endDate: '03/05/2026', duration: 3,   status: 'pending',          mov: null, remarks: '' },
         ],
       },
       {
         taskName: 'Development, Approval, and Dissemination of Policy Brief',
         subtasks: [
-          { name: 'Draft Policy Brief',            assignedTo: ['Adam', 'Grace'],        startDate: '02/01/2026', endDate: '02/10/2026', duration: 5, progress: 75, status: 'revision',         mov: { label: 'Draft v1', url: 'https://drive.google.com' }, remarks: '' },
-          { name: 'Internal Review and Revision',  assignedTo: ['Grace'],               startDate: '02/12/2026', endDate: '02/18/2026', duration: 3, progress: 50, status: 'pending_approval', mov: null, remarks: '' },
-          { name: 'Finalization and Distribution', assignedTo: ['Adam', 'Kim', 'Grace'], startDate: '02/20/2026', endDate: '02/28/2026', duration: 4, progress: 0,  status: 'pending',          mov: null, remarks: '' },
+          { name: 'Draft Policy Brief',            assignedTo: ['Adam', 'Grace'],        startDate: '02/01/2026', endDate: '02/10/2026', duration: 5, status: 'revision',         mov: { label: 'Draft v1', url: 'https://drive.google.com' }, remarks: '' },
+          { name: 'Internal Review and Revision',  assignedTo: ['Grace'],               startDate: '02/12/2026', endDate: '02/18/2026', duration: 3, status: 'pending_approval', mov: null, remarks: '' },
+          { name: 'Finalization and Distribution', assignedTo: ['Adam', 'Kim', 'Grace'], startDate: '02/20/2026', endDate: '02/28/2026', duration: 4,  status: 'pending',          mov: null, remarks: '' },
         ],
       },
       {
         taskName: 'Conduct of Writeshop for the finalization of the Green Campus Development Plan',
         subtasks: [
-          { name: 'Venue and logistics coordination', assignedTo: ['Nheron'],         startDate: '02/05/2026', endDate: '02/12/2026', duration: 4, progress: 100, status: 'approved',         mov: { label: 'Logistics Plan', url: 'https://drive.google.com' }, remarks: '' },
-          { name: 'Facilitation of writeshop',       assignedTo: ['June', 'Jacky'],  startDate: '02/13/2026', endDate: '02/19/2026', duration: 4, progress: 60,  status: 'pending_approval', mov: null, remarks: '' },
-          { name: 'Documentation of outputs',        assignedTo: ['Austin', 'Cyrel'], startDate: '02/20/2026', endDate: '02/25/2026', duration: 3, progress: 20,  status: 'pending',          mov: null, remarks: '' },
+          { name: 'Venue and logistics coordination', assignedTo: ['Nheron'],         startDate: '02/05/2026', endDate: '02/12/2026', duration: 4, status: 'approved',         mov: { label: 'Logistics Plan', url: 'https://drive.google.com' }, remarks: '' },
+          { name: 'Facilitation of writeshop',       assignedTo: ['June', 'Jacky'],  startDate: '02/13/2026', endDate: '02/19/2026', duration: 4,  status: 'pending_approval', mov: null, remarks: '' },
+          { name: 'Documentation of outputs',        assignedTo: ['Austin', 'Cyrel'], startDate: '02/20/2026', endDate: '02/25/2026', duration: 3,  status: 'pending',          mov: null, remarks: '' },
         ],
       },
     ],
@@ -45,19 +45,19 @@ const samplePrograms = [
       {
         taskName: 'Finalization of the highlights of the Smart Campus Development Plan (first draft)',
         subtasks: [
-          { name: 'Review of ECOSMART writeshop outputs',        assignedTo: ['Austin', 'June'], startDate: '01/20/2026', endDate: '02/05/2026', duration: 2, progress: 100, status: 'approved',         mov: { label: 'Output 1', url: 'https://drive.google.com' }, remarks: '' },
-          { name: 'Consolidation of the writeshop outputs',      assignedTo: ['Austin', 'June'], startDate: '02/08/2026', endDate: '02/17/2026', duration: 2, progress: 100, status: 'approved',         mov: null, remarks: '' },
-          { name: 'Formatting and Structuring of the Highlight', assignedTo: ['Austin', 'June'], startDate: '02/15/2026', endDate: '02/21/2026', duration: 3, progress: 50,  status: 'revision',         mov: null, remarks: '' },
-          { name: 'Review and Editing',                          assignedTo: ['Austin', 'June'], startDate: '02/20/2026', endDate: '02/26/2026', duration: 3, progress: 50,  status: 'pending_approval', mov: null, remarks: '' },
-          { name: 'Finalization of First Draft Highlights',      assignedTo: ['Austin', 'June'], startDate: '02/28/2026', endDate: '03/05/2026', duration: 3, progress: 0,   status: 'pending',          mov: null, remarks: '' },
+          { name: 'Review of ECOSMART writeshop outputs',        assignedTo: ['Austin', 'June'], startDate: '01/20/2026', endDate: '02/05/2026', duration: 2, status: 'approved',         mov: { label: 'Output 1', url: 'https://drive.google.com' }, remarks: '' },
+          { name: 'Consolidation of the writeshop outputs',      assignedTo: ['Austin', 'June'], startDate: '02/08/2026', endDate: '02/17/2026', duration: 2, status: 'approved',         mov: null, remarks: '' },
+          { name: 'Formatting and Structuring of the Highlight', assignedTo: ['Austin', 'June'], startDate: '02/15/2026', endDate: '02/21/2026', duration: 3,  status: 'revision',         mov: null, remarks: '' },
+          { name: 'Review and Editing',                          assignedTo: ['Austin', 'June'], startDate: '02/20/2026', endDate: '02/26/2026', duration: 3,  status: 'pending_approval', mov: null, remarks: '' },
+          { name: 'Finalization of First Draft Highlights',      assignedTo: ['Austin', 'June'], startDate: '02/28/2026', endDate: '03/05/2026', duration: 3,   status: 'pending',          mov: null, remarks: '' },
         ],
       },
       {
         taskName: 'Development, Approval, and Dissemination of Policy Brief',
         subtasks: [
-          { name: 'Draft Policy Brief',            assignedTo: ['Kim', 'Rex'],   startDate: '02/01/2026', endDate: '02/10/2026', duration: 5, progress: 80, status: 'approved',         mov: { label: 'Draft v1', url: 'https://drive.google.com' }, remarks: '' },
-          { name: 'Internal Review and Revision',  assignedTo: ['Miller'],       startDate: '02/12/2026', endDate: '02/18/2026', duration: 3, progress: 40, status: 'pending_approval', mov: null, remarks: '' },
-          { name: 'Finalization and Distribution', assignedTo: ['Kim', 'Miller'], startDate: '02/20/2026', endDate: '02/28/2026', duration: 4, progress: 0,  status: 'pending',          mov: null, remarks: '' },
+          { name: 'Draft Policy Brief',            assignedTo: ['Kim', 'Rex'],   startDate: '02/01/2026', endDate: '02/10/2026', duration: 8, status: 'approved',         mov: { label: 'Draft v1', url: 'https://drive.google.com' }, remarks: '' },
+          { name: 'Internal Review and Revision',  assignedTo: ['Miller'],       startDate: '02/12/2026', endDate: '02/18/2026', duration: 6, status: 'pending_approval', mov: null, remarks: '' },
+          { name: 'Finalization and Distribution', assignedTo: ['Kim', 'Miller'], startDate: '02/20/2026', endDate: '02/28/2026', duration: 8,  status: 'pending',          mov: null, remarks: '' },
         ],
       },
     ],
@@ -86,7 +86,6 @@ const programs = computed(() => {
               startDate:  start ? start.toLocaleDateString('en-PH') : '—',
               endDate:    end   ? end.toLocaleDateString('en-PH')   : '—',
               duration:   dur,
-              progress:   c.design !== null && c.design !== undefined ? c.design : 0,
               status:     c.revision ? 'revision' : c.urgent ? 'pending_approval' : 'pending',
               mov:        (Array.isArray(c.movs) && c.movs.length > 0) ? c.movs[0] : null,
               remarks:    '',
@@ -310,3 +309,4 @@ const today = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: '
     </div>
   </div>
 </template>
+
