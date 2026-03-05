@@ -212,13 +212,16 @@ const prevStep = () => {
   step.value = 1
 }
 
-// ── Register ──
+// ── Drop-in replacement for handleRegister in Register.vue ──
 const handleRegister = async () => {
   if (!validateStep2()) return
   loading.value = true
+  errors.general = undefined
+
   try {
     const internalEmail = `${form.idNumber.trim().toLowerCase().replace(/[^a-z0-9]/g, '-')}@carsu.edu.ph`
 
+    // 1. Create auth user
     const { data: authData, error: authErr } = await supabase.auth.signUp({
       email:    internalEmail,
       password: form.password,
@@ -228,36 +231,84 @@ const handleRegister = async () => {
     const userId = authData.user?.id
     if (!userId) throw new Error('No user ID returned.')
 
-    await supabase.from('user_profile').update({
-      fname:          form.firstName.trim(),
-      lname:          form.lastName.trim(),
-      middle_initial: form.middleInitial.trim() || null,
-      birthdate:      form.birthdate || null,
-      gender_id:      form.genderId  ? parseInt(form.genderId) : null,
-      id_number:      form.idNumber.trim(),
-    }).eq('user_id', userId)
+    // 2. UPSERT user_profile first — must exist before member_type FK resolves
+    const { error: profErr } = await supabase
+      .from('user_profile')
+      .upsert({
+        user_id:        userId,          // ✅ PK is user_id
+        fname:          form.firstName.trim(),
+        lname:          form.lastName.trim(),
+        middle_initial: form.middleInitial.trim() || null,
+        birthdate:      form.birthdate   || null,
+        gender_id:      form.genderId    ? parseInt(form.genderId) : null,
+        id_number:      form.idNumber.trim(),
+      })
+    if (profErr) throw new Error(`Profile error: ${profErr.message}`)
 
-    await supabase.from('contact').upsert({ user_id: userId, phone: form.phone.trim() })
+    // 3. Now insert everything else in parallel — user_profile row exists so FKs resolve
+    const [
+      contactRes,
+      addressRes,
+      unitRes,
+      positionRes,
+      memberRes,
+      statusRes,
+    ] = await Promise.all([
+      supabase.from('contact').upsert({
+        user_id: userId,
+        phone:   form.phone.trim(),
+      }),
 
-    await supabase.from('address').upsert({
-      user_id:       userId,
-      address:       fullAddress.value,
-      region_code:   form.regionCode   || null,
-      province_code: form.provinceCode || null,
-      city_code:     form.cityCode     || null,
-      barangay_code: form.barangayCode || null,
-    })
+      supabase.from('address').upsert({
+        user_id:       userId,
+        address:       fullAddress.value,
+        region_code:   form.regionCode    || null,
+        province_code: form.provinceCode  || null,
+        city_code:     form.cityCode      || null,
+        barangay_code: form.barangayCode  || null,
+      }),
 
-    await supabase.from('unit').upsert({ user_id: userId, unit_id: parseInt(form.unitId) })
-    await supabase.from('position').upsert({ user_id: userId, pos_id: parseInt(form.positionId) })
-    await supabase.from('member_type').upsert({ user_id: userId, role_id: 3 })
-    await supabase.from('account_status').upsert({
-      user_id:      userId,
-      status:       'pending',
-      requested_at: new Date().toISOString(),
-    })
+      supabase.from('unit').upsert({
+        user_id: userId,
+        unit_id: parseInt(form.unitId),
+      }),
+
+      supabase.from('position').upsert({
+        user_id: userId,
+        pos_id:  parseInt(form.positionId),
+      }),
+
+      // role_id 3 = regular member
+      supabase.from('member_type').upsert({
+        user_id: userId,
+        role_id: 3,
+      }),
+
+      supabase.from('account_status').upsert({
+        user_id:      userId,
+        status:       'pending',
+        requested_at: new Date().toISOString(),
+      }),
+    ])
+
+    // Surface any errors so they're not silently swallowed
+    const errs = [
+      contactRes.error  && `Contact: ${contactRes.error.message}`,
+      addressRes.error  && `Address: ${addressRes.error.message}`,
+      unitRes.error     && `Unit: ${unitRes.error.message}`,
+      positionRes.error && `Position: ${positionRes.error.message}`,
+      memberRes.error   && `Member type: ${memberRes.error.message}`,
+      statusRes.error   && `Account status: ${statusRes.error.message}`,
+    ].filter(Boolean)
+
+    if (errs.length) {
+      // Log all but only throw the first so the user sees a message
+      errs.forEach(e => console.error('[Register]', e))
+      throw new Error(errs[0])
+    }
 
     showModal.value = true
+
   } catch (e) {
     console.error('Registration error:', e)
     if (e.message?.toLowerCase().includes('already registered')) {
