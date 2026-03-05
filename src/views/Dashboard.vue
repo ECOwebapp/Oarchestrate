@@ -16,7 +16,7 @@ const loading = taskStore().loading
 const DIRECT_TO_DIRECTOR_POSITIONS = [1, 2, 3, 9, 10]
 
 // ── State ──
-const tasks         = ref([])
+const tasks = taskStore().tasks
 const selectedTask  = ref(null)
 const approvingId   = ref(null)
 const revisingId    = ref(null)
@@ -48,7 +48,7 @@ const fmt = (d) => d
 
 // ── Filtered by selected month ──
 const tasksForMonth = computed(() =>
-  tasks.value.filter(t => {
+  tasks.filter(t => {
     if (!t.created) return false
     const d = new Date(t.created)
     return d.getMonth() === selectedMonth.value && d.getFullYear() === selectedYear.value
@@ -102,7 +102,7 @@ const approveTask = async (task) => {
     const { error: e } = await supabase
       .from('task_approval').update({ director: true }).eq('id', task.id)
     if (e) throw e
-    tasks.value = tasks.value.filter(t => t.id !== task.id)
+    tasks = tasks.filter(t => t.id !== task.id)
     if (selectedTask.value?.id === task.id) selectedTask.value = null
   } catch(e) { console.error(e) }
   finally    { approvingId.value = null }
@@ -114,7 +114,7 @@ const reviseTask = async (task) => {
     const { error: e } = await supabase
       .from('task_approval').update({ unit_head: false }).eq('id', task.id)
     if (e) throw e
-    tasks.value = tasks.value.filter(t => t.id !== task.id)
+    tasks = tasks.filter(t => t.id !== task.id)
     if (selectedTask.value?.id === task.id) selectedTask.value = null
   } catch(e) { console.error(e) }
   finally    { revisingId.value = null }
