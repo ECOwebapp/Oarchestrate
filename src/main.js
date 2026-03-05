@@ -1,10 +1,16 @@
 import { createPinia } from 'pinia'
-import { createApp } from 'vue'
+import { createApp, vaporInteropPlugin } from 'vue'
+import { useAuthStore } from '@/stores/useAuthStore';
 
 import App from './App.vue'
 import router from './router'
-import { vaporInteropPlugin } from 'vue'
 
 const app = createApp(App)
+const auth = useAuthStore()
 
-app.use(createPinia()).use(router).use(vaporInteropPlugin).mount('#app')
+(async () => {
+    app.use(createPinia())
+    await auth.init()
+    app.use(router).use(vaporInteropPlugin).mount('#app')
+    auth.listenToAuthChanges()
+})()
