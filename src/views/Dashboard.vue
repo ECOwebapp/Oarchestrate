@@ -11,9 +11,6 @@ const auth = useAuthStore()
 const error = taskStore().error
 const loading = taskStore().loading
 
-// Position IDs that go DIRECTLY to director (no unit head step needed)
-// Director, Assistant Director, Office Chief, Documentation Officer, Technical Admin/Clerical
-const DIRECT_TO_DIRECTOR_POSITIONS = [1, 2, 3, 9, 10]
 
 // ── State ──
 const tasks = taskStore().tasks

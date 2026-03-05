@@ -6,6 +6,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   // ── State ──
   const user          = ref(null)
+  const userID = ref(null)
   const profile       = ref(null)
   const positionLabel = ref('')
   const roleId        = ref(null)
@@ -36,6 +37,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function fetchUserData(authUser) {
     if (!authUser) return
     loading.value = true
+    userID.value = authUser.id
 
     const [profRes, posRes, roleRes, unitRes, statusRes] = await Promise.all([
       supabase
@@ -123,6 +125,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   function $reset() {
     user.value          = null
+    userID.value  = null
     profile.value       = null
     positionLabel.value = ''
     roleId.value        = null
@@ -132,7 +135,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    user, profile, positionLabel, roleId, unitId, accountStatus, loading, initialized,
+    user, userID, profile, positionLabel, roleId, unitId, accountStatus, loading, initialized,
     isLoggedIn, fullName, avatarUrl, isDirector, isUnitHead, isMember, isAdmin,
     init, listenToAuthChanges, fetchUserData, logout, $reset,
   }
