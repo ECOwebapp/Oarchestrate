@@ -1,0 +1,61 @@
+[33mbcf3a9644d0a6809524de7a5174c65359654ebc6[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdevelopment[m[33m, [m[1;31morigin/development[m[33m)[m Added link on Pinia data on Design page
+[33mdd515275053400553c59c26c787f81ee85c9c6f3[m Merge branch 'development' of https://github.com/ECOwebapp/Oarchestrate into development
+[33m97bd93eb40cad97b8e5e980dad83eba0538fc049[m feat: Auth, notif, dashboard
+[33m225963d2ed127234e4d5334fa88ff2471b87d57c[m Skeleton task store
+[33ma150c604c316310404accf398127d41480850481[m Organizational chart
+[33m676ddcc8aff9783682398295d1e18906a56f2397[m fixed dashboard rename taskdetail modal
+[33m9c40b32d8bc7b959bc60134478618b6eca068ae6[m extracted task detail modal into components
+[33m1b6181d3b27ef07df41f421bfb7900edff806400[m Added accomplishment report modal
+[33m4a022670505132289ca75aa79683436913f55bf7[m Added a mask on subtask list
+[33m9a1b0f49e7b7964a920881c20fbbd9fb574014bc[m Added an Add Task modal
+[33m54a4d5ff24e78281831741f3c05ecd83cfce22bb[m fixed and redesigned task cards dashboard
+[33mdef0adbae70bed013494777c7dd0c8c417e6cc3d[m Merge
+[33m2284927a29ac527b9b8bd830bfc5d463340bcf52[m feat: Login Authentication and Registration
+[33m7e1c6cc31056225467c6cb71488c9d095c51ad9f[m feat: extract chart modal to component & add hover tooltips
+[33m07bfd1ca443c93bbce071487ee73ad723ebee5fb[m Buttons in Task and Design pages
+[33m1b549da3b1de22d60199f8f37a6e7af18c6d7722[m feat:Login route to Register(done)
+[33mf9bb5f0b16e875afb2c7864099bb9db33787234c[m Updates on Gantt CHart
+[33me5904da353e3e95a6af856492e607ef3e066630f[m Fixes on Gantt Chart
+[33m93d0242f08bb01effa4e34a6faf3ff5ef7cf02e5[m Merge branch 'database' into development
+[33mf2d30f4d4fd37429e44779c52c33c16f997e98ca[m for merge
+[33ma5a31293324aa3161ad0b4b7182e0ade8a7dec85[m Connection done!
+[33m01d7fce42e798282dd937268b39514ad4524f090[m feat: added analytics with bar, pie, line, and area charts
+[33m063e861c40b19f74747bfa5553470a8c0e4cbf14[m[33m ([m[1;32mdesign_review[m[33m)[m Added Design_review
+[33m4bf5601f763bce300d15d32d207a025c01cf1607[m[33m ([m[1;32mtasks[m[33m)[m Added Ghantt Chart
+[33mdacce9908f3d7665cf71b99df893b668a5e64573[m Added TableTask
+[33m81f07d3c491771e06a8773be60b2948ea6da24a9[m Merge branch 'tasks' into development
+[33mf319dab6d38d23cc1536c877f44877f9891c064c[m Fixes on navbar visual
+[33mb380d6c817bd50ab805e84e5fd2ff5d201d1a96e[m Added GridTasks and Task card component
+[33m574b4020f639337a0febb866b7dd89994652398f[m feat: added profile page content
+[33meebed12f59fd905a43bc26ce8c95fc991eb1a75c[m feat(dashboard): add single/bulk task modal with approval state and UI fixes
+[33m3a84a690c670c745b00c3d1d7eadddeeacb94e5e[m Merge branch 'tasks' into development
+[33me04a52335a2b33b3f529ce11f4e9080de5a989d1[m Changes in task
+[33m7d017256a9e245950c4a3fdb173fd05ad41962ae[m Updates on Tasks
+[33m3624547cfed0a4b57db326f4cbe2a0ac78c15628[m Updates on Tasks
+[33mab34f3738f9edc695d05ab798d0f64fe225b3870[m Merge branch 'development' of https://github.com/ECOwebapp/Oarchestrate into development
+[33m27fad87263db84470a27cf1d7e54287f269122cc[m registervue plastar
+[33me24ec318e44645c26563e8da613d1f1bfb2f9960[m Updated Navbar, added Footer, fixes on Dashboard
+[33m98c041f0d7fecde23cfde1faefe252bb5fd3d00b[m Added Header
+[33m39d14e33c4e27f3571c5f53775f2b0ba0f8dfc33[m Added Header
+[33m7964b596fbba624233f29ee21cfa79393ba7bccf[m feat: added dashboard contents
+[33m3ed15449e35c1e74e4d09ce9c21fbd5c27525bda[m Merge branch 'tasks' into development
+[33m78270efa69d315bc17eab63ffe92ac47842e5798[m Fix on hero
+[33m0ffa63783eef3d524e76a7fb2d051b539bf3f302[m Removed .env
+[33mb8af226866387ce2b9781076db8a2b94e0921fb6[m Added Vapor support and fixes
+[33mbd29cd4b192bbbaf71c20b272aa0d197978f701a[m Added Vapor support and fixes
+[33m987a1d8d830e774e91c6725955ab041d1c58b687[m merged
+[33m4c2346d5c5095c06055be26a5b22d8b1e322f176[m Merge branch 'development' of https://github.com/ECOwebapp/Oarchestrate into development
+[33m920a93fced0c64c09670cb899f57d80f227403d1[m Merged task with development
+[33md6d9317cc92831d1e8e8e1580f61c84853de4741[m Merge branch 'tasks' into development
+[33m103d424d11df1b921d9711f1160a78304600702f[m Added Navigation bar
+[33m678fd66ef391095705e50ab9314525ce049a104f[m feat: login page
+[33m21020afacbe3d0cfb28a71613c6a1eb11f122c78[m feat: Hero Landing page
+[33md37daebd8c5226ca687beb6d35e2bb9eaf6ae249[m 
+[33m85700ab32fef27747cd3e9704e61f158e435b5cb[m Merge branch 'development' of https://github.com/ECOwebapp/Oarchestrate into development
+[33m0b4c2f1666995cadeae662de5fe7f2f1e919bd2b[m Added RouterView in App.vue
+[33m215e2dc5c40058b46f377234938e2f599d986029[m feat: done connection
+[33m3d68f580ddf8594c4ccdabec8ef3d34e5e20d321[m feat: supabase connection done
+[33m94a0b6fee487a0b3cf7805bc232d5cfafc8af69f[m Added router
+[33mad382ab1d83ec6c6e46354a748fd27fcb08811ec[m supabase client connected
+[33mf57e61406844afd5293b68d3d90e0e0c6a212014[m[33m ([m[1;31morigin/main[m[33m, [m[1;32mmain[m[33m)[m Added Tailwind
+[33m550c77aa1060171df765f857abb22c9e6d7d1b88[m[33m ([m[1;31morigin/tasks[m[33m)[m Start
