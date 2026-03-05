@@ -3,7 +3,6 @@ import { useRoute } from 'vue-router';
 import Navbar from '@/components/Navbar.vue';
 import Header from '@/components/Header.vue';
 import Footer from '@/components/Footer.vue';
-import Notification from '@/components/Notification.vue';
 
 const route = useRoute()
 </script>
@@ -18,7 +17,6 @@ const route = useRoute()
                 </header>
                 <main class="flex flex-col h-full overflow-hidden flex-1 bg-gray-100">
                     <router-view/>
-                    <Notification />
                 </main>
                 <footer class="w-full content-center flex-shrink-0">
                     <Footer />

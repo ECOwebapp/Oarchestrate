@@ -1,22 +1,19 @@
-<script setup vapor>
+<script setup>
 import Icons from '@/components/Icons.vue'
-import Loading from '@/components/Loading.vue'
-import Error from '@/components/Error.vue'
-import { taskStore } from '@/stores/tasks'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, ref } from 'vue'
 
 const auth = useAuthStore()
-const error = taskStore().error
-const loading = taskStore().loading
 
 // Position IDs that go DIRECTLY to director (no unit head step needed)
 // Director, Assistant Director, Office Chief, Documentation Officer, Technical Admin/Clerical
 const DIRECT_TO_DIRECTOR_POSITIONS = [1, 2, 3, 9, 10]
 
 // ── State ──
-const tasks = taskStore().tasks
+const tasks         = ref([])
+const loading       = ref(true)
+const error         = ref(null)
 const selectedTask  = ref(null)
 const approvingId   = ref(null)
 const revisingId    = ref(null)
@@ -46,9 +43,91 @@ const fmt = (d) => d
   ? new Date(d).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' })
   : '—'
 
+// ── Fetch all tasks awaiting director approval ──
+const fetchTasks = async () => {
+  loading.value = true
+  error.value   = null
+  try {
+    // Step 1: get task_approval rows where director not yet approved
+    const { data: approvalRows, error: approvalErr } = await supabase
+      .from('task_approval')
+      .select('id, unit_head, director')
+      .eq('director', false)
+
+    if (approvalErr) throw approvalErr
+    if (!approvalRows?.length) { tasks.value = []; return }
+
+    // Step 2: get assignee positions to determine direct-to-director staff
+    const { data: posRows, error: posErr } = await supabase
+      .from('position')
+      .select('user_id, pos_id')
+
+    if (posErr) throw posErr
+    const posMap = Object.fromEntries((posRows||[]).map(p => [p.user_id, p.pos_id]))
+
+    // Only keep approvals where unit_head=true OR assignee is direct-to-director
+    // We'll cross-reference after fetching tasks
+    const approvalIds = approvalRows.map(a => a.id)
+
+    // Step 3: fetch tasks matching those approval IDs
+    const { data, error: taskErr } = await supabase
+      .from('task')
+      .select(`
+        id, parent_id, assigner, assignee,
+        task_profile ( title, description, urgent, task_type_ref:task_type(task_type) ),
+        task_approval ( id, unit_head, director ),
+        task_duration ( created, deadline ),
+        task_output   ( link ),
+        subtasks:task!parent_id ( id, task_profile(description) )
+      `)
+      .is('parent_id', null)
+      .in('id', approvalIds)
+
+    if (taskErr) throw taskErr
+
+    // Step 4: build name map
+    const uuids = [...new Set((data||[]).flatMap(t => [t.assigner, t.assignee]).filter(Boolean))]
+    let nameMap = {}
+    if (uuids.length) {
+      const { data: profs } = await supabase
+        .from('user_profile')
+        .select('id, fname, lname')
+        .in('id', uuids)
+      nameMap = Object.fromEntries((profs||[]).map(p => [p.id, `${p.fname||''} ${p.lname||''}`.trim()]))
+    }
+
+    // Step 5: filter — unit head approved OR direct-to-director position
+    tasks.value = (data||[])
+      .filter(t => {
+        const isDirect = DIRECT_TO_DIRECTOR_POSITIONS.includes(posMap[t.assignee])
+        return isDirect || t.task_approval?.unit_head === true
+      })
+      .map(t => ({
+        id:          t.id,
+        title:       t.task_profile?.title       || 'Untitled',
+        description: t.task_profile?.description || '',
+        urgent:      !!t.task_profile?.urgent,
+        type:        t.task_profile?.task_type_ref?.task_type?.toLowerCase() || 'regular',
+        created:     t.task_duration?.created    || null,
+        deadline:    t.task_duration?.deadline   || null,
+        assignedBy:  nameMap[t.assigner]         || 'Unknown',
+        assignedTo:  nameMap[t.assignee]         || 'Unknown',
+        unitHeadOk:  !!t.task_approval?.unit_head,
+        outputLink:  t.task_output?.link         || null,
+        subtasks:    (t.subtasks||[]).map(s => s.task_profile?.description || ''),
+      }))
+
+  } catch(e) {
+    error.value = e.message
+    console.error('[Dashboard] fetch error:', e)
+  } finally {
+    loading.value = false
+  }
+}
+
 // ── Filtered by selected month ──
 const tasksForMonth = computed(() =>
-  tasks.filter(t => {
+  tasks.value.filter(t => {
     if (!t.created) return false
     const d = new Date(t.created)
     return d.getMonth() === selectedMonth.value && d.getFullYear() === selectedYear.value
@@ -102,7 +181,7 @@ const approveTask = async (task) => {
     const { error: e } = await supabase
       .from('task_approval').update({ director: true }).eq('id', task.id)
     if (e) throw e
-    tasks = tasks.filter(t => t.id !== task.id)
+    tasks.value = tasks.value.filter(t => t.id !== task.id)
     if (selectedTask.value?.id === task.id) selectedTask.value = null
   } catch(e) { console.error(e) }
   finally    { approvingId.value = null }
@@ -114,7 +193,7 @@ const reviseTask = async (task) => {
     const { error: e } = await supabase
       .from('task_approval').update({ unit_head: false }).eq('id', task.id)
     if (e) throw e
-    tasks = tasks.filter(t => t.id !== task.id)
+    tasks.value = tasks.value.filter(t => t.id !== task.id)
     if (selectedTask.value?.id === task.id) selectedTask.value = null
   } catch(e) { console.error(e) }
   finally    { revisingId.value = null }
@@ -124,16 +203,29 @@ const openTask  = (t) => { selectedTask.value = t }
 const closeTask = () =>  { selectedTask.value = null }
 
 const isOverdue = (d) => d && new Date(d) < new Date()
+
+onMounted(fetchTasks)
 </script>
 
 <template>
-  <div class="director-dash flex flex-col w-full h-full overflow-hidden">
+  <div class="director-dash flex flex-col w-full h-full overflow-hidden bg-gray-50">
 
     <!-- ══ LOADING ══ -->
-    <Loading v-if="loading" />
+    <div v-if="loading" class="flex-1 flex items-center justify-center gap-3">
+      <svg class="animate-spin w-5 h-5 text-green-700" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="10" stroke="#d1fae5" stroke-width="3"/>
+        <path d="M12 2a10 10 0 0 1 10 10" stroke="#15803d" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <span class="text-sm text-gray-500 tracking-wide">Loading…</span>
+    </div>
 
     <!-- ══ ERROR ══ -->
-    <Error v-else-if="error" :error="error" />
+    <div v-else-if="error" class="flex-1 flex items-center justify-center p-8">
+      <div class="bg-red-50 border border-red-200 rounded-2xl p-6 text-sm text-red-600 max-w-sm text-center">
+        <p class="font-bold mb-1">Failed to load tasks</p>
+        <p class="text-xs">{{ error }}</p>
+      </div>
+    </div>
 
     <!-- ══ CONTENT ══ -->
     <div v-else class="flex flex-col flex-1 min-h-0">
