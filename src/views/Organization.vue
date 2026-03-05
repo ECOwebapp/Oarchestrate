@@ -1,5 +1,5 @@
-<script setup vapor>
-import { ref, h } from 'vue'
+<script setup>
+import { h, ref } from 'vue'
 
 const orgData = ref({
   president:     { name: 'ROLYN C. DAGUIL, PhD',              title: 'University President' },
@@ -270,14 +270,14 @@ const ModalBackdrop = {
   <div class="flex-1 min-h-0 overflow-auto relative bg-white">
 
     <div
-      class="absolute inset-0 pointer-events-none opacity-80 bg-[url('/images/csu.png')] bg-cover bg-center">
+      class="absolute inset-0 pointer-events-none opacity-80 bg-[url('/images/csu-background.png')] bg-cover bg-center">
     </div>
 
     <div v-if="!showManagement" class="relative z-10 flex flex-col items-center py-2 px-2 w-full">
 
       <div class="w-full flex justify-between items-center mb-1 px-2">
         <div class="flex items-center gap-3">
-          <img src="@/img/csu_logo.png" alt="CSU"
+          <img src="../../public/image/csu_logo.png" alt="CSU"
                class="w-20 h-20 object-contain" onerror="this.style.display='none'" />
           <div class="leading-tight">
             <p class="text-sm font-semibold text-[#1b5e3f] uppercase tracking-widest">Caraga State</p>
