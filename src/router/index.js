@@ -9,6 +9,8 @@ import Register from '@/views/Register.vue'
 import Tasks from '@/views/Tasks.vue'
 
 import { useAuthStore } from '@/stores/useAuthStore'
+import { taskStore } from '@/stores/tasks'
+import { useMemberStore } from '@/stores/member'
 import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
@@ -48,19 +50,19 @@ const routes = [
     path: '/tasks',
     name: 'Tasks',
     component: Tasks,
-    meta: { requiresAuth: true },
+    meta: { requireMembers: true, requiresTasks: true, requiresAuth: true },
   },
   {
     path: '/design',
     name: 'Design',
     component: Design,
-    meta: { requiresAuth: true },
+    meta: { requireMembers: true, requiresTasks: true, requiresAuth: true },
   },
   {
     path: '/organization',
     name: 'Organization',
     component: Organization,
-    meta: { requiresAuth: true },
+    meta: { requireMembers: true, requiresAuth: true },
   },
   {
     path: '/analytics',
@@ -90,6 +92,16 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
+  const tasks = taskStore()
+  const members = useMemberStore()
+
+  if (to.meta.requiresTasks && tasks.tasks.length === 0) {
+    await tasks.fetchTasks()
+  }
+
+  if(to.meta.requireMembers) {
+    await members.fetchMembers()
+  }
 
   // Wait for init() to finish if app just loaded
   if (!auth.initialized) await auth.init()
