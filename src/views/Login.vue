@@ -114,7 +114,7 @@ const handleSubmit = async () => {
         Oarchestrate
       </h1>
       <p class="text-center text-xs text-gray-400 tracking-widest uppercase mb-8">
-        Caraga State University · CPMO
+        Caraga State University · ECO
       </p>
 
       <!-- General error -->

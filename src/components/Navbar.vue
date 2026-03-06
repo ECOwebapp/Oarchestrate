@@ -2,17 +2,13 @@
 import { useAuthStore } from '@/stores/useAuthStore'
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import Icons from '@/components/Icons.vue'
 
 const route     = useRoute()
 const router    = useRouter()
 const authStore = useAuthStore()
 
-// ── Desktop: hover to expand ──
-const expanded = ref(false)
-
-// ── Mobile: drawer ──
-const mobileOpen = ref(false)
+const expanded    = ref(false)
+const mobileOpen  = ref(false)
 const closeDrawer = () => { mobileOpen.value = false }
 
 const navNames = [
@@ -24,21 +20,18 @@ const navNames = [
   'Profile',
 ]
 
-const getPath = (name) => `/${name.toLowerCase()}`
+const getPath  = (name) => `/${name.toLowerCase()}`
 const isActive = (name) => route.name === name
-
-const version = '0.1 alpha'
+const version  = '0.1 alpha'
 </script>
 
 <template>
 
-  <!-- ══════════════════════════════════
-       MOBILE: Hamburger button
-  ══════════════════════════════════ -->
+  <!-- ══ MOBILE: Hamburger ══ -->
   <button
     @click="mobileOpen = true"
     class="xl:hidden fixed top-24 left-4 z-50 w-10 h-10 flex items-center justify-center
-           rounded-xl bg-green-900 shadow-lg shadow-green-900/40 text-white
+           rounded-xl bg-green-900 shadow-lg shadow-green-900/40 text-black
            active:scale-95 transition-transform">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
          stroke-linecap="round" class="w-5 h-5">
@@ -46,22 +39,18 @@ const version = '0.1 alpha'
     </svg>
   </button>
 
-  <!-- ══════════════════════════════════
-       MOBILE: Backdrop
-  ══════════════════════════════════ -->
+  <!-- ══ MOBILE: Backdrop ══ -->
   <Transition name="overlay">
     <div v-if="mobileOpen"
       class="xl:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
       @click="closeDrawer" />
   </Transition>
 
-  <!-- ══════════════════════════════════
-       MOBILE: Drawer (always expanded)
-  ══════════════════════════════════ -->
+  <!-- ══ MOBILE: Drawer ══ -->
   <Transition name="drawer">
     <nav v-if="mobileOpen"
-      class="xl:hidden fixed left-0 top-0 bottom-0 z-50 w-68 flex flex-col
-             bg-green-950 drop-shadow-2xl">
+      class="xl:hidden fixed left-0 top-0 bottom-0 z-50 w-68 flex flex-col drop-shadow-2xl"
+      style="background: url(/images/csu-background.png) center/cover no-repeat;">
       <NavInner
         :nav-names="navNames"
         :get-path="getPath"
@@ -75,12 +64,11 @@ const version = '0.1 alpha'
     </nav>
   </Transition>
 
-  <!-- ══════════════════════════════════
-       DESKTOP: Collapsible sidebar
-  ══════════════════════════════════ -->
+  <!-- ══ DESKTOP: Collapsible sidebar ══ -->
   <nav
-    class="hidden xl:flex flex-col bg-green-950 drop-shadow-xl flex-shrink-0
+    class="hidden xl:flex flex-col drop-shadow-xl flex-shrink-0
            transition-all duration-300 ease-[cubic-bezier(.16,1,.3,1)] overflow-hidden"
+    style="background: url(/images/csu-background.png) center/cover no-repeat;"
     :class="expanded ? 'w-60' : 'w-[68px]'"
     @mouseenter="expanded = true"
     @mouseleave="expanded = false">
@@ -97,10 +85,6 @@ const version = '0.1 alpha'
 
 </template>
 
-<!-- ──────────────────────────────────────
-     Inner nav content — shared by both
-     desktop sidebar and mobile drawer
-────────────────────────────────────────── -->
 <script>
 import { defineComponent, h, resolveComponent } from 'vue'
 
@@ -120,14 +104,20 @@ const NavInner = defineComponent({
       const Icons      = resolveComponent('Icons')
       const RouterLink = resolveComponent('RouterLink')
 
+      const avatarSize = props.expanded ? '128px' : '64px'
+      const avatarFont = props.expanded ? '64px' : '32px'
+      const avatarMb   = props.expanded ? '10px' : '6px'
+
       return h('div', { class: 'flex flex-col h-full w-full' }, [
 
-        // ── Profile header ──
+        // ════════════════════
+        // PROFILE HEADER
+        // ════════════════════
         h('div', {
           class: 'relative flex flex-col items-center justify-end flex-shrink-0 overflow-hidden',
           style: 'height:200px; background: url(/images/bg_profile.jpg) top center / cover no-repeat',
         }, [
-          // Dark gradient overlay
+
           h('div', {
             class: 'absolute inset-0',
             style: 'background: linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(6,46,20,0.88) 100%)',
@@ -135,16 +125,36 @@ const NavInner = defineComponent({
 
           h('div', { class: 'relative z-10 flex flex-col items-center w-full pb-4 px-3' }, [
 
-            // Avatar
+            // ── Initials avatar ──
             h('div', {
-              class: 'rounded-full bg-cover bg-center ring-2 ring-white/40 flex-shrink-0 transition-all duration-300',
               style: `
-                background-image: url(${props.authStore.avatarUrl});
-                width:  ${props.expanded ? '56px' : '38px'};
-                height: ${props.expanded ? '56px' : '38px'};
-                margin-bottom: ${props.expanded ? '10px' : '6px'};
+                width: ${avatarSize};
+                height: ${avatarSize};
+                margin-bottom: ${avatarMb};
+                border-radius: 9999px;
+                background: ${props.authStore.avatarColor ?? '#14532d'};
+                box-shadow: 0 0 0 3px rgba(255,255,255,0.3), 0 4px 16px rgba(0,0,0,0.4);
+                flex-shrink: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: width 0.3s cubic-bezier(.16,1,.3,1),
+                            height 0.3s cubic-bezier(.16,1,.3,1),
+                            margin-bottom 0.3s ease;
               `,
-            }),
+            }, [
+              h('span', {
+                style: `
+                  color: white;
+                  font-weight: 700;
+                  font-size: ${avatarFont};
+                  letter-spacing: 0.05em;
+                  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+                  user-select: none;
+                  transition: font-size 0.3s ease;
+                `,
+              }, props.authStore.initials ?? '?'),
+            ]),
 
             // Loading skeletons
             props.authStore.loading
@@ -154,7 +164,6 @@ const NavInner = defineComponent({
                     ? h('div', { class: 'h-2.5 w-20 rounded bg-white/15 animate-pulse' })
                     : null,
                 ])
-              // Name + position
               : props.expanded
                 ? h('div', { class: 'text-center' }, [
                     h('p', { class: 'text-white text-xs font-bold leading-tight truncate max-w-[180px]' },
@@ -166,7 +175,9 @@ const NavInner = defineComponent({
           ]),
         ]),
 
-        // ── Nav items ──
+        // ════════════════════
+        // NAV ITEMS
+        // ════════════════════
         h('ul', { class: 'flex flex-col flex-1 py-2 overflow-hidden' },
           props.navNames.map((name, i) => {
             const active = props.isActive(name)
@@ -178,33 +189,26 @@ const NavInner = defineComponent({
                   'group relative flex flex-row items-center gap-0 py-3 mx-2 rounded-xl',
                   'transition-all duration-150 overflow-hidden',
                   active
-                    ? 'bg-white/15 text-white'
-                    : 'text-green-200/70 hover:bg-white/10 hover:text-white',
+                    ? 'bg-gray/15 text-black'
+                    : 'text-green-900/500 hover:bg-black/10 hover:text-black',
                 ].join(' '),
                 style: `animation: navIn 0.35s cubic-bezier(.16,1,.3,1) both; animation-delay:${i * 35}ms`,
               }, () => [
-                // Active bar
                 active
                   ? h('span', { class: 'absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-white rounded-r-full' })
                   : null,
 
-                // Icon
                 h(Icons, {
                   icon: name.toLowerCase(),
-                  class: [
-                    'flex-shrink-0 transition-transform duration-150 mx-4',
-                    'group-hover:scale-110',
-                  ].join(' '),
+                  class: 'flex-shrink-0 transition-transform duration-150 mx-4 group-hover:scale-110',
                 }),
 
-                // Label (only when expanded)
                 props.expanded
                   ? h('span', {
                       class: 'text-sm font-medium whitespace-nowrap overflow-hidden transition-all duration-200 mr-4',
                     }, name + (name === 'Design' ? ' Review' : ''))
                   : null,
 
-                // Tooltip (only when collapsed)
                 !props.expanded
                   ? h('span', {
                       class: 'pointer-events-none absolute left-full ml-2 px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-150',
@@ -216,11 +220,13 @@ const NavInner = defineComponent({
           })
         ),
 
-        // ── Logout ──
+        // ════════════════════
+        // LOGOUT
+        // ════════════════════
         h('div', { class: 'flex-shrink-0 border-t border-white/10 p-2' }, [
           h('button', {
             onClick: () => emit('logout'),
-            class: 'group relative w-full flex flex-row items-center rounded-xl py-3 mx-0 overflow-hidden text-red-300/70 hover:bg-red-500/20 hover:text-red-200 transition-all duration-150',
+            class: 'group relative w-full flex flex-row items-center rounded-xl py-3 mx-0 overflow-hidden text-red-900/300 hover:bg-red-500/500 hover:text-red-500 transition-all duration-150',
           }, [
             h(Icons, {
               icon: 'logout',
@@ -237,7 +243,6 @@ const NavInner = defineComponent({
               : null,
           ]),
 
-          // Version
           props.expanded
             ? h('p', { class: 'text-center text-[10px] text-green-700 mt-1.5 tracking-widest' }, `v${props.version}`)
             : null,
@@ -252,22 +257,18 @@ export { NavInner }
 </script>
 
 <style scoped>
-/* Desktop shadow */
 nav.hidden { box-shadow: 4px 0 28px rgba(0,0,0,0.3); }
 
-/* Mobile drawer */
 .drawer-enter-active  { animation: drawerIn  0.3s cubic-bezier(.16,1,.3,1) both }
 .drawer-leave-active  { animation: drawerOut 0.22s ease both }
 @keyframes drawerIn   { from { transform: translateX(-100%) } to { transform: translateX(0) } }
 @keyframes drawerOut  { from { transform: translateX(0) }     to { transform: translateX(-100%) } }
 
-/* Backdrop */
 .overlay-enter-active { animation: fadeIn  0.2s ease both }
 .overlay-leave-active { animation: fadeOut 0.2s ease both }
 @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
 @keyframes fadeOut { from { opacity: 1 } to { opacity: 0 } }
 
-/* Nav item stagger */
 @keyframes navIn {
   from { opacity: 0; transform: translateX(-10px) }
   to   { opacity: 1; transform: translateX(0) }
