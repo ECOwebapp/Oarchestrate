@@ -95,7 +95,7 @@ const handleSubmit = async () => {
   <div class="relative min-h-screen w-full overflow-hidden flex items-center justify-center">
 
     <!-- Background -->
-    <div class="absolute inset-0 bg-[url('/images/csu_admin_building.png')] bg-cover bg-center"></div>
+    <div class="absolute inset-0 bg-cover bg-center bg-[url('/images/csu_admin_building.png')]"></div>
     <div class="absolute inset-0 backdrop-blur-sm bg-black/20"></div>
 
     <!-- Login card -->

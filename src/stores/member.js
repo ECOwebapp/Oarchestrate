@@ -23,8 +23,14 @@ export const useMemberStore = defineStore('member', () => {
                       )
                 `)
 
+            const { data: statusRows, error: statusErr } = await supabase
+                .from('account_status')
+                .select(`user_id, status`)
+
             if (memberErr) {
                 throw memberErr
+            } else if (statusErr) {
+                throw statusErr
             } else {
                 if (memberRows) {
                     members.value = (memberRows || [])
@@ -36,7 +42,8 @@ export const useMemberStore = defineStore('member', () => {
                             birthdate: m.birthdate,
                             gender: m.gender_type?.gender,
                             pos_id: m.position?.pos_id,
-                            pos_name: m.position?.position_name?.pos_name
+                            pos_name: m.position?.position_name?.pos_name,
+                            status: statusRows.find(s => s.user_id === m.user_id)?.status || 'Unknown'
                         }))
                 }
             }
