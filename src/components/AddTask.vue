@@ -1,9 +1,9 @@
 <script setup>
-import { useMemberStore } from '@/stores/member';
-import { taskStore } from '@/stores/tasks.js';
-import { useAuthStore } from '@/stores/useAuthStore';
-import { computed, ref } from 'vue';
+import { ref, computed, onMounted } from 'vue'
 import Icons from './Icons.vue';
+import { taskStore } from '@/stores/tasks.js'
+import { useMemberStore } from '@/stores/member';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 const addTask = taskStore().addTasks
 const members = useMemberStore()

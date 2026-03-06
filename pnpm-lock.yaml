@@ -5,19 +5,17 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  vue: beta
+  '@vue/compat': beta
   '@vue/compiler-core': beta
   '@vue/compiler-dom': beta
   '@vue/compiler-sfc': beta
   '@vue/compiler-ssr': beta
-  '@vue/compiler-vapor': beta
   '@vue/reactivity': beta
   '@vue/runtime-core': beta
   '@vue/runtime-dom': beta
-  '@vue/runtime-vapor': beta
   '@vue/server-renderer': beta
   '@vue/shared': beta
-  '@vue/compat': beta
+  vue: beta
 
 importers:
 
@@ -886,10 +884,10 @@ packages:
   '@vue/runtime-dom@3.6.0-beta.7':
     resolution: {integrity: sha512-purk/iT3R5y2CizeV+YdxHhqPE1yAk3MSptggsCdO0zkShl2NA1/xec1WgVg1OL6IV0xNrknsMxl9Fit4g44hA==}
 
-  '@vue/runtime-vapor@3.6.0-beta.7':
-    resolution: {integrity: sha512-H+XdbkqtBI+9gsS957Om94qpTx+keklzvO6rllls4TcKlRo/xcXsDnMhWjghX0Irg6iM/MgBBK8bQkfUkF+xSg==}
+  '@vue/runtime-vapor@3.6.0-beta.6':
+    resolution: {integrity: sha512-psN1lh/LJS7FS/KE8+JJYvdFWySq09Ww9xCFnXOaISFwh/2VWs5AvcAAq9dgk6+Z0qMUjrVVbspa6byLVCP/aA==}
     peerDependencies:
-      '@vue/runtime-dom': 3.6.0-beta.7
+      '@vue/runtime-dom': 3.6.0-beta.6
 
   '@vue/server-renderer@3.6.0-beta.7':
     resolution: {integrity: sha512-VqX6+8+NyCC/nqkOvj/vKHeMtBr3Mxo7rccDLNyuSb6o5Mp+itlxdpaD0LD28SqHEaDjqfIUBTnFsfDJLN/cww==}
@@ -2673,7 +2671,7 @@ snapshots:
       '@vue/shared': 3.6.0-beta.7
       csstype: 3.2.3
 
-  '@vue/runtime-vapor@3.6.0-beta.7(@vue/runtime-dom@3.6.0-beta.7)':
+  '@vue/runtime-vapor@3.6.0-beta.6(@vue/runtime-dom@3.6.0-beta.7)':
     dependencies:
       '@vue/reactivity': 3.6.0-beta.7
       '@vue/runtime-dom': 3.6.0-beta.7
@@ -3580,7 +3578,7 @@ snapshots:
       '@vue/compiler-dom': 3.6.0-beta.7
       '@vue/compiler-sfc': 3.6.0-beta.7
       '@vue/runtime-dom': 3.6.0-beta.7
-      '@vue/runtime-vapor': 3.6.0-beta.7(@vue/runtime-dom@3.6.0-beta.7)
+      '@vue/runtime-vapor': 3.6.0-beta.6(@vue/runtime-dom@3.6.0-beta.7)
       '@vue/server-renderer': 3.6.0-beta.7(vue@3.6.0-beta.6)
       '@vue/shared': 3.6.0-beta.7
 
