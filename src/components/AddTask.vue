@@ -1,4 +1,4 @@
-<script setup vapor>
+<script setup>
 import { ref, computed, onMounted } from 'vue'
 import Icons from './Icons.vue';
 import { taskStore } from '@/stores/tasks.js'

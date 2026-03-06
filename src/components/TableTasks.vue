@@ -1,4 +1,4 @@
-<script setup vapor>
+<script setup>
 import { useAuthStore } from '@/stores/useAuthStore';
 
 const user_id = useAuthStore().userID
