@@ -1,44 +1,41 @@
-<script setup vapor>
-import TaskCard from './TaskCard.vue';
+<script setup>
+import { ref } from 'vue'
+import TaskCard from './TaskCard.vue'
+import TaskDetail from './TaskDetail.vue'
 
-const props = defineProps(['tasks'])
-
-const getProgress = (task) => {
-    const start = new Date(task?.startDate).getTime()
-    const end = new Date(task?.endDate).getTime()
-    const now = new Date().getTime()
-
-    if (now < start) return 0;
-    if (now > end) return 100;
-
-    const total = end - start
-    const elapsed = now - start
-
-    return Math.round((elapsed / total) * 100)
-}
-
-const getDue = (task) => {
-    const today = new Date();
-    const target = new Date(task?.endDate);
-
-    // Set time to midnight for both to compare just the calendar days
-    today.setHours(0, 0, 0, 0);
-    target.setHours(0, 0, 0, 0);
-
-    // Difference in milliseconds
-    const diffTime = target.getTime() - today.getTime();
-
-    // Convert ms to days: ms / (1000ms * 60s * 60m * 24h)
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    return diffDays;
-};
+const props      = defineProps(['tasks'])
+const selected   = ref(null)
 </script>
 
 <template>
-    <div
-        class="h-full grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 justify-items-center mask-y-from-95% mask-y-to-97% px-10 py-7 gap-10 overflow-y-auto">
-        <TaskCard v-for="(task, index) in tasks" :key="task" :name="task.name" :description="task.description"
-            :urgent="task.urgent" :progress="getProgress(task)" :due="getDue(task)" :style="{ order: index + 1 }" />
-    </div>
+  <div v-if="props.tasks.length === 0"
+    class="flex flex-col items-center justify-center h-full py-20 text-gray-400">
+    <svg class="w-12 h-12 mb-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+    </svg>
+    <p class="text-sm font-semibold">No tasks found</p>
+  </div>
+
+  <div v-else
+    class="h-full grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4
+           justify-items-stretch px-4 sm:px-6 lg:px-10 py-6 gap-4
+           overflow-y-auto mask-y-from-95% mask-y-to-97%">
+    <TaskCard
+      v-for="task in props.tasks"
+      :key="task.id"
+      :task="task"
+      @open="selected = $event" />
+  </div>
+
+  <Transition name="modal">
+    <TaskDetail v-if="selected" :task="selected" @close="selected = null" />
+  </Transition>
 </template>
+
+<style scoped>
+.modal-enter-active { animation: modalIn  0.25s cubic-bezier(.16,1,.3,1) both }
+.modal-leave-active { animation: modalOut 0.15s ease both }
+@keyframes modalIn  { from { opacity:0; transform:scale(0.97) } to { opacity:1; transform:scale(1) } }
+@keyframes modalOut { from { opacity:1 } to { opacity:0; transform:scale(0.97) } }
+</style>

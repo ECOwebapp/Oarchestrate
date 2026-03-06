@@ -1,92 +1,141 @@
-<script setup vapor>
-import GridTasks from '@/components/GridTasks.vue';
-import TableTasks from '@/components/TableTasks.vue';
-import ChartTasks from '@/components/ChartTasks.vue';
-import Icons from '@/components/Icons.vue';
-import AddTask from '@/components/AddTask.vue';
-import { ref } from 'vue';
-import { taskStore } from '@/stores/tasks';
+<script setup>
+import AddTask from '@/components/AddTask.vue'
+import ChartTasks from '@/components/ChartTasks.vue'
+import GridTasks from '@/components/GridTasks.vue'
+import Icons from '@/components/Icons.vue'
+import TableTasks from '@/components/TableTasks.vue'
+import { taskStore } from '@/stores/tasks'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { computed, onMounted, ref } from 'vue'
 
-const state = ref('Grid View')
-const addTask = ref(false)
-const dropdown = {
-    filter: ["Regular", "Insertion", "Urgent", "Revision", "Pending", "Ongoing", "Completed"],
-    sort: ["Name", "Date Due", "Recently Assigned", "Recently Completed"]
-}
+const store    = taskStore()
+const auth     = useAuthStore()
+const state    = ref('Grid View')
+const addTask  = ref(false)
+const search   = ref('')
+const filter   = ref('All')
+const sortBy   = ref('Recently Assigned')
 
-const tasks = taskStore().tasks
+onMounted(() => store.fetchTasks())
 
-const isScrolled = ref(false)
+const filterOpts = computed(() => {
+  const base = ['All', 'Regular', 'Insertion', 'Urgent', 'Revision']
+  if (auth.isDirector || auth.isUnitHead) base.push('Pending', 'Approved')
+  return base
+})
 
-const handleScroll = (e) => {
-  // If the user has scrolled down more than 10px, show the top fade
-  isScrolled.value = e.target.scrollTop > 10
-}
+const sortOpts = ['Recently Assigned', 'Date Due', 'Name A→Z', 'Urgent First']
 
+const filtered = computed(() => {
+  let list = store.tasks
+  const q = search.value.toLowerCase()
+  if (q) list = list.filter(t =>
+    t.name.toLowerCase().includes(q) ||
+    t.description.toLowerCase().includes(q) ||
+    t.assigneeName?.toLowerCase().includes(q)
+  )
+  if (filter.value !== 'All') {
+    const f = filter.value.toLowerCase()
+    list = list.filter(t => {
+      if (f === 'urgent')   return t.urgent
+      if (f === 'revision') return t.revision
+      if (f === 'regular')  return t.type?.toLowerCase() === 'regular'
+      if (f === 'insertion')return t.type?.toLowerCase() === 'insertion'
+      if (f === 'pending')  return !t.director
+      if (f === 'approved') return t.director
+      return true
+    })
+  }
+  if (sortBy.value === 'Date Due')
+    list = [...list].sort((a,b) => new Date(a.to) - new Date(b.to))
+  else if (sortBy.value === 'Name A→Z')
+    list = [...list].sort((a,b) => a.name.localeCompare(b.name))
+  else if (sortBy.value === 'Urgent First')
+    list = [...list].sort((a,b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0))
+  else
+    list = [...list].sort((a,b) => new Date(b.from) - new Date(a.from))
+  return list
+})
 </script>
 
 <template>
-    <div class="flex flex-cols justify-between items-start px-10 my-5">
-        <button
-            @click="addTask = !addTask"
-            class="flex flex-row justify-evenly items-center bg-green-950 text-white font-bold h-13 w-40 rounded-2xl cursor-pointer">
-            <Icons :icon="'add'" />
-            Add Task
-        </button>
+  <div class="flex flex-col h-full min-h-0">
 
-        <div v-if="addTask == true" class="fixed inset-0 z-9999 flex items-center justify-center bg-black/50" @click.self="addTask = !addTask">
-            <AddTask :add-task="addTask" />
-        </div>
+    <!-- ── Toolbar ── -->
+    <div class="flex flex-wrap items-center gap-3 px-4 sm:px-6 lg:px-10 py-4 flex-shrink-0">
 
-        <form @submit.prevent="">
-            <!-- Code for the search bar: https://tailwindcss.com/plus/ui-blocks/application-ui/forms/input-groups -->
-            <div
-                class="flex items-center rounded-2xl bg-white/5 pl-3 outline-2 -outline-offset-1 outline-gray-400 has-[input:focus-within]:outline-3 has-[input:focus-within]:-outline-offset-3 has-[input:focus-within]:outline-green-800">
-                <input type="text" name="search" placeholder="Search by task name"
-                    class="block min-w-0 w-100 h-13 grow py-1.5 pr-3 pl-1 text-base placeholder:text-gray-500 focus:outline-none sm:text-sm/6" />
-                <div class="grid shrink-0 grid-cols-1 focus-within:relative pr-3">
-                    <Icons :icon="'search'" class="" />
-                </div>
-            </div>
-        </form>
+      <!-- Add Task (director + unit head) -->
+      <button v-if="auth.isDirector || auth.isUnitHead || auth.isMember"
+        @click="addTask = true"
+        class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl
+               hover:bg-green-800 active:scale-95 transition-all text-sm flex-shrink-0">
+        <Icons :icon="'add'" />
+        <span class="hidden sm:inline">Add Task</span>
+      </button>
 
-        <!-- <div class="flex flex-row justify-between my-2">
-            <div v-for="drops in ['Filter', 'Sort']" :key="drops.toLowerCase()" class="flex flex-col">
-                <label :for="drops.toLowerCase()" class="mr-2 text-sm">{{ drops }}: </label>
-                <select :name="drops.toLowerCase()" :id="drops.toLowerCase()" class="border-1 rounded-lg px-3 h-7">
-                    <option v-if="drops === 'Filter'" selected disabled>--Not Selected--</option>
-                    <option v-for="opts in dropdown[drops.toLowerCase()]" :key="opts" :value="opts.toLowerCase()">
-                        {{ opts }}
-                    </option>
-                </select>
-            </div>
-        </div> -->
+      <!-- Search -->
+      <div class="flex items-center rounded-2xl bg-white border border-gray-300 px-3
+                  focus-within:border-green-800 focus-within:ring-2 focus-within:ring-green-800/20
+                  transition-all flex-1 min-w-0 h-11">
+        <Icons :icon="'search'" class="text-gray-400 flex-shrink-0" />
+        <input v-model="search" type="text" placeholder="Search tasks…"
+          class="ml-2 flex-1 min-w-0 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none" />
+      </div>
+
+      <!-- Filter -->
+      <select v-model="filter"
+        class="h-11 px-3 rounded-2xl border border-gray-300 text-sm text-gray-700
+               focus:outline-none focus:border-green-800 bg-white flex-shrink-0">
+        <option v-for="o in filterOpts" :key="o" :value="o">{{ o }}</option>
+      </select>
+
+      <!-- Sort -->
+      <select v-model="sortBy"
+        class="h-11 px-3 rounded-2xl border border-gray-300 text-sm text-gray-700
+               focus:outline-none focus:border-green-800 bg-white flex-shrink-0">
+        <option v-for="o in sortOpts" :key="o" :value="o">{{ o }}</option>
+      </select>
+
+      <!-- Count -->
+      <span class="text-xs text-gray-500 flex-shrink-0 hidden sm:block">
+        {{ filtered.length }} task{{ filtered.length !== 1 ? 's' : '' }}
+      </span>
     </div>
 
-    <div class="flex-1 overflow-auto bg-white mx-10 rounded-xl shadow-md">
-        <GridTasks v-if="state === 'Grid View'" :tasks="tasks" />
-        <TableTasks v-else-if="state === 'Table View'" :tasks="tasks" />
-        <ChartTasks v-else-if="state === 'Chart View'" :tasks="tasks" />
+    <!-- ── View ── -->
+    <div class="flex-1 overflow-auto bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0">
+      <GridTasks  v-if="state === 'Grid View'"  :tasks="filtered" />
+      <TableTasks v-else-if="state === 'Table View'" :tasks="filtered" />
+      <ChartTasks v-else-if="state === 'Chart View'" :tasks="filtered" />
     </div>
 
-    <div class="flex flex-row justify-center items-center gap-5 my-3">
-        <button v-for="btn in ['Grid View', 'Table View', 'Chart View']"
-            @click="state = btn"
-            class="flex flex-row justify-evenly items-center text-sm font-bold h-10 w-30 rounded-xl cursor-pointer"
-            :class="state === btn ? 'bg-green-950 text-white' : 'outline-2 outline-green-950 text-green-950 bg-white hover:bg-green-950 hover:text-white'">
-            {{ btn }}
-        </button>
+    <!-- ── View toggle ── -->
+    <div class="flex justify-center gap-3 py-3 flex-shrink-0">
+      <button v-for="btn in ['Grid View','Table View','Chart View']" :key="btn"
+        @click="state = btn"
+        class="text-sm font-bold h-10 px-5 rounded-xl cursor-pointer transition-all"
+        :class="state === btn
+          ? 'bg-green-950 text-white'
+          : 'outline outline-2 outline-green-950 text-green-950 bg-white hover:bg-green-950 hover:text-white'">
+        {{ btn }}
+      </button>
     </div>
 
+  </div>
+
+  <!-- ── Add Task Modal ── -->
+  <Transition name="modal">
+    <div v-if="addTask"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      @click.self="addTask = false">
+      <AddTask @close="addTask = false; store.fetchTasks()" />
+    </div>
+  </Transition>
 </template>
 
 <style scoped>
-.scroll-fade-v {
-  mask-image: linear-gradient(to bottom, 
-    transparent, 
-    black 40px, 
-    black calc(100% - 40px), 
-    transparent
-  );
-}
+.modal-enter-active { animation: modalIn  0.25s cubic-bezier(.16,1,.3,1) both }
+.modal-leave-active { animation: modalOut 0.15s ease both }
+@keyframes modalIn  { from { opacity:0; transform:scale(0.96) } to { opacity:1; transform:scale(1) } }
+@keyframes modalOut { from { opacity:1 } to { opacity:0; transform:scale(0.96) } }
 </style>
