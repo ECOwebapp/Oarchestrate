@@ -12,10 +12,8 @@ const route = useRoute()
   <div v-if="!route.meta.hideNavbar"
        class="flex flex-row w-full h-screen overflow-hidden">
 
-    <!-- Single Navbar instance — handles both desktop sidebar and mobile drawer internally -->
     <Navbar />
 
-    <!-- Main content -->
     <div class="flex flex-col flex-1 min-w-0">
       <header class="w-full flex-shrink-0">
         <Header :pageName="route.name" />

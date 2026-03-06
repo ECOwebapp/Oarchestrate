@@ -1,22 +1,19 @@
 import { useAuthStore } from '@/stores/useAuthStore';
 import { createPinia } from 'pinia';
-import { createApp, vaporInteropPlugin } from 'vue'
+import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
-
-const app   = createApp(App)
-const pinia = createPinia()
-
-app.use(pinia)
-app.use(router)
-app.use(vaporInteropPlugin)
-app.mount('#app')
-
 (async () => {
+  const app   = createApp(App)
+  const pinia = createPinia()
+
+  app.use(pinia)
 
   const auth = useAuthStore()
   await auth.init()       // restore session — no listener yet
 
+  app.use(router)
+  app.mount('#app')
 
   // Register AFTER mount so reactive updates from auth events
   // never fire while the component tree is still being set up
