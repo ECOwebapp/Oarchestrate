@@ -1,4 +1,4 @@
-<script setup lang="ts" vapor>
+<script setup lang="ts">
 import { onMounted, onUnmounted, useTemplateRef, watch } from 'vue';
 import * as THREE from 'three';
 

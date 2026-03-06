@@ -1,4 +1,4 @@
-<script setup vapor>
+<script setup>
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useNotifStore } from '@/stores/useNotifStore'
 import { nextTick, onMounted, onUnmounted, ref } from 'vue'

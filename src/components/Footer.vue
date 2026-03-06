@@ -1,4 +1,4 @@
-<script setup vapor>
+<script setup>
 
 const year = new Date().getFullYear()
 

@@ -1,4 +1,4 @@
-<script setup vapor>
+<script setup>
 import { supabase } from '@/lib/supabaseClient';
 import { reactive, ref } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
