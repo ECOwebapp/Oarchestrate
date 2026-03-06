@@ -31,7 +31,7 @@ const props = defineProps(['name', 'description', 'urgent', 'progress', 'due'])
                 <p class="text-xs font-bold italic">
                     {{ props.due >= 0 ? 'Due' : 'Overdue' }}:
                     {{ props.due < 0 ? props.due * -1 : props.due !== 0 ? props.due : 'Today' }} {{ props.due > 1 ||
-                        props.due * -1 > 1 ? 'days' : 'day' }} </p>
+                        props.due * -1 > 1 ? 'days' : props.due !== 0 ? 'day' : '' }} </p>
             </div>
         </div>
     </div>

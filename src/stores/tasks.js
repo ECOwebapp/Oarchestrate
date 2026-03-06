@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { supabase } from '@/lib/supabaseClient'
+import { useAuthStore } from "./useAuthStore";
 
 const insertTasks = async (mainTask) => {
     // 1. Insert into the core 'task' table first
@@ -48,6 +49,8 @@ export const taskStore = defineStore('tasks', () => {
     const loading = ref(true)
     const error = ref(null)
 
+    const user_id = useAuthStore().userID
+
     // Position IDs that go DIRECTLY to director (no unit head step needed)
     // Director, Assistant Director, Office Chief, Documentation Officer, Technical Admin/Clerical
     const DIRECT_TO_DIRECTOR_POSITIONS = [1, 2, 3, 9, 10]
@@ -56,73 +59,53 @@ export const taskStore = defineStore('tasks', () => {
         loading.value = true
         error.value = null
         try {
-            // Step 1: get task_approval rows where director not yet approved
-            const { data: approvalRows, error: approvalErr } = await supabase
-                .from('task_approval')
-                .select('id, unit_head, director')
-                .eq('director', false)
 
-            if (approvalErr) throw approvalErr
-            if (!approvalRows?.length) { tasks.value = []; return }
-
-            // Step 2: get assignee positions to determine direct-to-director staff
-            const { data: posRows, error: posErr } = await supabase
-                .from('position')
-                .select('user_id, pos_id')
-
-            if (posErr) throw posErr
-            const posMap = Object.fromEntries((posRows || []).map(p => [p.user_id, p.pos_id]))
-
-            // Only keep approvals where unit_head=true OR assignee is direct-to-director
-            // We'll cross-reference after fetching tasks
-            const approvalIds = approvalRows.map(a => a.id)
-
-            // Step 3: fetch tasks matching those approval IDs
             const { data, error: taskErr } = await supabase
                 .from('task')
                 .select(`
                 id, parent_id, assigner, assignee,
-                task_profile ( title, description, urgent, task_type_ref:task_type(task_type) ),
+                task_profile ( title, description, revision, urgent, task_type_ref:task_type(task_type) ),
                 task_approval ( id, unit_head, director ),
                 task_duration ( created, deadline ),
                 task_output   ( link ),
                 subtasks:task!parent_id ( id, task_profile(description) )
             `)
-                .is('parent_id', null)
-                .in('id', approvalIds)
 
             if (taskErr) throw taskErr
 
-            // Step 4: build name map
-            const uuids = [...new Set((data || []).flatMap(t => [t.assigner, t.assignee]).filter(Boolean))]
-            let nameMap = {}
-            if (uuids.length) {
-                const { data: profs } = await supabase
-                    .from('user_profile')
-                    .select('id, fname, lname')
-                    .in('id', uuids)
-                nameMap = Object.fromEntries((profs || []).map(p => [p.id, `${p.fname || ''} ${p.lname || ''}`.trim()]))
-            }
-
             // Step 5: filter — unit head approved OR direct-to-director position
             tasks.value = (data || [])
-                .filter(t => {
-                    const isDirect = DIRECT_TO_DIRECTOR_POSITIONS.includes(posMap[t.assignee])
-                    return isDirect || t.task_approval?.unit_head === true
-                })
                 .map(t => ({
                     id: t.id,
-                    title: t.task_profile?.title || 'Untitled',
+                    parentId: t.parent_id || null,
+                    name: t.task_profile?.title || 'Untitled',
                     description: t.task_profile?.description || '',
-                    urgent: !!t.task_profile?.urgent,
+                    assigner: t.assigner,
+                    assignee: t.assignee,
+                    startDate: t.task_duration?.created || null,
+                    endDate: t.task_duration?.deadline || null,
                     type: t.task_profile?.task_type_ref?.task_type?.toLowerCase() || 'regular',
-                    created: t.task_duration?.created || null,
-                    deadline: t.task_duration?.deadline || null,
-                    assignedBy: nameMap[t.assigner] || 'Unknown',
-                    assignedTo: nameMap[t.assignee] || 'Unknown',
-                    unitHeadOk: !!t.task_approval?.unit_head,
+                    revision: t.task_profile?.revision,
+                    urgent: t.task_profile?.urgent,
+                    status: (() => {
+                        const approval = t.task_approval;
+                        const isInsertion = t.task_type === 'insertion';
+                        
+                        const isApproved = isInsertion 
+                            ? approval?.director 
+                            : (approval?.director && approval?.unit_head);
+                    
+                        if (isApproved) {
+                            return 'completed';
+                        } else if (approval?.director) {
+                            return 'ongoing';
+                        } else {
+                            return 'pending';
+                        }
+                        
+                    })(),
+                    // unitHeadOk: !!t.task_approval?.unit_head,
                     outputLink: t.task_output?.link || null,
-                    subtasks: (t.subtasks || []).map(s => s.task_profile?.description || ''),
                 }))
 
         } catch (e) {
@@ -130,6 +113,7 @@ export const taskStore = defineStore('tasks', () => {
             console.error('[Dashboard] fetch error:', e)
         } finally {
             loading.value = false
+            alert(user_id)
         }
     }
 

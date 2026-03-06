@@ -1,5 +1,7 @@
 <script setup vapor>
+import { useAuthStore } from '@/stores/useAuthStore';
 
+const user_id = useAuthStore().userID
 const tableHeaders = [
     "Name",
     "Description",
@@ -33,9 +35,12 @@ const prop = defineProps(['tasks'])
             <tbody class="overflow-auto border border-collapse border-gray-500">
                 <tr v-for="task in tasks" :key="task.name">
                     <template v-for="(value, key) in task" :key="key">
-                        <td v-if="key !== 'modal'" class="border border-gray-500 p-2"
+                        <td v-if="!['id', 'parentId', 'status', 'modal', 'outputLink'].includes(key)" class="border border-gray-500 p-2"
                             :class="key === 'name' ? 'font-bold' : ''">
                             {{ value }}
+                        </td>
+                        <td v-else-if="key === 'status'" class="border border-gray-500 p-2">
+                            {{ task.assigner === user_id && task.assignee === user_id ? 'ongoing' : value }}
                         </td>
                     </template>
 
