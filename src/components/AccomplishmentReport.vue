@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { taskStore } from '@/stores/tasks.js'
 
-defineProps(['show'])
+const props = defineProps({ show: Boolean, month: { default: () => new Date().getMonth() + 1 }, year: { default: () => new Date().getFullYear() } })
 const emit = defineEmits(['close'])
 
 const store = taskStore()
@@ -94,18 +94,41 @@ const programs = computed(() => {
       })),
     }]
   }
-  // Annotate each program with rowspan = total subtask rows across all its tasks
-  return source.map(prog => ({
-    program: prog.program,
-    tasks:   prog.tasks,
-    rowspan: prog.tasks.reduce((a, t) => a + Math.max(t.subtasks.length, 1), 0),
-  }))
+  // Filter subtasks by selected period, then annotate rowspan
+  const mo = +props.month
+  const yr = +props.year
+  const inPeriod = (sub) => {
+    const pd = (s) => { if (!s || s === '—') return null; const d = new Date(s); return isNaN(d) ? null : d }
+    const s = pd(sub.startDate), e = pd(sub.endDate)
+    const ok = (d) => d && d.getFullYear() === yr && (mo === 0 || d.getMonth() + 1 === mo)
+    return ok(s) || ok(e)
+  }
+  return source
+    .map(prog => ({
+      program: prog.program,
+      tasks: prog.tasks
+        .map(t => ({ taskName: t.taskName, subtasks: t.subtasks.filter(inPeriod) }))
+        .filter(t => t.subtasks.length > 0),
+    }))
+    .filter(prog => prog.tasks.length > 0)
+    .map(prog => ({
+      program: prog.program,
+      tasks:   prog.tasks,
+      rowspan: prog.tasks.reduce((a, t) => a + Math.max(t.subtasks.length, 1), 0),
+    }))
 })
 
 const statusLabel = (s) => { const map = { approved: 'Approved', pending_approval: 'For Approval', pending: 'Pending', revision: 'Revision' }; return map[s] !== undefined ? map[s] : s }
 const statusClass  = (s) => { const map = { approved: 'bg-emerald-100 text-emerald-700 border-emerald-200', pending_approval: 'bg-yellow-100 text-yellow-700 border-yellow-200', pending: 'bg-gray-100 text-gray-500 border-gray-200', revision: 'bg-orange-100 text-orange-600 border-orange-200' }; return map[s] !== undefined ? map[s] : 'bg-gray-100 text-gray-400' }
 
 const today = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const periodLabel = computed(() => {
+  const mo = +props.month
+  const yr = +props.year
+  return mo === 0 ? `Year ${yr}` : `${MONTHS[mo - 1]} ${yr}`
+})
 </script>
 
 <template>
@@ -127,39 +150,13 @@ const today = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: '
       <div class="relative flex-shrink-0 px-8 pt-6 pb-5 border-b border-gray-100">
         <img src="/images/csu.png" alt=""
           class="absolute right-8 top-1/2 -translate-y-1/2 h-20 opacity-[0.06] pointer-events-none select-none" />
-        <div class="flex items-center gap-4 mb-5">
-          <img src="/images/csu_seal.png" alt="" class="w-12 h-12 object-contain flex-shrink-0"
+        <div class="flex flex-col items-center">
+          <img src="/images/csu_seal.png" alt="" class="w-12 h-12 object-contain mb-2"
             onerror="this.style.display='none'" />
-          <div>
-            <p class="text-[10px] font-bold tracking-[0.15em] text-green-700 uppercase">Caraga State University</p>
-            <h1 class="text-xl font-bold text-gray-900">Accomplishment Report</h1>
-          </div>
-        </div>
-        <div class="flex gap-0 text-xs text-gray-600 border border-gray-200 rounded-lg overflow-hidden">
-          <!-- Left column -->
-          <div class="flex-1 divide-y divide-gray-200">
-            <div class="flex items-center gap-3 px-4 py-2">
-              <span class="w-20 font-semibold text-gray-400 uppercase tracking-wide text-[10px] flex-shrink-0">Name</span>
-              <span class="flex-1 text-gray-700">&nbsp;</span>
-            </div>
-            <div class="flex items-center gap-3 px-4 py-2">
-              <span class="w-20 font-semibold text-gray-400 uppercase tracking-wide text-[10px] flex-shrink-0">Office</span>
-              <span class="flex-1 text-gray-700">&nbsp;</span>
-            </div>
-          </div>
-          <!-- Vertical divider -->
-          <div class="w-px bg-gray-200 flex-shrink-0"></div>
-          <!-- Right column -->
-          <div class="flex-1 divide-y divide-gray-200">
-            <div class="flex items-center gap-3 px-4 py-2">
-              <span class="w-20 font-semibold text-gray-400 uppercase tracking-wide text-[10px] flex-shrink-0">Position</span>
-              <span class="flex-1 text-gray-700">&nbsp;</span>
-            </div>
-            <div class="flex items-center gap-3 px-4 py-2">
-              <span class="w-20 font-semibold text-gray-400 uppercase tracking-wide text-[10px] flex-shrink-0">Date</span>
-              <span class="flex-1 text-gray-700">{{ today }}</span>
-            </div>
-          </div>
+          <p class="text-[10px] font-bold tracking-[0.15em] text-green-700 uppercase">Caraga State University</p>
+          <h1 class="text-xl font-bold text-gray-900">Unit Accomplishment Report</h1>
+          <p class="text-[13px] text-gray-500 tracking-wide mt-0.5">Engineering and Construction Office</p>
+          <p class="text-[11px] text-green-800 font-semibold mt-1">{{ periodLabel }}</p>
         </div>
       </div>
 
@@ -181,6 +178,9 @@ const today = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: '
             </tr>
           </thead>
           <tbody>
+            <tr v-if="programs.length === 0">
+              <td colspan="10" class="text-center py-10 text-gray-400 text-sm italic">No tasks found for {{ periodLabel }}.</td>
+            </tr>
             <template v-for="(prog, pi) in programs" :key="pi">
               <template v-for="(group, gi) in prog.tasks" :key="gi">
 
@@ -277,33 +277,34 @@ const today = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: '
 
               </template>
             </template>
-
-            <tr v-if="programs.length === 0">
-              <td colspan="10" class="py-16 text-center text-gray-400 text-sm">No tasks to display</td>
-            </tr>
           </tbody>
         </table>
       </div>
 
+      <!-- ── Generated Notice ── -->
+
       <!-- ── Footer ── -->
-      <div class="flex-shrink-0 border-t border-gray-100 px-10 py-5 flex justify-between items-end bg-white">
-        <div class="text-center w-48">
-          <div class="h-8 border-b border-gray-400 mb-1"></div>
-          <p class="text-[11px] text-gray-500 font-medium">Prepared by</p>
-          <p class="text-[10px] text-gray-400">Signature over printed name</p>
+      <div class="flex-shrink-0 border-t border-gray-100 px-10 pt-5 pb-3 bg-white">
+        <div class="flex justify-between items-end mb-3">
+          <div class="text-center w-48">
+            <div class="h-8 border-b border-gray-400 mb-1"></div>
+            <p class="text-[11px] text-gray-500 font-medium">Prepared by</p>
+            <p class="text-[10px] text-gray-400">Signature over printed name</p>
+          </div>
+          <div class="text-[10px] text-gray-400 text-center space-y-0.5">
+            <p>Total tasks: <span class="font-semibold text-gray-600">{{ programs.reduce((a, p) => a + p.tasks.length, 0) }}</span></p>
+            <p>Total subtasks: <span class="font-semibold text-green-600">{{ programs.reduce((a, p) => a + p.tasks.reduce((b, t) => b + t.subtasks.length, 0), 0) }}</span></p>
+            <p>Approved: <span class="font-semibold text-emerald-600">{{ programs.reduce((a, p) => a + p.tasks.reduce((b, t) => b + t.subtasks.filter(s => s.status === 'approved').length, 0), 0) }}</span></p>
+            <p>For Approval: <span class="font-semibold text-yellow-600">{{ programs.reduce((a, p) => a + p.tasks.reduce((b, t) => b + t.subtasks.filter(s => s.status === 'pending_approval').length, 0), 0) }}</span></p>
+            <p>For Revision: <span class="font-semibold text-orange-500">{{ programs.reduce((a, p) => a + p.tasks.reduce((b, t) => b + t.subtasks.filter(s => s.status === 'revision').length, 0), 0) }}</span></p>
+          </div>
+          <div class="text-center w-48">
+            <div class="h-8 border-b border-gray-400 mb-1"></div>
+            <p class="text-[11px] text-gray-500 font-medium">Noted by</p>
+            <p class="text-[10px] text-gray-400">Signature over printed name</p>
+          </div>
         </div>
-        <div class="text-[10px] text-gray-400 text-center space-y-0.5">
-          <p>Total tasks: <span class="font-semibold text-gray-600">{{ programs.reduce((a, p) => a + p.tasks.length, 0) }}</span></p>
-          <p>Total subtasks: <span class="font-semibold text-green-600">{{ programs.reduce((a, p) => a + p.tasks.reduce((b, t) => b + t.subtasks.length, 0), 0) }}</span></p>
-          <p>Approved: <span class="font-semibold text-emerald-600">{{ programs.reduce((a, p) => a + p.tasks.reduce((b, t) => b + t.subtasks.filter(s => s.status === 'approved').length, 0), 0) }}</span></p>
-          <p>For Approval: <span class="font-semibold text-yellow-600">{{ programs.reduce((a, p) => a + p.tasks.reduce((b, t) => b + t.subtasks.filter(s => s.status === 'pending_approval').length, 0), 0) }}</span></p>
-          <p>For Revision: <span class="font-semibold text-orange-500">{{ programs.reduce((a, p) => a + p.tasks.reduce((b, t) => b + t.subtasks.filter(s => s.status === 'revision').length, 0), 0) }}</span></p>
-        </div>
-        <div class="text-center w-48">
-          <div class="h-8 border-b border-gray-400 mb-1"></div>
-          <p class="text-[11px] text-gray-500 font-medium">Noted by</p>
-          <p class="text-[10px] text-gray-400">Signature over printed name</p>
-        </div>
+        <p class="text-[9px] text-gray-300 italic select-none pointer-events-none text-left">System-generated on {{ today }}. Do not alter.</p>
       </div>
 
     </div>
