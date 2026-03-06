@@ -1,4 +1,4 @@
-<script setup vapor>
+<script setup>
 import Icons from '@/components/Icons.vue'
 
 const props = defineProps(['task'])
