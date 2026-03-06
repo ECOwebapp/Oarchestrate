@@ -2,6 +2,7 @@
 import { useAuthStore } from '@/stores/useAuthStore'
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import Icons from '@/components/Icons.vue'
 
 const route     = useRoute()
 const router    = useRouter()

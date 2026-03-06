@@ -1,4 +1,4 @@
-<script setup vapor>
+<script setup>
 defineProps(['show'])
 const emit = defineEmits(['close'])
 </script>

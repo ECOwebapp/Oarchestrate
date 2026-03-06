@@ -1,7 +1,7 @@
-<script setup vapor>
-import { ref } from 'vue'
+<script setup>
+import { taskStore } from '@/stores/tasks.js';
+import { ref } from 'vue';
 import Icons from './Icons.vue';
-import { taskStore } from '@/stores/tasks.js'
 
 const tasks = taskStore().tasks
 const addTask = taskStore().addTasks
