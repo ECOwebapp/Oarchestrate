@@ -43,8 +43,6 @@ const availableRoles = computed(() => {
     });
 });
 
-console.log(changeRoleMembers.value)
-
 const submitChangeRole = async () => {
 
 }
@@ -89,10 +87,10 @@ const submitChangeRole = async () => {
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Member:</label>
-                            <select v-model="changeRoleMembers.user_id" @change="console.log('DOM Level Change:', changeRoleMembers.user_id)"
+                            <select v-model="changeRoleMembers.user_id"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-700">
                                 <option disabled selected :value="null">-- Select a member --</option>
-                                <option v-for="member in normalMembers" :key="member.user_id" :value="member.user_id">{{
+                                <option v-for="member in normalMembers" :key="member.id" :value="member.id">{{
                                     member.fname }} {{
                                         member.middle_initial }} {{ member.lname }}</option>
                             </select>
