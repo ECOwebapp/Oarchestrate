@@ -91,7 +91,13 @@ const directorDonut = computed(() => {
 // ─────────────────────────────────────────────
 // UNIT HEAD
 // ─────────────────────────────────────────────
-const uhPending    = computed(() => store.tasks.filter(t => t.assignee !== auth.userID && !t.unitHead && !t.director && t.outputLink))
+const uhPending    = computed(() => store.tasks.filter(t =>
+  t.assignee !== auth.userID &&
+  !t.unitHead &&
+  !t.director &&
+  t.outputLink &&
+  t.assigneeRole === 3 // only unit member submissions
+))
 const uhOwn        = computed(() => store.tasks.filter(t => t.assignee === auth.userID))
 const uhMonth      = computed(() => forMonth(uhPending.value))
 const uhRegular    = computed(() => uhMonth.value.filter(t => t.type?.toLowerCase() !== 'insertion').sort((a,b)=>(b.urgent?1:0)-(a.urgent?1:0)))
@@ -160,6 +166,9 @@ const activeInsertion= computed(() => auth.isDirector ? directorInsertion.value:
         <div>
           <p class="text-xs text-gray-400 uppercase tracking-widest">
             {{ auth.isDirector ? 'Director' : auth.isUnitHead ? 'Unit Head' : 'Member' }}
+            <span v-if="auth.isUnitHead && auth.unitName" class="ml-2 font-normal text-green-700">
+              ({{ auth.unitName }}, #{{ auth.unitId }})
+            </span>
           </p>
           <p class="text-base font-bold text-gray-800">
             {{ auth.isDirector ? 'Tasks Awaiting Your Approval'

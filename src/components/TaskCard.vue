@@ -28,6 +28,14 @@ const statusLabel = computed(() => {
   return                            { label: 'Pending Unit Head', cls: 'bg-gray-100 text-gray-600'  }
 })
 
+const cardClass = computed(() => {
+  // dim card when reviewer role and no submission yet
+  if ((auth.isUnitHead || auth.isDirector) && !props.task?.outputLink) {
+    return 'opacity-50'
+  }
+  return ''
+})
+
 // Show assignee name only if the viewer is not the assignee
 const showAssignee = computed(() =>
   props.task?.assigneeName && props.task?.assignee !== auth.userID
@@ -40,11 +48,12 @@ const showAssignee = computed(() =>
     class="relative flex flex-col rounded-2xl py-3 px-4 overflow-hidden bg-white shadow-md
            hover:shadow-lg cursor-pointer transition-all duration-200 hover:-translate-y-0.5 group
            h-44"
-    :class="task.urgent
-      ? 'outline outline-2 outline-red-800'
-      : task.revision
-        ? 'outline outline-2 outline-orange-400'
-        : 'outline outline-2 outline-green-950'">
+    :class="[ cardClass,
+      task.urgent
+        ? 'outline outline-2 outline-red-800'
+        : task.revision
+          ? 'outline outline-2 outline-orange-400'
+          : 'outline outline-2 outline-green-950' ]">
 
     <!-- Urgent ribbon -->
     <div v-if="task.urgent" class="absolute top-0 right-0 h-14 w-14 overflow-hidden pointer-events-none">

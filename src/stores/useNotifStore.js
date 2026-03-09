@@ -57,41 +57,46 @@ export const useNotifStore = defineStore('notif', () => {
         const userIds = (regs || []).map(r => r.user_id)
         let nameMap = {}
         let posMap  = {}
+        let unitMap = {}
 
         if (userIds.length) {
-          // user_profile PK = user_id  ← key fix
-          const { data: profs, error: profErr } = await supabase
-            .from('user_profile')
-            .select('user_id, fname, lname')
-            .in('user_id', userIds)
+          const [profRes, posRes, unitRes] = await Promise.all([
+            supabase.from('user_profile')
+              .select('user_id, fname, lname')
+              .in('user_id', userIds),
+            supabase.from('position')
+              .select('user_id, position_name:pos_id(pos_name)')
+              .in('user_id', userIds),
+            supabase.from('unit')
+              .select('user_id, unit_name:unit_id(name)')
+              .in('user_id', userIds),
+          ])
 
-          if (profErr) console.error('[notifStore] user_profile error:', profErr)
-
-          // position: user_id + pos_id (FK → position_name.id)
-          // Supabase join: "alias:fk_column(columns)"
-          const { data: positions, error: posErr } = await supabase
-            .from('position')
-            .select('user_id, position_name:pos_id(id, pos_name)')
-            .in('user_id', userIds)
-
-          if (posErr) console.error('[notifStore] position error:', posErr)
+          if (profRes.error) console.error('[notifStore] user_profile error:', profRes.error)
+          if (posRes.error)  console.error('[notifStore] position error:',     posRes.error)
+          if (unitRes.error) console.error('[notifStore] unit error:',         unitRes.error)
 
           nameMap = Object.fromEntries(
-            (profs || []).map(p => [p.user_id, `${p.fname || ''} ${p.lname || ''}`.trim()])
+            (profRes.data || []).map(p => [p.user_id, `${p.fname || ''} ${p.lname || ''}`.trim()])
           )
           posMap = Object.fromEntries(
-            (positions || []).map(p => [p.user_id, p.position_name?.pos_name || ''])
+            (posRes.data || []).map(p => [p.user_id, p.position_name?.pos_name || ''])
+          )
+          unitMap = Object.fromEntries(
+            (unitRes.data || []).map(u => [u.user_id, u.unit_name?.name || ''])
           )
         }
 
         ;(regs || []).forEach(r => {
+          const unitLabel = unitMap[r.user_id] || ''
           results.push({
             id:       `reg-${r.user_id}`,
             type:     'registration',
             userId:   r.user_id,
             title:    nameMap[r.user_id] || 'New User',
             position: posMap[r.user_id]  || 'Unassigned',
-            body:     'Registered and is awaiting your approval.',
+            unit:     unitLabel,
+            body:     `Registered${unitLabel ? ` under ${unitLabel}` : ''} — awaiting your approval.`,
             time:     r.requested_at,
             read:     !!r.notif_read_by_director,
             status:   'pending',
@@ -283,17 +288,18 @@ export const useNotifStore = defineStore('notif', () => {
   // MARK ALL READ
   // ─────────────────────────────────────────
   const markAllRead = async () => {
-    notifs.value.forEach(n => { n.read = true })
+    // Mark non-registration notifs as read locally
+    notifs.value.forEach(n => {
+      if (n.type !== 'registration') n.read = true
+    })
     const auth = useAuthStore()
     const uid  = auth.user?.id
     if (!uid) return
 
     try {
-      if (auth.isDirector) {
-        await supabase.from('account_status')
-          .update({ notif_read_by_director: true })
-          .eq('status', 'pending')
-      }
+      // Do NOT mass-mark registrations as read here —
+      // they are individually marked read only when approved/denied
+      if (false) { /* intentionally skip account_status mass-read */ }
       const taskIds = notifs.value
         .filter(n => n.type === 'task_submitted')
         .map(n => parseInt(n.id.replace('task-', '')))

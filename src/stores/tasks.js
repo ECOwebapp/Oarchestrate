@@ -92,7 +92,11 @@ export const taskStore = defineStore('tasks', () => {
         // 2. Tasks from Office unit members (direct-to-director) with output submitted
         // 3. Own assigned tasks
         const { data: officeUnit } = await supabase
-          .from('unit_name').select('id').ilike('name', 'office').maybeSingle()
+          .from('unit_name')
+          .select('id')
+          .ilike('name', 'office')
+          .maybeSingle()
+
         const officeUnitId = officeUnit?.id || null
 
         let officeMembers = []
@@ -104,7 +108,8 @@ export const taskStore = defineStore('tasks', () => {
 
         // Tasks approved by unit heads (regular pipeline)
         const { data: approvedRows } = await supabase
-          .from('task').select(TASK_SELECT)
+          .from('task')
+          .select(TASK_SELECT)
           .is('parent_id', null)
           .eq('task_approval.unit_head', true)
           .eq('task_approval.director', false)
@@ -137,14 +142,30 @@ export const taskStore = defineStore('tasks', () => {
       } else if (auth.isUnitHead) {
         // Unit head sees only their own unit's tasks (not Office)
         const { data: unitMembers } = await supabase
-          .from('unit').select('user_id').eq('unit_id', auth.unitId)
+          .from('unit')
+          .select('user_id')
+          .eq('unit_id', auth.unitId)
+
         const memberIds = (unitMembers || []).map(m => m.user_id).filter(id => id !== uid)
         const assigneeFilter = [uid, ...memberIds].map(id => `assignee.eq.${id}`).join(',')
         const { data: rows } = await supabase
           .from('task').select(TASK_SELECT)
           .is('parent_id', null).or(assigneeFilter)
         await resolveNames([...new Set((rows||[]).flatMap(t => [t.assigner, t.assignee]).filter(Boolean))])
-        tasks.value = (rows||[]).map(mapRow)
+        // also fetch roles of assignees so we know who is a member vs head
+        const assigneeIds = [...new Set((rows||[]).map(t => t.assignee).filter(Boolean))]
+        let roleMap = {}
+        if (assigneeIds.length) {
+          const { data: roles } = await supabase
+            .from('member_type')
+            .select('user_id, role_id')
+            .in('user_id', assigneeIds)
+          ;(roles || []).forEach(r => { roleMap[r.user_id] = r.role_id })
+        }
+        tasks.value = (rows||[]).map(t => ({
+          ...mapRow(t),
+          assigneeRole: roleMap[t.assignee] || null,
+        }))
 
       } else {
         // Member: own tasks only
@@ -182,8 +203,8 @@ export const taskStore = defineStore('tasks', () => {
       }),
       supabase.from('task_approval').insert({
         id:        taskId,
-        // Office unit members bypass unit head — pre-approve at unit_head level
-        unit_head: auth.isDirector || auth.isOffice,
+        // All tasks start pending unit head approval (even Office goes there first, then director)
+        unit_head: false,
         director:  false,
       }),
       supabase.from('task_duration').insert({
@@ -199,7 +220,7 @@ export const taskStore = defineStore('tasks', () => {
       if (!subRow) continue
       await Promise.all([
         supabase.from('task_profile').insert({ id: subRow.id, title: sub.description, description: sub.description, task_type: mainTask.type, urgent: false }),
-        supabase.from('task_approval').insert({ id: subRow.id, unit_head: auth.isDirector, director: false }),
+        supabase.from('task_approval').insert({ id: subRow.id, unit_head: false, director: false }),
         supabase.from('task_duration').insert({ id: subRow.id, created: new Date().toISOString().split('T')[0], deadline: mainTask.endDate }),
         supabase.from('task_output').insert({ id: subRow.id, link: '' }),
       ])

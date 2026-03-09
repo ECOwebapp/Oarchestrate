@@ -278,10 +278,15 @@ const handleRegister = async () => {
         pos_id:  parseInt(form.positionId),
       }),
 
-      // role_id 3 = regular member
       supabase.from('member_type').upsert({
         user_id: userId,
-        role_id: 3,
+        role_id: (() => {
+          const selectedPosition = allPositions.value.find(p => p.id === parseInt(form.positionId))
+          const posName = selectedPosition?.pos_name?.toLowerCase() || ''
+          if (posName.includes('unit head')) return 2
+          if (posName.includes('director')) return 1
+          return 3
+        })(),
       }),
 
       supabase.from('account_status').upsert({

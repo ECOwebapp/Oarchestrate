@@ -53,10 +53,10 @@ const unreadCount = computed(() =>
 
 // ── Capabilities ────────────────────────────────────────────
 const canApproveAsUnitHead = computed(() =>
-  auth.isUnitHead && !props.task?.unitHead && !props.task?.director
+  auth.isUnitHead && !props.task?.unitHead && !props.task?.director && !!props.task?.outputLink
 )
 const canApproveAsDirector = computed(() =>
-  auth.isDirector && props.task?.unitHead && !props.task?.director
+  auth.isDirector && props.task?.unitHead && !props.task?.director && !!props.task?.outputLink
 )
 const canSubmitOutput = computed(() =>
   auth.isMember && !props.task?.outputLink && !props.task?.director

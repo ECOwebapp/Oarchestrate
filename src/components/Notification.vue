@@ -15,6 +15,7 @@ const toggle = async () => {
   if (open.value) {
     notifStore.resetShown()
     await nextTick()
+    // Only mark non-registration items as read when opening
     if (notifStore.unread > 0) await notifStore.markAllRead()
   }
 }
@@ -44,34 +45,41 @@ const timeAgo = (d) => {
 }
 
 const badgeClass = (n) => {
-  if (n.type === 'registration')                    return 'bg-blue-100 text-blue-700'
+  if (n.type === 'registration')                     return 'bg-blue-100 text-blue-700'
   if (n.type === 'task_submitted' && n.meta?.urgent) return 'bg-red-100 text-red-700'
-  if (n.type === 'task_submitted')                  return 'bg-green-100 text-green-700'
-  if (n.type === 'poke')                            return 'bg-amber-100 text-amber-700'
+  if (n.type === 'task_submitted')                   return 'bg-green-100 text-green-700'
+  if (n.type === 'poke')                             return 'bg-amber-100 text-amber-700'
   return 'bg-gray-100 text-gray-600'
 }
 const dotClass = (n) => {
   if (!n.read) {
-    if (n.type === 'registration')                    return 'bg-blue-500'
+    if (n.type === 'registration')                     return 'bg-blue-500'
     if (n.type === 'task_submitted' && n.meta?.urgent) return 'bg-red-500'
-    if (n.type === 'task_submitted')                  return 'bg-green-600'
-    if (n.type === 'poke')                            return 'bg-amber-500'
+    if (n.type === 'task_submitted')                   return 'bg-green-600'
+    if (n.type === 'poke')                             return 'bg-amber-500'
   }
   return 'bg-gray-200'
 }
 const itemBg = (n) => {
-  if (n.type === 'registration')                    return 'bg-blue-50 border-blue-100'
+  if (n.type === 'registration')                     return 'bg-blue-50 border-blue-100'
   if (n.type === 'task_submitted' && n.meta?.urgent) return 'bg-red-50 border-red-100'
-  if (n.type === 'task_submitted')                  return 'bg-green-50 border-green-100'
-  if (n.type === 'poke')                            return 'bg-amber-50 border-amber-100'
+  if (n.type === 'task_submitted')                   return 'bg-green-50 border-green-100'
+  if (n.type === 'poke')                             return 'bg-amber-50 border-amber-100'
   return 'bg-gray-50 border-gray-100'
 }
 const labelText = (n) => {
-  if (n.type === 'registration')                    return 'New User'
+  if (n.type === 'registration')                     return 'New Registration'
   if (n.type === 'task_submitted' && n.meta?.urgent) return 'Urgent Task'
-  if (n.type === 'task_submitted')                  return 'Task'
-  if (n.type === 'poke')                            return 'Follow-up'
+  if (n.type === 'task_submitted')                   return 'Task'
+  if (n.type === 'poke')                             return 'Follow-up'
   return 'Notification'
+}
+
+// Initials avatar for registrant
+const initials = (name) => {
+  if (!name || name === 'New User') return '?'
+  const parts = name.trim().split(' ')
+  return (parts[0]?.[0] || '') + (parts[parts.length - 1]?.[0] || '')
 }
 
 const isActing = (n) => n.status === 'approving' || n.status === 'denying'
@@ -111,7 +119,7 @@ onUnmounted(() => {
         </div>
 
         <!-- List -->
-        <div class="overflow-y-auto notif-scroll" style="max-height:460px">
+        <div class="overflow-y-auto notif-scroll" style="max-height:480px">
 
           <!-- Empty -->
           <div v-if="notifStore.notifs.length === 0"
@@ -129,62 +137,97 @@ onUnmounted(() => {
             <TransitionGroup name="notif-list" tag="div">
               <div
                 v-for="(n, i) in notifStore.visible" :key="n.id"
-                class="notif-item mx-2 mb-2 rounded-xl border overflow-hidden transition-opacity duration-200"
-                :class="[itemBg(n), !n.read ? 'shadow-sm' : 'opacity-60']"
+                class="notif-item mx-2 mb-2 rounded-xl border overflow-hidden"
+                :class="[itemBg(n), !n.read ? 'shadow-sm' : 'opacity-70']"
                 :style="`animation-delay:${i*25}ms`">
 
-                <!-- ── REGISTRATION ITEM ── -->
+                <!-- ══ REGISTRATION ITEM ══ -->
                 <template v-if="n.type === 'registration'">
                   <div class="px-3 pt-3 pb-2">
-                    <div class="flex items-start gap-2.5">
-                      <span class="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" :class="dotClass(n)"/>
-                      <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between gap-2 mb-1">
-                          <span class="text-xs font-bold px-1.5 py-0.5 rounded-md" :class="badgeClass(n)">
-                            New User
-                          </span>
-                          <span class="text-xs text-gray-400 flex-shrink-0">{{ timeAgo(n.time) }}</span>
+                    <div class="flex items-start gap-3">
+
+                      <!-- Avatar with unread dot -->
+                      <div class="relative flex-shrink-0">
+                        <div class="w-10 h-10 rounded-full bg-blue-700 flex items-center justify-center
+                                    text-white text-xs font-bold uppercase tracking-wide">
+                          {{ initials(n.title) }}
                         </div>
-                        <p class="text-xs font-bold text-gray-800">{{ n.title }}</p>
-                        <p class="text-xs text-gray-500 mt-0.5">{{ n.position }}</p>
-                        <p class="text-xs text-gray-400 mt-0.5 leading-snug">{{ n.body }}</p>
+                        <span v-if="!n.read"
+                          class="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-blue-500
+                                 border-2 border-white" />
+                      </div>
+
+                      <div class="flex-1 min-w-0">
+                        <!-- Badge + time -->
+                        <div class="flex items-center justify-between gap-2 mb-1">
+                          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 uppercase tracking-wide">
+                            New Registration
+                          </span>
+                          <span class="text-[10px] text-gray-400 flex-shrink-0">{{ timeAgo(n.time) }}</span>
+                        </div>
+
+                        <!-- Name -->
+                        <p class="text-sm font-bold text-gray-900 leading-tight">{{ n.title }}</p>
+
+                        <!-- Position + Unit -->
+                        <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                          <span v-if="n.position" class="text-xs text-gray-600 font-medium">{{ n.position }}</span>
+                          <span v-if="n.position && n.unit" class="text-gray-300 text-xs">·</span>
+                          <span v-if="n.unit"
+                            class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 uppercase tracking-wide">
+                            {{ n.unit }}
+                          </span>
+                        </div>
+
+                        <!-- Body message -->
+                        <p class="text-xs text-gray-500 mt-1 leading-snug">
+                          Awaiting your approval to access the system.
+                        </p>
                       </div>
                     </div>
                   </div>
 
-                  <!-- Approve / Deny actions -->
-                  <div class="flex gap-2 px-3 pb-3">
+                  <!-- Action buttons -->
+                  <div class="flex gap-2 px-3 pb-3 pt-1">
                     <button
                       @click="notifStore.denyUser(n.userId)"
                       :disabled="isActing(n)"
-                      class="flex-1 py-1.5 rounded-lg border-2 border-red-300 text-red-600
-                             text-xs font-bold hover:bg-red-50 transition-colors
-                             disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1">
+                      class="flex-1 py-2 rounded-xl border-2 border-red-200 text-red-600
+                             text-xs font-bold hover:bg-red-50 hover:border-red-300 transition-all
+                             disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5
+                             active:scale-95">
                       <svg v-if="n.status === 'denying'" class="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
                         <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-opacity="0.3" stroke-width="3"/>
                         <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
                       </svg>
-                      {{ n.status === 'denying' ? 'Denying…' : '✕ Deny' }}
+                      <svg v-else viewBox="0 0 24 24" class="w-3 h-3 fill-current">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                      </svg>
+                      {{ n.status === 'denying' ? 'Denying…' : 'Deny' }}
                     </button>
                     <button
                       @click="notifStore.approveUser(n.userId)"
                       :disabled="isActing(n)"
-                      class="flex-1 py-1.5 rounded-lg bg-green-800 text-white
-                             text-xs font-bold hover:bg-green-700 transition-colors
-                             disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1">
+                      class="flex-1 py-2 rounded-xl bg-green-800 text-white
+                             text-xs font-bold hover:bg-green-700 transition-all
+                             disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5
+                             active:scale-95">
                       <svg v-if="n.status === 'approving'" class="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
                         <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
                         <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round"/>
                       </svg>
-                      {{ n.status === 'approving' ? 'Approving…' : '✓ Approve' }}
+                      <svg v-else viewBox="0 0 24 24" class="w-3 h-3 fill-current">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                      </svg>
+                      {{ n.status === 'approving' ? 'Approving…' : 'Approve' }}
                     </button>
                   </div>
                 </template>
 
-                <!-- ── ALL OTHER ITEMS ── -->
+                <!-- ══ ALL OTHER ITEMS ══ -->
                 <template v-else>
                   <div class="px-3 py-2.5 flex items-start gap-2.5">
-                    <span class="w-2 h-2 rounded-full flex-shrink-0 mt-1" :class="dotClass(n)"/>
+                    <span class="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" :class="dotClass(n)"/>
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center justify-between gap-2 mb-0.5">
                         <span class="text-xs font-bold px-1.5 py-0.5 rounded-md" :class="badgeClass(n)">
@@ -238,7 +281,7 @@ onUnmounted(() => {
         </span>
       </Transition>
 
-      <!-- Pulse ring -->
+      <!-- Pulse ring when unread -->
       <span v-if="notifStore.unread > 0 && !open"
         class="absolute inset-0 rounded-2xl bg-green-400 opacity-30 animate-ping pointer-events-none"/>
     </button>
