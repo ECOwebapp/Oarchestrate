@@ -42,7 +42,6 @@ export const useNotifStore = defineStore('notif', () => {
       // Schema: account_status.user_id → auth.users
       //         user_profile.user_id   → auth.users  (PK is user_id, NOT id)
       //         position.user_id, position.pos_id → position_name.id
-      console.log(auth.isDirector, 'isDirector') // Debug log
       if (auth.isDirector) {
         const { data: regs, error: regsErr } = await supabase
           .from('account_status')
@@ -58,41 +57,46 @@ export const useNotifStore = defineStore('notif', () => {
         const userIds = (regs || []).map(r => r.user_id)
         let nameMap = {}
         let posMap  = {}
+        let unitMap = {}
 
         if (userIds.length) {
-          // user_profile PK = user_id  ← key fix
-          const { data: profs, error: profErr } = await supabase
-            .from('user_profile')
-            .select('user_id, fname, lname')
-            .in('user_id', userIds)
+          const [profRes, posRes, unitRes] = await Promise.all([
+            supabase.from('user_profile')
+              .select('user_id, fname, lname')
+              .in('user_id', userIds),
+            supabase.from('position')
+              .select('user_id, position_name:pos_id(pos_name)')
+              .in('user_id', userIds),
+            supabase.from('unit')
+              .select('user_id, unit_name:unit_id(name)')
+              .in('user_id', userIds),
+          ])
 
-          if (profErr) console.error('[notifStore] user_profile error:', profErr)
-
-          // position: user_id + pos_id (FK → position_name.id)
-          // Supabase join: "alias:fk_column(columns)"
-          const { data: positions, error: posErr } = await supabase
-            .from('position')
-            .select('user_id, position_name:pos_id(id, pos_name)')
-            .in('user_id', userIds)
-
-          if (posErr) console.error('[notifStore] position error:', posErr)
+          if (profRes.error) console.error('[notifStore] user_profile error:', profRes.error)
+          if (posRes.error)  console.error('[notifStore] position error:',     posRes.error)
+          if (unitRes.error) console.error('[notifStore] unit error:',         unitRes.error)
 
           nameMap = Object.fromEntries(
-            (profs || []).map(p => [p.user_id, `${p.fname || ''} ${p.lname || ''}`.trim()])
+            (profRes.data || []).map(p => [p.user_id, `${p.fname || ''} ${p.lname || ''}`.trim()])
           )
           posMap = Object.fromEntries(
-            (positions || []).map(p => [p.user_id, p.position_name?.pos_name || ''])
+            (posRes.data || []).map(p => [p.user_id, p.position_name?.pos_name || ''])
+          )
+          unitMap = Object.fromEntries(
+            (unitRes.data || []).map(u => [u.user_id, u.unit_name?.name || ''])
           )
         }
 
         ;(regs || []).forEach(r => {
+          const unitLabel = unitMap[r.user_id] || ''
           results.push({
             id:       `reg-${r.user_id}`,
             type:     'registration',
             userId:   r.user_id,
             title:    nameMap[r.user_id] || 'New User',
             position: posMap[r.user_id]  || 'Unassigned',
-            body:     'Registered and is awaiting your approval.',
+            unit:     unitLabel,
+            body:     `Registered${unitLabel ? ` under ${unitLabel}` : ''} — awaiting your approval.`,
             time:     r.requested_at,
             read:     !!r.notif_read_by_director,
             status:   'pending',
@@ -101,57 +105,132 @@ export const useNotifStore = defineStore('notif', () => {
       }
 
       // ── 2. Task notifications ────────────────────────────
-      // task_duration.created is type DATE (not timestamptz)
-      // task_output.link is NOT NULL but may be empty string
-      const { data: taskRows, error: taskErr } = await supabase
-        .from('task')
-        .select(`
-          id, assignee, assigner,
-          task_profile ( title, urgent, task_type_ref:task_type(task_type) ),
-          task_approval ( unit_head, director ),
-          task_duration ( created ),
-          task_notif    ( read_by_assignee, read_by_director )
-        `)
-        .or(`assignee.eq.${uid},assigner.eq.${uid}`)
-        .is('parent_id', null)
-        .limit(30)
+      // Build task query based on role:
+      // Director   → tasks where unit_head=true and not yet director approved
+      //              + Office unit tasks with output submitted
+      // Unit Head  → tasks from their unit members with output submitted, not yet unit_head approved
+      // Member     → their own tasks
+      let taskRows = []
+      let taskErr  = null
+
+      if (auth.isDirector) {
+        // Get Office unit id
+        const { data: officeUnit } = await supabase
+          .from('unit_name').select('id').ilike('name', 'office').maybeSingle()
+        const officeUnitId = officeUnit?.id || null
+        let officeFilter = null
+        if (officeUnitId) {
+          const { data: om } = await supabase
+            .from('unit').select('user_id').eq('unit_id', officeUnitId)
+          const officeIds = (om || []).map(m => m.user_id)
+          if (officeIds.length) officeFilter = officeIds.map(id => `assignee.eq.${id}`).join(',')
+        }
+
+        const { data: d1, error: e1 } = await supabase
+          .from('task')
+          .select(`id, assignee, assigner,
+            task_profile ( title, urgent, task_type_ref:task_type(task_type) ),
+            task_approval ( unit_head, director ),
+            task_duration ( created ),
+            task_notif    ( read_by_assignee, read_by_director, read_by_unit_head ),
+            task_output   ( link )`)
+          .is('parent_id', null)
+          .eq('task_approval.unit_head', true)
+          .eq('task_approval.director', false)
+          .limit(30)
+
+        let d2 = []
+        if (officeFilter) {
+          const { data: od } = await supabase
+            .from('task')
+            .select(`id, assignee, assigner,
+              task_profile ( title, urgent, task_type_ref:task_type(task_type) ),
+              task_approval ( unit_head, director ),
+              task_duration ( created ),
+              task_notif    ( read_by_assignee, read_by_director, read_by_unit_head ),
+              task_output   ( link )`)
+            .is('parent_id', null).or(officeFilter)
+          d2 = (od || []).filter(t => t.task_output?.link && !t.task_approval?.director)
+        }
+        const seen = new Set()
+        taskRows = [...(d1||[]), ...d2].filter(t => {
+          if (seen.has(t.id)) return false; seen.add(t.id); return true
+        })
+        taskErr = e1
+
+      } else if (auth.isUnitHead) {
+        // Unit head: tasks from unit members with output submitted, not yet approved
+        const { data: unitMembers } = await supabase
+          .from('unit').select('user_id').eq('unit_id', auth.unitId)
+        const memberIds = (unitMembers || [])
+          .map(m => m.user_id).filter(id => id !== uid)
+
+        if (memberIds.length) {
+          const filter = memberIds.map(id => `assignee.eq.${id}`).join(',')
+          const { data: d, error: e } = await supabase
+            .from('task')
+            .select(`id, assignee, assigner,
+              task_profile ( title, urgent, task_type_ref:task_type(task_type) ),
+              task_approval ( unit_head, director ),
+              task_duration ( created ),
+              task_notif    ( read_by_assignee, read_by_director, read_by_unit_head ),
+              task_output   ( link )`)
+            .is('parent_id', null).or(filter).limit(30)
+          taskRows = (d || []).filter(t => t.task_output?.link && !t.task_approval?.unit_head)
+          taskErr  = e
+        }
+
+      } else {
+        const { data: d, error: e } = await supabase
+          .from('task')
+          .select(`id, assignee, assigner,
+            task_profile ( title, urgent, task_type_ref:task_type(task_type) ),
+            task_approval ( unit_head, director ),
+            task_duration ( created ),
+            task_notif    ( read_by_assignee, read_by_director, read_by_unit_head )`)
+          .or(`assignee.eq.${uid},assigner.eq.${uid}`)
+          .is('parent_id', null).limit(30)
+        taskRows = d || []
+        taskErr  = e
+      }
 
       if (taskErr) console.error('[notifStore] task fetch error:', taskErr)
 
       const uids2 = [...new Set((taskRows || [])
-        .flatMap(t => [t.assigner, t.assignee])
-        .filter(Boolean)
-      )]
+        .flatMap(t => [t.assigner, t.assignee]).filter(Boolean))]
       let nm2 = {}
       if (uids2.length) {
-        // user_profile PK = user_id
         const { data: p2 } = await supabase
-          .from('user_profile')
-          .select('user_id, fname, lname')
-          .in('user_id', uids2)
+          .from('user_profile').select('user_id, fname, lname').in('user_id', uids2)
         nm2 = Object.fromEntries(
           (p2 || []).map(p => [p.user_id, `${p.fname || ''} ${p.lname || ''}`.trim()])
         )
       }
 
       ;(taskRows || []).forEach(t => {
-        const isDirectorView = auth.isDirector
-          && t.task_approval?.unit_head
-          && !t.task_approval?.director
-        const isAssigneeView = t.assignee === uid
-        if (!isDirectorView && !isAssigneeView) return
-
         const urgent   = !!t.task_profile?.urgent
         const taskType = t.task_profile?.task_type_ref?.task_type?.toLowerCase() || 'regular'
-        const isRead   = auth.isDirector
-          ? !!t.task_notif?.read_by_director
-          : !!t.task_notif?.read_by_assignee
+        let isRead = false
+        if (auth.isDirector)  isRead = !!t.task_notif?.read_by_director
+        else if (auth.isUnitHead) isRead = !!t.task_notif?.read_by_unit_head
+        else isRead = !!t.task_notif?.read_by_assignee
 
+        // For members: only show their own pending tasks
+        if (!auth.isDirector && !auth.isUnitHead) {
+          if (t.assignee !== uid) return
+        }
+
+        const submitter = nm2[t.assignee] || 'Someone'
+        const assigner  = nm2[t.assigner] || 'Unknown'
         results.push({
           id:    `task-${t.id}`,
           type:  'task_submitted',
           title: t.task_profile?.title || 'Untitled Task',
-          body:  `Submitted by ${nm2[t.assigner] || 'someone'} · ${taskType}${urgent ? ' · URGENT' : ''}`,
+          body:  auth.isUnitHead
+            ? `${submitter} submitted output — awaiting your review · ${taskType}${urgent ? ' · URGENT' : ''}`
+            : auth.isDirector
+              ? `${submitter} · ${taskType}${urgent ? ' · URGENT' : ''} · approved by Unit Head`
+              : `Assigned by ${assigner} · ${taskType}${urgent ? ' · URGENT' : ''}`,
           time:  t.task_duration?.created,
           read:  isRead,
           meta:  { urgent, taskType },
@@ -209,22 +288,27 @@ export const useNotifStore = defineStore('notif', () => {
   // MARK ALL READ
   // ─────────────────────────────────────────
   const markAllRead = async () => {
-    notifs.value.forEach(n => { n.read = true })
+    // Mark non-registration notifs as read locally
+    notifs.value.forEach(n => {
+      if (n.type !== 'registration') n.read = true
+    })
     const auth = useAuthStore()
     const uid  = auth.user?.id
     if (!uid) return
 
     try {
-      if (auth.isDirector) {
-        await supabase.from('account_status')
-          .update({ notif_read_by_director: true })
-          .eq('status', 'pending')
-      }
+      // Do NOT mass-mark registrations as read here —
+      // they are individually marked read only when approved/denied
+      if (false) { /* intentionally skip account_status mass-read */ }
       const taskIds = notifs.value
         .filter(n => n.type === 'task_submitted')
         .map(n => parseInt(n.id.replace('task-', '')))
       if (taskIds.length) {
-        const col = auth.isDirector ? 'read_by_director' : 'read_by_assignee'
+        const col = auth.isDirector
+          ? 'read_by_director'
+          : auth.isUnitHead
+            ? 'read_by_unit_head'
+            : 'read_by_assignee'
         await supabase.from('task_notif').update({ [col]: true }).in('task_id', taskIds)
       }
       const pokeIds = notifs.value
@@ -302,6 +386,20 @@ export const useNotifStore = defineStore('notif', () => {
       )
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'task_poke' },
+        () => { fetchNotifs(); onNew?.() }
+      )
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'task_revision' },
+        (payload) => {
+          const auth = useAuthStore()
+          // Only notify if current user is the recipient
+          if (payload.new?.to_user === auth.user?.id) {
+            fetchNotifs(); onNew?.()
+          }
+        }
+      )
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'task_approval' },
         () => { fetchNotifs(); onNew?.() }
       )
       .subscribe()

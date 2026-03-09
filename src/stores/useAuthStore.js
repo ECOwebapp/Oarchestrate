@@ -11,6 +11,7 @@ export const useAuthStore = defineStore('auth', () => {
   const positionLabel = ref('')
   const roleId        = ref(null)
   const unitId        = ref(null)
+  const unitName      = ref('')
   const accountStatus = ref(null)
   const loading       = ref(false)
   const initialized   = ref(false)
@@ -53,6 +54,8 @@ export const useAuthStore = defineStore('auth', () => {
   const isUnitHead = computed(() => roleId.value === 2)
   const isMember   = computed(() => roleId.value === 3)
   const isAdmin    = computed(() => roleId.value === 4)
+  // Office unit members bypass unit head — go straight to director
+  const isOffice   = computed(() => unitName.value === 'office')
 
   // ── Fetch user data ──
   async function fetchUserData(authUser) {
@@ -81,7 +84,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       supabase
         .from('unit')
-        .select('unit_id')
+        .select('unit_id, unit_name:unit_id(name)')
         .eq('user_id', authUser.id)
         .maybeSingle(),
 
@@ -103,7 +106,8 @@ export const useAuthStore = defineStore('auth', () => {
     profile.value       = profRes.data  ?? null
     positionLabel.value = posRes.data?.position_name?.pos_name ?? ''
     roleId.value        = roleRes.data?.role_id ?? null
-    unitId.value        = unitRes.data?.unit_id ?? null
+    unitId.value        = unitRes.data?.unit_id   ?? null
+    unitName.value      = unitRes.data?.unit_name?.name?.toLowerCase() ?? ''
     accountStatus.value = statusRes.data?.status ?? 'pending'
 
     loading.value     = false
@@ -147,14 +151,15 @@ export const useAuthStore = defineStore('auth', () => {
     positionLabel.value = ''
     roleId.value        = null
     unitId.value        = null
+    unitName.value      = ''
     accountStatus.value = null
     initialized.value   = false
   }
 
   return {
-    user, userID, profile, positionLabel, roleId, unitId, accountStatus, loading, initialized,
+    user, userID, profile, positionLabel, roleId, unitId, unitName, accountStatus, loading, initialized,
     isLoggedIn, fullName, initials, avatarColor,
-    isDirector, isUnitHead, isMember, isAdmin,
+    isDirector, isUnitHead, isMember, isAdmin, isOffice,
     init, listenToAuthChanges, fetchUserData, logout, $reset,
   }
 })
