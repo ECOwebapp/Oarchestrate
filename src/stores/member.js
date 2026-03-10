@@ -64,7 +64,7 @@ export const useMemberStore = defineStore('member', () => {
 
             if (error) throw error
             if (status === 200) {
-                console.log(data)
+                await fetchMembers()
 
                 return status
             }
