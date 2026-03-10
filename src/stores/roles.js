@@ -46,5 +46,24 @@ export const useRolePosStore = defineStore('rolePos', () => {
         }
     }
 
-    return { roles, memberRoles, fetchRoles, fetchMemberRoles }
+    const changeMemberRoles = async({ member }) => {
+        try {
+            const { data: updateRow, error: updateErr, status } = await supabase
+                .from('member_type')
+                .update({role_id: member?.role_id})
+                .eq('user_id', member?.user_id)
+                .select()
+
+            if (updateErr) throw updateErr
+            if (status === 200) {
+                await fetchMemberRoles()
+
+                return status
+            }
+        } catch (e) {
+            console.log('Error: ', e)
+        }
+    }
+
+    return { roles, memberRoles, fetchRoles, fetchMemberRoles, changeMemberRoles }
 })

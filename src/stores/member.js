@@ -49,12 +49,29 @@ export const useMemberStore = defineStore('member', () => {
             }
             // console.log(memberRows[0])
 
-        } catch(e) {
+        } catch (e) {
             console.log('Failed to fetch members: ', e)
         } finally {
             console.log(members)
         }
     }
 
-    return { members, fetchMembers }
+    const removeMember = async ({ member }) => {
+        try {
+            const { data, error, status } = await supabase.functions.invoke('delete-user', {
+                body: { userId: member.user_id }
+            })
+
+            if (error) throw error
+            if (status === 200) {
+                console.log(data)
+
+                return status
+            }
+        } catch (e) {
+            console.log('Error removing: ', e)
+        }
+    }
+
+    return { members, fetchMembers, removeMember }
 })

@@ -9,6 +9,10 @@ const memberStore = useMemberStore()
 const roleStore = useRolePosStore()
 const { members } = storeToRefs(memberStore)
 const { roles, memberRoles } = storeToRefs(roleStore)
+const loading = ref({
+    update: false,
+    delete: false
+})
 
 const pendingMembers = computed(() => {
     return members.value.filter(m => m.status === 'pending')
@@ -22,6 +26,8 @@ const changeRoleMembers = ref({
     user_id: null,
     role_id: null
 })
+
+const deleteMember = ref({ user_id: null })
 
 const availableRoles = computed(() => {
     const selectedUserId = changeRoleMembers.value.user_id;
@@ -43,8 +49,35 @@ const availableRoles = computed(() => {
     });
 });
 
+// Change Member Roles to Director/Unit Head/Unit Member
 const submitChangeRole = async () => {
+    try {
+        loading.value.update = true
+        const response = await roleStore.changeMemberRoles({ member: { ...changeRoleMembers.value } })
+        if (response === 200) console.log(response)
+    } catch (e) {
+        console.log('Error submission: ', e)
+    } finally {
+        changeRoleMembers.value = {
+            user_id: null,
+            role_id: null
+        }
+        loading.value.update = false
+    }
+}
 
+// Remove Members
+const removeMember = async() => {
+    try {
+        loading.value.delete = true
+        const response = await memberStore.removeMember({ member: { ...deleteMember.value }})
+        if (response === 200) console.log(response)
+    } catch (e) {
+        console.log('Error removal: ', e)
+    } finally {
+        deleteMember.value = { user_id: null }
+        loading.value.delete = false
+    }
 }
 
 </script>
@@ -88,7 +121,8 @@ const submitChangeRole = async () => {
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Member:</label>
                             <select v-model="changeRoleMembers.user_id"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-700">
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-700 disabled:opacity-50"
+                                :disabled="loading?.update">
                                 <option disabled selected :value="null">-- Select a member --</option>
                                 <option v-for="member in normalMembers" :key="member.id" :value="member.id">{{
                                     member.fname }} {{
@@ -100,15 +134,23 @@ const submitChangeRole = async () => {
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Position:</label>
                             <select v-model="changeRoleMembers.role_id"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-700">
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-700 disabled:opacity-50"
+                                :disabled="loading?.update">
                                 <option disabled selected :value="null">-- Select position --</option>
-                                <option v-for="role in availableRoles" :key="role.id"
-                                    :value="role.id">{{ role.name }}</option>
+                                <option v-for="role in availableRoles" :key="role.id" :value="role.id">{{ role.name }}
+                                </option>
                             </select>
                         </div>
 
-                        <button type="submit"
-                            class="w-full mt-2 px-4 py-2 bg-green-700 text-white font-bold rounded-lg hover:bg-green-800 transition-colors">Confirm</button>
+                        <button type="submit" :disabled="loading?.update"
+                            class="flex justify-center items-center gap-2 w-full mt-2 px-4 py-2 bg-green-700 text-white font-bold rounded-lg hover:bg-green-800 transition-colors hover:cursor-pointer active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100">
+                            <svg v-if="loading?.update" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
+                                <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3"
+                                    stroke-linecap="round" />
+                            </svg>
+                            <span>{{ loading?.update ? 'Confirming…' : 'Confirm' }}</span>
+                        </button>
                     </div>
                 </form>
             </div>
@@ -116,21 +158,31 @@ const submitChangeRole = async () => {
             <div class="bg-white rounded-lg p-6 shadow-md border border-gray-100">
                 <h2 class="text-lg font-bold mb-6 text-gray-800">Remove Member</h2>
 
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Member:</label>
-                        <select
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-700">
-                            <option disabled selected value="">-- Select a member --</option>
-                            <option v-for="member in normalMembers" :key="member.user_id">{{ member.fname }} {{
-                                member.middle_initial }} {{ member.lname }}</option>
-                        </select>
-                        <p class="text-xs text-red-500 mt-1">* Not 2 members at the same time</p>
-                    </div>
+                <form @submit.prevent="removeMember">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Member:</label>
+                            <select v-model="deleteMember.user_id"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-700 disabled:opacity-50"
+                                :disabled="loading?.delete">
+                                <option disabled selected value="">-- Select a member --</option>
+                                <option v-for="member in normalMembers" :key="member.id" :value="member.id">{{ member.fname }} {{
+                                    member.middle_initial }} {{ member.lname }}</option>
+                            </select>
+                            <p class="text-xs text-red-500 mt-1">* Not 2 members at the same time</p>
+                        </div>
 
-                    <button
-                        class="w-full mt-4 px-4 py-2 bg-red-700 text-white font-bold rounded-lg hover:bg-red-800 transition-colors">Remove</button>
-                </div>
+                        <button :disabled="loading?.delete" type="submit"
+                            class="w-full mt-4 px-4 py-2 bg-red-700 text-white font-bold rounded-lg hover:bg-red-800 transition-colors flex justify-center items-center gap-2 hover:cursor-pointer active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100">
+                            <svg v-if="loading?.delete" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
+                                <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3"
+                                    stroke-linecap="round" />
+                            </svg>
+                            <span>{{ loading?.delete ? 'Removing…' : 'Remove' }}</span>
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
