@@ -92,11 +92,11 @@ const directorDonut = computed(() => {
 // UNIT HEAD
 // ─────────────────────────────────────────────
 const uhPending    = computed(() => store.tasks.filter(t =>
-  t.assignee !== auth.userID &&
+  t.assignee !== auth.userID && // not assigned to current unit head
   !t.unitHead &&
   !t.director &&
-  t.outputLink &&
-  t.assigneeRole === 3 // only unit member submissions
+  t.outputLink // has output submitted
+  // Removed: t.assigneeRole === 3 - now shows tasks from ALL unit members regardless of role
 ))
 const uhOwn        = computed(() => store.tasks.filter(t => t.assignee === auth.userID))
 const uhMonth      = computed(() => forMonth(uhPending.value))
@@ -143,6 +143,49 @@ const activeDonut    = computed(() => auth.isDirector ? directorDonut.value    :
 const activePending  = computed(() => auth.isDirector ? directorMonth.value    : auth.isUnitHead ? uhMonth.value    : store.tasks)
 const activeRegular  = computed(() => auth.isDirector ? directorRegular.value  : auth.isUnitHead ? uhRegular.value  : memberRegular.value)
 const activeInsertion= computed(() => auth.isDirector ? directorInsertion.value: auth.isUnitHead ? uhInsertion.value: memberInsertion.value)
+
+// Debug role and unit information
+const getRoleType = () => {
+  if (auth.isDirector) return 'Director'
+  if (auth.isUnitHead) return 'Unit Head'
+  if (auth.isMember) return 'Member'
+  if (auth.isAdmin) return 'Admin'
+  return 'Unknown'
+}
+
+console.log('=== DASHBOARD DEBUG ===')
+console.log('Role ID:', auth.roleId)
+console.log('Role Type:', getRoleType())
+console.log('Unit ID:', auth.unitId)
+console.log('Unit Name:', auth.unitName)
+console.log('User ID:', auth.userID)
+console.log('User Email:', auth.user?.email)
+console.log('Full Name:', auth.fullName)
+console.log('Total Tasks Loaded:', store.tasks.length)
+
+// Display unit members for unit heads
+if (auth.isUnitHead) {
+  console.log('=== UNIT MEMBERS ===')
+  console.log('Unit Members Count:', store.unitMembers.length)
+  store.unitMembers.forEach((member, index) => {
+    console.log(`${index + 1}. ${member.name} (${member.roleType}) ${member.isCurrentUser ? '(YOU)' : ''}`)
+  })
+  console.log('===================')
+
+  // Log unit head task visibility
+  console.log('=== UNIT HEAD TASK VISIBILITY ===')
+  console.log('Total tasks in store:', store.tasks.length)
+  console.log('Tasks pending approval (uhPending):', uhPending.value.length)
+  console.log('Own tasks (uhOwn):', uhOwn.value.length)
+  const unitTasks = store.tasks.filter(t => {
+    // Find if assignee is in unit members
+    const isUnitMember = store.unitMembers.some(m => m.id === t.assignee)
+    return isUnitMember
+  })
+  console.log('Tasks from unit members:', unitTasks.length)
+  console.log('==================================')
+}
+console.log('=======================')
 </script>
 
 <template>

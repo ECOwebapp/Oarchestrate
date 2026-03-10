@@ -87,6 +87,7 @@ const version  = '0.1 alpha'
 
 <script>
 import { defineComponent, h, resolveComponent } from 'vue'
+import Icons from './Icons.vue'
 
 const NavInner = defineComponent({
   name: 'NavInner',
@@ -101,7 +102,6 @@ const NavInner = defineComponent({
   emits: ['logout', 'navigate'],
   setup(props, { emit }) {
     return () => {
-      const Icons      = resolveComponent('Icons')
       const RouterLink = resolveComponent('RouterLink')
 
       const avatarSize = props.expanded ? '128px' : '64px'

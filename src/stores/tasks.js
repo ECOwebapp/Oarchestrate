@@ -8,6 +8,7 @@ export const taskStore = defineStore('tasks', () => {
   const tasks   = ref([])
   const loading = ref(false)
   const nameMap = ref({})
+  const unitMembers = ref([])
 
   // ── Name resolver ───────────────────────────────────────
   const resolveNames = async (uids) => {
@@ -72,10 +73,74 @@ export const taskStore = defineStore('tasks', () => {
     })),
   })
 
-  const getStatus = (task) => {
-    if (task.director)  return 'approved'
-    if (task.unitHead)  return 'pending director'
-    return 'pending unit head'
+  // ── FETCH UNIT MEMBERS ──────────────────────────────────
+  const fetchUnitMembers = async () => {
+    const auth = useAuthStore()
+    if (!auth.isUnitHead || !auth.unitId) return
+
+    try {
+      // Get all users in the same unit
+      const { data: unitUsers, error: unitError } = await supabase
+        .from('unit')
+        .select('user_id')
+        .eq('unit_id', auth.unitId)
+
+      if (unitError) {
+        console.error('[taskStore] fetchUnitMembers - unit query:', unitError)
+        return
+      }
+
+      if (unitUsers && unitUsers.length > 0) {
+        const userIds = unitUsers.map(u => u.user_id)
+
+        // Get user profiles and roles
+        const [profileRes, roleRes] = await Promise.all([
+          supabase
+            .from('user_profile')
+            .select('user_id, fname, lname, middle_initial')
+            .in('user_id', userIds),
+          supabase
+            .from('member_type')
+            .select('user_id, role_id')
+            .in('user_id', userIds)
+        ])
+
+        if (profileRes.error) console.error('[taskStore] fetchUnitMembers - profile query:', profileRes.error)
+        if (roleRes.error) console.error('[taskStore] fetchUnitMembers - role query:', roleRes.error)
+
+        // Create maps for easy lookup
+        const profileMap = {}
+        const roleMap = {}
+
+        ;(profileRes.data || []).forEach(p => {
+          profileMap[p.user_id] = p
+        })
+
+        ;(roleRes.data || []).forEach(r => {
+          roleMap[r.user_id] = r.role_id
+        })
+
+        // Resolve names and map member details
+        await resolveNames(userIds)
+
+        unitMembers.value = userIds.map(userId => {
+          const profile = profileMap[userId]
+          const roleId = roleMap[userId]
+
+          return {
+            id: userId,
+            name: nameMap.value[userId] || 'Unknown',
+            roleId: roleId || null,
+            roleType: roleId === 1 ? 'Director' :
+                     roleId === 2 ? 'Unit Head' :
+                     roleId === 3 ? 'Member' : 'Unknown',
+            isCurrentUser: userId === auth.userID
+          }
+        })
+      }
+    } catch (e) {
+      console.error('[taskStore] fetchUnitMembers:', e)
+    }
   }
 
   // ── FETCH ───────────────────────────────────────────────
@@ -167,6 +232,9 @@ export const taskStore = defineStore('tasks', () => {
           assigneeRole: roleMap[t.assignee] || null,
         }))
 
+        // Fetch unit members for display
+        await fetchUnitMembers()
+
       } else {
         // Member: own tasks only
         const { data: rows } = await supabase
@@ -196,6 +264,13 @@ export const taskStore = defineStore('tasks', () => {
     if (taskErr) throw taskErr
     const taskId = taskRow.id
 
+    // Determine approval status based on role and assignee
+    // Director self-assigned tasks are automatically approved
+    const isDirectorSelfAssigned = auth.isDirector && assigneeId === uid
+    
+    // For member self-assigned tasks with output: mark unit_head=true so director sees it immediately
+    const memberHasOutput = !!mainTask.outputLink && auth.isMember
+
     await Promise.all([
       supabase.from('task_profile').insert({
         id: taskId, title: mainTask.name, description: mainTask.description,
@@ -203,9 +278,8 @@ export const taskStore = defineStore('tasks', () => {
       }),
       supabase.from('task_approval').insert({
         id:        taskId,
-        // All tasks start pending unit head approval (even Office goes there first, then director)
-        unit_head: false,
-        director:  false,
+        unit_head: isDirectorSelfAssigned ? true : memberHasOutput,
+        director:  isDirectorSelfAssigned ? true : false,
       }),
       supabase.from('task_duration').insert({
         id: taskId, created: new Date().toISOString().split('T')[0], deadline: mainTask.endDate,
@@ -392,7 +466,7 @@ export const taskStore = defineStore('tasks', () => {
   }
 
   return {
-    tasks, loading, nameMap, getStatus,
+    tasks, loading, nameMap, unitMembers,
     fetchTasks, addTasks, submitOutput,
     approveTask, requestRevision, resubmitTask, fetchRevisions,
   }
