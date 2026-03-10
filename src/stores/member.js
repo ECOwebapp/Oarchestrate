@@ -25,7 +25,7 @@ export const useMemberStore = defineStore('member', () => {
 
             const { data: statusRows, error: statusErr } = await supabase
                 .from('account_status')
-                .select(`user_id, status`)
+                .select(`user_id, status_id (id, status)`)
 
             if (memberErr) {
                 throw memberErr
@@ -43,7 +43,7 @@ export const useMemberStore = defineStore('member', () => {
                             gender: m.gender_type?.gender,
                             pos_id: m.position?.pos_id,
                             pos_name: m.position?.position_name?.pos_name,
-                            status: statusRows.find(s => s.user_id === m.user_id)?.status || 'Unknown'
+                            status_id: statusRows.find(s => s.user_id === m.user_id)?.status.id
                         }))
                 }
             }

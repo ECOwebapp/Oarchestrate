@@ -58,13 +58,13 @@ const handleSubmit = async () => {
     // 3. Check account_status
     const { data: statusData } = await supabase
       .from('account_status')
-      .select('status, notes')
+      .select('status_id, notes')
       .eq('user_id', userId)
       .single()
 
-    const status = statusData?.status ?? 'pending'
+    const status = statusData?.status_id ?? 1
 
-    if (status === 'pending') {
+    if (status === 1) {
       // Sign them back out — don't let them in yet
       await supabase.auth.signOut()
       showPending.value = true
@@ -72,7 +72,7 @@ const handleSubmit = async () => {
       return
     }
 
-    if (status === 'denied') {
+    if (status === 3) {
       await supabase.auth.signOut()
       deniedReason.value = statusData?.notes || ''
       showDenied.value = true

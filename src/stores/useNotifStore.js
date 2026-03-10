@@ -45,8 +45,8 @@ export const useNotifStore = defineStore('notif', () => {
       if (auth.isDirector) {
         const { data: regs, error: regsErr } = await supabase
           .from('account_status')
-          .select('user_id, requested_at, status, notif_read_by_director')
-          .eq('status', 'pending')
+          .select('user_id, requested_at, status_id (id, status), notif_read_by_director')
+          .eq('status_id', 1)
           .order('requested_at', { ascending: false })
           .limit(20)
 
@@ -333,7 +333,7 @@ export const useNotifStore = defineStore('notif', () => {
       const { error } = await supabase
         .from('account_status')
         .update({
-          status:                 'approved',
+          status_id:                 2,
           notif_read_by_director: true,
           reviewed_by:            auth.user?.id,
           reviewed_at:            new Date().toISOString(),
@@ -355,7 +355,7 @@ export const useNotifStore = defineStore('notif', () => {
       const { error } = await supabase
         .from('account_status')
         .update({
-          status:                 'denied',
+          status_id:                 3,
           notif_read_by_director: true,
           reviewed_by:            auth.user?.id,
           reviewed_at:            new Date().toISOString(),

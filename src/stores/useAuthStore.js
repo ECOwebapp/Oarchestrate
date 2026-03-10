@@ -90,7 +90,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       supabase
         .from('account_status')
-        .select('status')
+        .select('status_id')
         .eq('user_id', authUser.id)
         .maybeSingle(),
     ])
@@ -108,7 +108,7 @@ export const useAuthStore = defineStore('auth', () => {
     roleId.value        = roleRes.data?.role_id ?? null
     unitId.value        = unitRes.data?.unit_id   ?? null
     unitName.value      = unitRes.data?.unit_name?.name?.toLowerCase() ?? ''
-    accountStatus.value = statusRes.data?.status ?? 'pending'
+    accountStatus.value = statusRes.data?.status_id ?? 1
 
     loading.value     = false
     initialized.value = true

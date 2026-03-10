@@ -15,11 +15,11 @@ const loading = ref({
 })
 
 const pendingMembers = computed(() => {
-    return members.value.filter(m => m.status === 'pending')
+    return members.value.filter(m => m.status_id === 1)
 })
 
 const normalMembers = computed(() => {
-    return members.value.filter(m => m.status === 'approved')
+    return members.value.filter(m => m.status_id === 2)
 })
 
 const changeRoleMembers = ref({

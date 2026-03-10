@@ -125,7 +125,7 @@ router.beforeEach(async (to) => {
     // 3. Re-verify account_status on every protected navigation.
     //    Catches users who were denied after already logging in.
     const status = auth.accountStatus
-    if (status && status !== 'approved') {
+    if (status && status !== 2) {
       await auth.logout(router)
       return false  // navigation already handled by logout()
     }
