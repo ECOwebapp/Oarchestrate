@@ -95,8 +95,7 @@ const handleSubmit = async () => {
   <div class="relative min-h-screen w-full overflow-hidden flex items-center justify-center">
 
     <!-- Background -->
-    <div class="absolute inset-0 bg-cover bg-center"
-      style="background-image: url('../../public/images/csu_bg.jpg');"></div>
+    <div class="absolute inset-0 bg-cover bg-center bg-[url('/images/csu_admin_building.png')]"></div>
     <div class="absolute inset-0 backdrop-blur-sm bg-black/20"></div>
 
     <!-- Login card -->
@@ -104,7 +103,7 @@ const handleSubmit = async () => {
 
       <!-- Logo -->
       <div class="flex justify-center mb-5">
-        <img src="../../public/images/csu_logo.png"
+        <img src="../../public/images/csu_seal.png"
           class="w-32 h-32 object-contain drop-shadow" />
       </div>
 

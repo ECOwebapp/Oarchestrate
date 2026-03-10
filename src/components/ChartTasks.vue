@@ -1,7 +1,7 @@
 <script setup>
-import { computed } from 'vue'
 import { GanttChart } from 'jordium-gantt-vue3'
 import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
+import { computed } from 'vue'
 
 const props = defineProps(['tasks'])
 

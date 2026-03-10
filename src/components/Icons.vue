@@ -1,20 +1,20 @@
 <script setup>
+import { computed } from 'vue'
 import {
-    mdiAccountCircleOutline,
-    mdiAccountGroup,
-    mdiClose,
-    mdiDraw,
-    mdiFileDocumentOutline,
-    mdiFormatListBulleted,
-    mdiFullscreen,
-    mdiLogout,
-    mdiMagnify,
     mdiMonitorDashboard,
-    mdiPaperclip,
+    mdiFormatListBulleted,
+    mdiDraw,
+    mdiAccountGroup,
+    mdiPoll,
+    mdiAccountCircleOutline,
+    mdiLogout,
     mdiPlus,
-    mdiPoll
+    mdiMagnify,
+    mdiClose,
+    mdiFileDocumentOutline,
+    mdiPaperclip,
+    mdiFullscreen
 } from '@mdi/js';
-import { computed } from 'vue';
 
 const props = defineProps(['icon'])
 const nav = {

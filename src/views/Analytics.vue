@@ -3,12 +3,21 @@
     import Icons from '@/components/Icons.vue'
     import AnalyticsChart from '@/components/AnalyticsChart.vue'
     import AccomplishmentReport from '@/components/AccomplishmentReport.vue'
+    import IndividualAccomplishmentReport from '@/components/IndividualAccomplishmentReport.vue'
+    import ReportPicker from '@/components/ReportPicker.vue'
 
     const expandedChart = ref(null)
     const openModal = (key) => { expandedChart.value = key }
     const closeModal = () => { expandedChart.value = null }
 
     const showReport = ref(false)
+    const showIndividualReport = ref(false)
+    const showUnitPicker = ref(false)
+    const showIndividualPicker = ref(false)
+    const unitMonth = ref(new Date().getMonth() + 1)
+    const unitYear  = ref(new Date().getFullYear())
+    const indivMonth = ref(new Date().getMonth() + 1)
+    const indivYear  = ref(new Date().getFullYear())
 
     const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -107,11 +116,22 @@
             </ul>
         </div>
 
-        <div class="mt-auto">
+        <div class="mt-auto flex flex-col gap-2">
             <button
-            class="w-full py-2.5 bg-green-950 text-white text-sm font-bold rounded-lg hover:bg-green-800 transition-colors cursor-pointer"
-            @click="showReport = true">
-            Generate Report
+            class="w-full py-2.5 px-3 bg-green-950 text-white text-xs font-semibold rounded-lg hover:bg-green-800 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+            @click="showUnitPicker = true">
+            <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            Unit Report
+            </button>
+            <button
+            class="w-full py-2.5 px-3 bg-white text-green-950 text-xs font-semibold rounded-lg border-2 border-green-950 hover:bg-green-50 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+            @click="showIndividualPicker = true">
+            <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+            Individual Report
             </button>
         </div>
         </div>
@@ -265,8 +285,15 @@
         </div>
     </div>
 
-    <!-- ── Accomplishment Report Modal ── -->
-    <AccomplishmentReport :show="showReport" @close="showReport = false" />
+    <!-- ── Accomplishment Report Modals ── -->
+    <ReportPicker v-if="showUnitPicker" title="Generate Unit Report"
+        @cancel="showUnitPicker = false"
+        @generate="({ month, year }) => { unitMonth = month; unitYear = year; showUnitPicker = false; showReport = true }" />
+    <ReportPicker v-if="showIndividualPicker" title="Generate Individual Report"
+        @cancel="showIndividualPicker = false"
+        @generate="({ month, year }) => { indivMonth = month; indivYear = year; showIndividualPicker = false; showIndividualReport = true }" />
+    <AccomplishmentReport :show="showReport" :month="unitMonth" :year="unitYear" @close="showReport = false" />
+    <IndividualAccomplishmentReport :show="showIndividualReport" :month="indivMonth" :year="indivYear" @close="showIndividualReport = false" />
 
     <!-- ── Expanded Chart View (component) ── -->
     <AnalyticsChart

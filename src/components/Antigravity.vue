@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import * as THREE from 'three';
 import { onMounted, onUnmounted, useTemplateRef, watch } from 'vue';
+import * as THREE from 'three';
 
 export type ParticleShape = 'capsule' | 'sphere' | 'box' | 'tetrahedron';
 

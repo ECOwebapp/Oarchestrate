@@ -334,8 +334,7 @@ const goToLogin = () => router.push('/login')
   <div class="relative min-h-screen w-full overflow-hidden flex items-center justify-center">
 
     <!-- Background -->
-    <div class="absolute inset-0 bg-cover bg-center"
-      style="background-image: url('../../public/images/csu_bg.jpg');"></div>
+    <div class="absolute inset-0 bg-[url('/images/csu_admin_building.png')] bg-cover bg-center"></div>
     <div class="absolute inset-0 backdrop-blur-sm bg-black/20"></div>
 
     <!-- Card -->
@@ -343,7 +342,7 @@ const goToLogin = () => router.push('/login')
 
       <!-- Logo -->
       <div class="flex justify-center mb-4">
-        <img src="../../public/images/csu_logo.png" class="w-24 h-24 object-contain drop-shadow" />
+        <img src="../../public/images/csu_seal.png" class="w-24 h-24 object-contain drop-shadow" />
       </div>
 
       <!-- Title -->

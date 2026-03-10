@@ -23,8 +23,14 @@ export const useMemberStore = defineStore('member', () => {
                       )
                 `)
 
+            const { data: statusRows, error: statusErr } = await supabase
+                .from('account_status')
+                .select(`user_id, status`)
+
             if (memberErr) {
                 throw memberErr
+            } else if (statusErr) {
+                throw statusErr
             } else {
                 if (memberRows) {
                     members.value = (memberRows || [])
@@ -36,18 +42,36 @@ export const useMemberStore = defineStore('member', () => {
                             birthdate: m.birthdate,
                             gender: m.gender_type?.gender,
                             pos_id: m.position?.pos_id,
-                            pos_name: m.position?.position_name?.pos_name
+                            pos_name: m.position?.position_name?.pos_name,
+                            status: statusRows.find(s => s.user_id === m.user_id)?.status || 'Unknown'
                         }))
                 }
             }
             // console.log(memberRows[0])
 
-        } catch(e) {
+        } catch (e) {
             console.log('Failed to fetch members: ', e)
         } finally {
             console.log(members)
         }
     }
 
-    return { members, fetchMembers }
+    const removeMember = async ({ member }) => {
+        try {
+            const { data, error, status } = await supabase.functions.invoke('delete-user', {
+                body: { userId: member.user_id }
+            })
+
+            if (error) throw error
+            if (status === 200) {
+                console.log(data)
+
+                return status
+            }
+        } catch (e) {
+            console.log('Error removing: ', e)
+        }
+    }
+
+    return { members, fetchMembers, removeMember }
 })
