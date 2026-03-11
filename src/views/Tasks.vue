@@ -16,6 +16,8 @@ const search   = ref('')
 const filter   = ref('All')
 const sortBy   = ref('Recently Assigned')
 
+const tasks = store.tasks.filter(t => t.design === false)
+
 // Debug role and unit information
 const getRoleType = () => {
   if (auth.isDirector) return 'Director'
@@ -31,12 +33,12 @@ console.log('Role Type:', getRoleType())
 console.log('Unit ID:', auth.unitId)
 console.log('Unit Name:', auth.unitName)
 console.log('User ID:', auth.userID)
-console.log('Total Tasks Loaded:', store.tasks.length)
+console.log('Total Tasks Loaded:', tasks.length)
 
 // Additional logging for unit heads
 if (auth.isUnitHead) {
   console.log('=== UNIT HEAD TASKS VIEW ===')
-  const unitTasks = store.tasks.filter(t => {
+  const unitTasks = tasks.filter(t => {
     // Check if task assignee is in the same unit
     return store.unitMembers.some(m => m.id === t.assignee)
   })
@@ -57,7 +59,7 @@ const filterOpts = computed(() => {
 const sortOpts = ['Recently Assigned', 'Date Due', 'Name A→Z', 'Urgent First']
 
 const filtered = computed(() => {
-  let list = store.tasks
+  let list = tasks
   const q = search.value.toLowerCase()
   if (q) list = list.filter(t =>
     t.name.toLowerCase().includes(q) ||
