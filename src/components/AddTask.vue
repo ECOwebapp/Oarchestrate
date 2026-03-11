@@ -28,9 +28,12 @@ const newTask = ref({
 
 onMounted(() => members.fetchMembers?.())
 
+
+
 // ── Who can be assigned ──
 const assignableMembers = computed(() => {
-  if (auth.isDirector) return members.members   // anyone
+  if (newTask.value.type === 2) return members.members
+  if (auth.isDirector) return members.members.filter(m => m.role_id === 2)  // anyone
   if (auth.isUnitHead) {
     // their own unit members + themselves
     return members.members.filter(m =>
