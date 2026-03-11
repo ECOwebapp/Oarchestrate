@@ -291,7 +291,6 @@ const handleRegister = async () => {
 
       supabase.from('account_status').upsert({
         user_id:      userId,
-        status:       'pending',
         requested_at: new Date().toISOString(),
       }),
     ])
