@@ -1,125 +1,160 @@
 <script setup>
-import { computed } from 'vue'
-import { taskStore } from '@/stores/tasks.js'
+import { computed, ref, watch } from 'vue'
+import { supabase } from '@/lib/supabaseClient.js'
+import { useAuthStore } from '@/stores/useAuthStore.js'
 
 const props = defineProps({ show: Boolean, month: { default: () => new Date().getMonth() + 1 }, year: { default: () => new Date().getFullYear() } })
 const emit = defineEmits(['close'])
 
-const store = taskStore()
+const auth = useAuthStore()
 
-const samplePrograms = [
-  {
-    program: 'Green Campus Development Plan',
-    tasks: [
-      {
-        taskName: 'Finalization of the highlights of the Green Campus Development Plan (first draft)',
-        subtasks: [
-          { name: 'Review of ECOSMART writeshop outputs',        assignedTo: ['Nheron', 'Jacky'], startDate: '01/20/2026', endDate: '02/05/2026', duration: 2, status: 'approved',         mov: { label: 'Output 1',          url: 'https://drive.google.com' }, remarks: '' },
-          { name: 'Consolidation of the writeshop outputs',      assignedTo: ['June', 'Austin'],  startDate: '02/08/2026', endDate: '02/17/2026', duration: 2, status: 'approved',         mov: { label: 'Consolidated Doc',  url: 'https://drive.google.com' }, remarks: '' },
-          { name: 'Formatting and Structuring of the Highlight', assignedTo: ['Jacky', 'Cyrel'],  startDate: '02/15/2026', endDate: '02/21/2026', duration: 3,  status: 'revision',         mov: null, remarks: '' },
-          { name: 'Review and Editing',                          assignedTo: ['Cyrel', 'June'],   startDate: '02/20/2026', endDate: '02/26/2026', duration: 3,  status: 'pending_approval', mov: null, remarks: '' },
-          { name: 'Finalization of First Draft Highlights',      assignedTo: ['Cyrel', 'Nheron'], startDate: '02/28/2026', endDate: '03/05/2026', duration: 3,   status: 'pending',          mov: null, remarks: '' },
-        ],
-      },
-      {
-        taskName: 'Development, Approval, and Dissemination of Policy Brief',
-        subtasks: [
-          { name: 'Draft Policy Brief',            assignedTo: ['Adam', 'Grace'],        startDate: '02/01/2026', endDate: '02/10/2026', duration: 5, status: 'revision',         mov: { label: 'Draft v1', url: 'https://drive.google.com' }, remarks: '' },
-          { name: 'Internal Review and Revision',  assignedTo: ['Grace'],               startDate: '02/12/2026', endDate: '02/18/2026', duration: 3, status: 'pending_approval', mov: null, remarks: '' },
-          { name: 'Finalization and Distribution', assignedTo: ['Adam', 'Kim', 'Grace'], startDate: '02/20/2026', endDate: '02/28/2026', duration: 4,  status: 'pending',          mov: null, remarks: '' },
-        ],
-      },
-      {
-        taskName: 'Conduct of Writeshop for the finalization of the Green Campus Development Plan',
-        subtasks: [
-          { name: 'Venue and logistics coordination', assignedTo: ['Nheron'],         startDate: '02/05/2026', endDate: '02/12/2026', duration: 4, status: 'approved',         mov: { label: 'Logistics Plan', url: 'https://drive.google.com' }, remarks: '' },
-          { name: 'Facilitation of writeshop',       assignedTo: ['June', 'Jacky'],  startDate: '02/13/2026', endDate: '02/19/2026', duration: 4,  status: 'pending_approval', mov: null, remarks: '' },
-          { name: 'Documentation of outputs',        assignedTo: ['Austin', 'Cyrel'], startDate: '02/20/2026', endDate: '02/25/2026', duration: 3,  status: 'pending',          mov: null, remarks: '' },
-        ],
-      },
-    ],
-  },
-  {
-    program: 'Smart Campus Development Plan',
-    tasks: [
-      {
-        taskName: 'Finalization of the highlights of the Smart Campus Development Plan (first draft)',
-        subtasks: [
-          { name: 'Review of ECOSMART writeshop outputs',        assignedTo: ['Austin', 'June'], startDate: '01/20/2026', endDate: '02/05/2026', duration: 2, status: 'approved',         mov: { label: 'Output 1', url: 'https://drive.google.com' }, remarks: '' },
-          { name: 'Consolidation of the writeshop outputs',      assignedTo: ['Austin', 'June'], startDate: '02/08/2026', endDate: '02/17/2026', duration: 2, status: 'approved',         mov: null, remarks: '' },
-          { name: 'Formatting and Structuring of the Highlight', assignedTo: ['Austin', 'June'], startDate: '02/15/2026', endDate: '02/21/2026', duration: 3,  status: 'revision',         mov: null, remarks: '' },
-          { name: 'Review and Editing',                          assignedTo: ['Austin', 'June'], startDate: '02/20/2026', endDate: '02/26/2026', duration: 3,  status: 'pending_approval', mov: null, remarks: '' },
-          { name: 'Finalization of First Draft Highlights',      assignedTo: ['Austin', 'June'], startDate: '02/28/2026', endDate: '03/05/2026', duration: 3,   status: 'pending',          mov: null, remarks: '' },
-        ],
-      },
-      {
-        taskName: 'Development, Approval, and Dissemination of Policy Brief',
-        subtasks: [
-          { name: 'Draft Policy Brief',            assignedTo: ['Kim', 'Rex'],   startDate: '02/01/2026', endDate: '02/10/2026', duration: 8, status: 'approved',         mov: { label: 'Draft v1', url: 'https://drive.google.com' }, remarks: '' },
-          { name: 'Internal Review and Revision',  assignedTo: ['Miller'],       startDate: '02/12/2026', endDate: '02/18/2026', duration: 6, status: 'pending_approval', mov: null, remarks: '' },
-          { name: 'Finalization and Distribution', assignedTo: ['Kim', 'Miller'], startDate: '02/20/2026', endDate: '02/28/2026', duration: 8,  status: 'pending',          mov: null, remarks: '' },
-        ],
-      },
-    ],
-  },
-]
+// allTasks: array of { unitName, unitId, tasks[] }
+const unitGroups = ref([])
 
-// Flatten programs into groups with program metadata for easy rendering
-const programs = computed(() => {
-  let source = samplePrograms
-  if (store.tasks && store.tasks.length > 0) {
-    const parents  = store.tasks.filter(t => !t.parentId || t.parentId === 0)
-    const children = store.tasks.filter(t =>  t.parentId && t.parentId !== 0)
-    source = [{
-      program: 'Tasks',
-      tasks: parents.map(p => ({
-        taskName: p.name,
-        subtasks: children
-          .filter(c => c.parentId === p.id)
-          .map(c => {
-            const start = c.startDate ? new Date(c.startDate) : null
-            const end   = c.endDate   ? new Date(c.endDate)   : null
-            const dur   = (start && end) ? Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24))) : '—'
-            return {
-              name:       c.name,
-              assignedTo: Array.isArray(c.assignee) ? c.assignee : (c.assignee ? [c.assignee] : ['—']),
-              startDate:  start ? start.toLocaleDateString('en-PH') : '—',
-              endDate:    end   ? end.toLocaleDateString('en-PH')   : '—',
-              duration:   dur,
-              status:     c.revision ? 'revision' : c.urgent ? 'pending_approval' : 'pending',
-              mov:        (Array.isArray(c.movs) && c.movs.length > 0) ? c.movs[0] : null,
-              remarks:    '',
-            }
-          }),
-      })),
-    }]
+const loadAllTasks = async () => {
+  // 1. Fetch all units with their names
+  const { data: unitRows } = await supabase
+    .from('unit')
+    .select('user_id, unit_id, unit_name_ref:unit_name(name)')
+    .order('unit_id')
+
+  if (!unitRows || !unitRows.length) { unitGroups.value = []; return }
+
+  // 2. Build unit_id → unit name map, and unit_id → [user_ids]
+  const unitNameMap = {}
+  const unitMemberMap = {}
+  for (const row of unitRows) {
+    const uid  = row.unit_id
+    const name = row.unit_name_ref?.name || `Unit ${uid}`
+    unitNameMap[uid] = name
+    if (!unitMemberMap[uid]) unitMemberMap[uid] = []
+    if (row.user_id) unitMemberMap[uid].push(row.user_id)
   }
-  // Filter subtasks by selected period, then annotate rowspan
+
+  // Build reverse map: user_id → unit_id (a user belongs to one unit)
+  const userUnitMap = {}
+  for (const row of unitRows) {
+    if (row.user_id) userUnitMap[row.user_id] = row.unit_id
+  }
+
+  // If not director, restrict to own unit only
+  const allowedUnitIds = auth.isDirector
+    ? Object.keys(unitMemberMap).map(Number)
+    : [auth.unitId]
+
+  const allMemberIds = allowedUnitIds.flatMap(uid => unitMemberMap[uid] || [])
+  if (!allMemberIds.length) { unitGroups.value = []; return }
+
+  // 3. Fetch approved tasks for those members
+  const assigneeFilter = allMemberIds.map(id => `assignee.eq.${id}`).join(',')
+  const { data } = await supabase
+    .from('task')
+    .select(`
+      id, parent_id, assignee,
+      task_profile ( title, task_type_ref:task_type(task_type) ),
+      task_approval ( unit_head, director ),
+      task_duration ( created, deadline ),
+      task_output   ( link ),
+      subtasks:task!parent_id ( id, task_profile(title) )
+    `)
+    .is('parent_id', null)
+    .or(assigneeFilter)
+    .order('id')
+
+  if (!data || !data.length) { unitGroups.value = []; return }
+
+  // 4. Filter to approved only (unit_head OR director approved)
+  const approved = data.filter(t => t.task_approval?.unit_head || t.task_approval?.director)
+
+  // 5. Resolve names
+  const uids = [...new Set(approved.map(t => t.assignee).filter(Boolean))]
+  const nameMap = {}
+  if (uids.length) {
+    const { data: profiles } = await supabase
+      .from('user_profile').select('user_id, fname, lname').in('user_id', uids)
+    ;(profiles || []).forEach(p => {
+      nameMap[p.user_id] = `${p.fname || ''} ${p.lname || ''}`.trim()
+    })
+  }
+
+  const FMT = { month: 'short', day: 'numeric', year: 'numeric' }
+  const fmt = (s) => { const d = new Date(s); return isNaN(d) ? '—' : d.toLocaleDateString('en-PH', FMT) }
+  const durDays = (s, e) => {
+    const sd = new Date(s), ed = new Date(e)
+    return (isNaN(sd) || isNaN(ed)) ? '—' : Math.max(1, Math.ceil((ed - sd) / 86400000))
+  }
+  const progressOf = (t) => {
+    if (t.task_approval?.director)  return 100
+    if (t.task_approval?.unit_head) return 75
+    if (t.task_output?.link)        return 50
+    return 25
+  }
+
+  // 6. Map rows
+  const mapped = approved.map(t => ({
+    id:           t.id,
+    unitId:       userUnitMap[t.assignee] || null,
+    name:         t.task_profile?.title || '',
+    type:         t.task_profile?.task_type_ref?.task_type || 'General',
+    assignee:     t.assignee,
+    assigneeName: nameMap[t.assignee] || '—',
+    startDate:    fmt(t.task_duration?.created),
+    endDate:      fmt(t.task_duration?.deadline),
+    duration:     durDays(t.task_duration?.created, t.task_duration?.deadline),
+    progress:     progressOf(t),
+    subtaskNames: (t.subtasks || []).map(s => s.task_profile?.title || '').filter(Boolean),
+    mov:          t.task_output?.link ? { label: 'View Output', url: t.task_output.link } : null,
+    rawStart:     t.task_duration?.created  || null,
+    rawEnd:       t.task_duration?.deadline || null,
+  }))
+
+  // 7. Group by unit → then by task title (merge multiple assignees into one row)
+  const unitTaskMap = {}
+  for (const uid of allowedUnitIds) {
+    unitTaskMap[uid] = {}
+  }
+  for (const t of mapped) {
+    const uid = t.unitId
+    if (!unitTaskMap[uid]) continue
+    const key = t.name || '(Untitled)'
+    if (!unitTaskMap[uid][key]) {
+      unitTaskMap[uid][key] = { ...t, assignedTo: [] }
+    }
+    unitTaskMap[uid][key].assignedTo.push(t.assigneeName)
+  }
+
+  unitGroups.value = allowedUnitIds
+    .map(uid => ({
+      unitId:   uid,
+      unitName: unitNameMap[uid] || `Unit ${uid}`,
+      tasks:    Object.values(unitTaskMap[uid] || {}),
+    }))
+    .filter(g => g.tasks.length > 0)
+}
+
+watch(() => props.show, (val) => { if (val) loadAllTasks() }, { immediate: true })
+
+// ── Filtered by selected period ──────────────────────────
+const programs = computed(() => {
   const mo = +props.month
   const yr = +props.year
-  const inPeriod = (sub) => {
-    const pd = (s) => { if (!s || s === '—') return null; const d = new Date(s); return isNaN(d) ? null : d }
-    const s = pd(sub.startDate), e = pd(sub.endDate)
-    const ok = (d) => d && d.getFullYear() === yr && (mo === 0 || d.getMonth() + 1 === mo)
-    return ok(s) || ok(e)
-  }
-  return source
-    .map(prog => ({
-      program: prog.program,
-      tasks: prog.tasks
-        .map(t => ({ taskName: t.taskName, subtasks: t.subtasks.filter(inPeriod) }))
-        .filter(t => t.subtasks.length > 0),
-    }))
-    .filter(prog => prog.tasks.length > 0)
-    .map(prog => ({
-      program: prog.program,
-      tasks:   prog.tasks,
-      rowspan: prog.tasks.reduce((a, t) => a + Math.max(t.subtasks.length, 1), 0),
-    }))
-})
 
-const statusLabel = (s) => { const map = { approved: 'Approved', pending_approval: 'For Approval', pending: 'Pending', revision: 'Revision' }; return map[s] !== undefined ? map[s] : s }
-const statusClass  = (s) => { const map = { approved: 'bg-emerald-100 text-emerald-700 border-emerald-200', pending_approval: 'bg-yellow-100 text-yellow-700 border-yellow-200', pending: 'bg-gray-100 text-gray-500 border-gray-200', revision: 'bg-orange-100 text-orange-600 border-orange-200' }; return map[s] !== undefined ? map[s] : 'bg-gray-100 text-gray-400' }
+  const inPeriod = (t) => {
+    const check = (s) => {
+      if (!s) return false
+      const d = new Date(s)
+      return !isNaN(d) && d.getFullYear() === yr && (mo === 0 || d.getMonth() + 1 === mo)
+    }
+    return check(t.rawStart) || check(t.rawEnd)
+  }
+
+  return unitGroups.value
+    .map(g => {
+      const tasks = g.tasks.filter(inPeriod)
+      return { ...g, tasks, rowspan: tasks.length }
+    })
+    .filter(g => g.tasks.length > 0)
+})
 
 const today = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
 
@@ -165,117 +200,103 @@ const periodLabel = computed(() => {
         <table class="w-full text-xs border-collapse">
           <thead class="sticky top-0 z-10">
             <tr class="bg-green-900 text-white text-[11px] uppercase tracking-wide">
-              <th class="px-3 py-3 font-semibold text-center w-28 border-r border-green-700">Project / Programs</th>
+              <th class="px-3 py-3 font-semibold text-center w-28 border-r border-green-700">Unit / PPAs</th>
               <th class="px-3 py-3 font-semibold text-center w-8 border-r border-green-700">#</th>
-              <th class="px-4 py-3 font-semibold text-center w-44 border-r border-green-700">Tasks</th>
-              <th class="px-4 py-3 font-semibold text-center border-r border-green-700">Subtasks</th>
-              <th class="px-3 py-3 font-semibold text-center w-28 border-r border-green-700">Assigned Personnel</th>
+              <th class="px-4 py-3 font-semibold text-center border-r border-green-700">Task / Activity</th>
+              <th class="px-3 py-3 font-semibold text-center w-28 border-r border-green-700">Task Type</th>
+              <th class="px-3 py-3 font-semibold text-center w-32 border-r border-green-700">Assigned Personnel</th>
               <th class="px-3 py-3 font-semibold text-center w-24 border-r border-green-700">Start Date</th>
               <th class="px-3 py-3 font-semibold text-center w-24 border-r border-green-700">Due Date</th>
               <th class="px-3 py-3 font-semibold text-center w-16 border-r border-green-700">Duration</th>
+              <th class="px-3 py-3 font-semibold text-center w-28 border-r border-green-700">Approval Status</th>
               <th class="px-3 py-3 font-semibold text-center w-36 border-r border-green-700">MOVs</th>
-              <th class="px-3 py-3 font-semibold text-center w-20">Remarks</th>
+              <th class="px-3 py-3 font-semibold text-center w-24">Remarks</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="programs.length === 0">
-              <td colspan="10" class="text-center py-10 text-gray-400 text-sm italic">No tasks found for {{ periodLabel }}.</td>
+              <td colspan="11" class="text-center py-10 text-gray-400 text-sm italic">No approved tasks found for {{ periodLabel }}.</td>
             </tr>
-            <template v-for="(prog, pi) in programs" :key="pi">
-              <template v-for="(group, gi) in prog.tasks" :key="gi">
+            <template v-for="(grp, gi) in programs" :key="gi">
+              <tr v-for="(task, ti) in grp.tasks" :key="ti"
+                :class="[
+                  ti === grp.tasks.length - 1 ? 'border-b-2 border-gray-300' : 'border-b border-gray-100',
+                  'hover:bg-green-50/30 transition-colors bg-white'
+                ]">
 
-                <!-- Task has subtasks -->
-                <template v-if="group.subtasks && group.subtasks.length > 0">
-                  <tr v-for="(sub, si) in group.subtasks" :key="si"
-                    :class="[
-                      si === group.subtasks.length - 1 ? 'border-b-2 border-gray-300' : 'border-b border-gray-100',
-                      'hover:bg-green-50/30 transition-colors bg-white'
-                    ]">
+                <!-- PPAs = Unit Name — spans all rows of that unit -->
+                <td v-if="ti === 0" :rowspan="grp.rowspan"
+                  class="border-r-2 border-gray-300 border-b-2 align-middle text-center bg-green-900/5">
+                  <div class="flex items-center justify-center h-full px-2 py-3">
+                    <span class="font-bold text-green-900 text-[11px] tracking-wide leading-tight text-center"
+                      style="writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap;">
+                      {{ grp.unitName }}
+                    </span>
+                  </div>
+                </td>
 
-                    <!-- Project/Programs — first task, first subtask only; spans entire program -->
-                    <td v-if="gi === 0 && si === 0" :rowspan="prog.rowspan"
-                      class="border-r-2 border-gray-300 border-b-2 align-middle text-center bg-green-900/5">
-                      <div class="flex items-center justify-center h-full px-2 py-3">
-                        <span class="font-bold text-green-900 text-[11px] tracking-wide leading-tight text-center"
-                          style="writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap;">
-                          {{ prog.program }}
-                        </span>
-                      </div>
-                    </td>
+                <!-- # -->
+                <td class="px-3 py-2 text-center text-gray-400 font-semibold border-r border-gray-200 align-middle bg-gray-50">{{ ti + 1 }}</td>
 
-                    <!-- # — first subtask only, rowspanned across task's subtasks -->
-                    <td v-if="si === 0" :rowspan="group.subtasks.length"
-                      class="px-3 py-2 text-center text-gray-400 font-semibold border-r border-gray-200 align-middle bg-gray-50">
-                      {{ gi + 1 }}
-                    </td>
+                <!-- Task / Activity -->
+                <td class="px-4 py-3 font-semibold text-gray-800 border-r border-gray-200 align-top leading-snug">{{ task.name }}</td>
 
-                    <!-- Task name — first subtask only, rowspanned -->
-                    <td v-if="si === 0" :rowspan="group.subtasks.length"
-                      class="px-4 py-3 font-semibold text-gray-800 border-r border-gray-200 align-middle text-center leading-snug bg-green-50/20">
-                      {{ group.taskName }}
-                    </td>
+                <!-- Task Type -->
+                <td class="px-3 py-2 text-center border-r border-gray-200">
+                  <span class="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-800 border border-green-200">
+                    {{ task.type || '—' }}
+                  </span>
+                </td>
 
-                    <!-- Subtask name -->
-                    <td class="px-4 py-2 text-center text-gray-600 border-r border-gray-200">{{ sub.name }}</td>
+                <!-- Assigned Personnel -->
+                <td class="px-3 py-2 text-center border-r border-gray-200">
+                  <div class="flex flex-col gap-0.5 items-center">
+                    <span v-for="person in task.assignedTo" :key="person"
+                      class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-900 text-white leading-tight whitespace-nowrap">
+                      {{ person }}
+                    </span>
+                  </div>
+                </td>
 
-                    <!-- Assigned Personnel -->
-                    <td class="px-3 py-2 text-center border-r border-gray-200">
-                      <div class="flex flex-wrap justify-center gap-1">
-                        <span v-for="person in sub.assignedTo" :key="person"
-                          class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-700 text-white leading-tight">
-                          {{ person }}
-                        </span>
-                      </div>
-                    </td>
+                <!-- Start Date -->
+                <td class="px-3 py-2 text-center text-gray-500 border-r border-gray-200 whitespace-nowrap">{{ task.startDate }}</td>
 
-                    <!-- Start Date -->
-                    <td class="px-3 py-2 text-center text-gray-500 border-r border-gray-200 whitespace-nowrap">{{ sub.startDate }}</td>
+                <!-- Due Date -->
+                <td class="px-3 py-2 text-center text-gray-500 border-r border-gray-200 whitespace-nowrap">{{ task.endDate }}</td>
 
-                    <!-- Due Date -->
-                    <td class="px-3 py-2 text-center text-gray-500 border-r border-gray-200 whitespace-nowrap">{{ sub.endDate }}</td>
+                <!-- Duration -->
+                <td class="px-3 py-2 text-center border-r border-gray-200">
+                  <span class="text-gray-700 font-medium">{{ task.duration }}</span>
+                  <span class="text-gray-400 text-[9px] ml-0.5">day{{ task.duration === 1 ? '' : 's' }}</span>
+                </td>
 
-                    <!-- Duration -->
-                    <td class="px-3 py-2 text-center text-gray-600 border-r border-gray-200">{{ sub.duration }}</td>
+                <!-- Approval Status -->
+                <td class="px-3 py-2 text-center border-r border-gray-200">
+                  <span v-if="task.progress === 100"
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                    <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    Director Approved
+                  </span>
+                  <span v-else
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-700 border border-yellow-200">
+                    <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    Unit Head Approved
+                  </span>
+                </td>
 
-                    <!-- MOVs -->
-                    <td class="px-3 py-2 text-center border-r border-gray-200">
-                      <a v-if="sub.mov" :href="sub.mov.url" target="_blank" rel="noopener"
-                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 hover:text-green-900 transition-colors max-w-[120px] truncate">
-                        <svg class="w-3 h-3 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                        {{ sub.mov.label }}
-                      </a>
-                      <span v-else class="text-gray-300">—</span>
-                    </td>
+                <!-- MOVs -->
+                <td class="px-3 py-2 text-center border-r border-gray-200">
+                  <a v-if="task.mov" :href="task.mov.url" target="_blank" rel="noopener"
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors max-w-[130px] truncate">
+                    <svg class="w-3 h-3 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    View Output
+                  </a>
+                  <span v-else class="text-gray-300 text-[10px]">No file</span>
+                </td>
 
-                    <!-- Remarks -->
-                    <td class="px-3 py-2 text-center"></td>
-                  </tr>
-                </template>
-
-                <!-- Task has no subtasks — single row -->
-                <tr v-else
-                  :class="['border-b-2 border-gray-300 hover:bg-green-50/30 bg-white transition-colors']">
-                  <td v-if="gi === 0" :rowspan="prog.rowspan"
-                    class="border-r-2 border-gray-300 border-b-2 align-middle text-center bg-green-900/5">
-                    <div class="flex items-center justify-center h-full px-2 py-3">
-                      <span class="font-bold text-green-900 text-[11px] tracking-wide leading-tight text-center"
-                        style="writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap;">
-                        {{ prog.program }}
-                      </span>
-                    </div>
-                  </td>
-                  <td class="px-3 py-2 text-center text-gray-400 font-semibold border-r border-gray-200 bg-gray-50">{{ gi + 1 }}</td>
-                  <td class="px-4 py-3 font-semibold text-center text-gray-800 border-r border-gray-200">{{ group.taskName }}</td>
-                  <td class="px-4 py-2 text-center text-gray-400 italic border-r border-gray-200">No subtasks</td>
-                  <td class="px-3 py-2 border-r border-gray-200"></td>
-                  <td class="px-3 py-2 border-r border-gray-200"></td>
-                  <td class="px-3 py-2 border-r border-gray-200"></td>
-                  <td class="px-3 py-2 border-r border-gray-200"></td>
-                  <td class="px-3 py-2 border-r border-gray-200"></td>
-                  <td class="px-3 py-2"></td>
-                </tr>
-
-              </template>
+                <!-- Remarks -->
+                <td class="px-3 py-2 text-center text-[10px] text-gray-400">{{ task.progress === 100 ? 'Accomplished' : 'For Director Approval' }}</td>
+              </tr>
             </template>
           </tbody>
         </table>
@@ -292,11 +313,9 @@ const periodLabel = computed(() => {
             <p class="text-[10px] text-gray-400">Signature over printed name</p>
           </div>
           <div class="text-[10px] text-gray-400 text-center space-y-0.5">
-            <p>Total tasks: <span class="font-semibold text-gray-600">{{ programs.reduce((a, p) => a + p.tasks.length, 0) }}</span></p>
-            <p>Total subtasks: <span class="font-semibold text-green-600">{{ programs.reduce((a, p) => a + p.tasks.reduce((b, t) => b + t.subtasks.length, 0), 0) }}</span></p>
-            <p>Approved: <span class="font-semibold text-emerald-600">{{ programs.reduce((a, p) => a + p.tasks.reduce((b, t) => b + t.subtasks.filter(s => s.status === 'approved').length, 0), 0) }}</span></p>
-            <p>For Approval: <span class="font-semibold text-yellow-600">{{ programs.reduce((a, p) => a + p.tasks.reduce((b, t) => b + t.subtasks.filter(s => s.status === 'pending_approval').length, 0), 0) }}</span></p>
-            <p>For Revision: <span class="font-semibold text-orange-500">{{ programs.reduce((a, p) => a + p.tasks.reduce((b, t) => b + t.subtasks.filter(s => s.status === 'revision').length, 0), 0) }}</span></p>
+            <p>Total approved: <span class="font-semibold text-emerald-600">{{ programs.reduce((a, g) => a + g.tasks.length, 0) }}</span></p>
+            <p>Director approved: <span class="font-semibold text-green-700">{{ programs.reduce((a, g) => a + g.tasks.filter(t => t.progress === 100).length, 0) }}</span></p>
+            <p>Unit head approved: <span class="font-semibold text-yellow-600">{{ programs.reduce((a, g) => a + g.tasks.filter(t => t.progress === 75).length, 0) }}</span></p>
           </div>
           <div class="text-center w-48">
             <div class="h-8 border-b border-gray-400 mb-1"></div>

@@ -1,34 +1,119 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { supabase } from '@/lib/supabaseClient.js'
+import { useAuthStore } from '@/stores/useAuthStore.js'
 
 const props = defineProps({
   show: Boolean,
-  month: { default: () => new Date().getMonth() + 1 },
-  year:  { default: () => new Date().getFullYear() },
+  month:    { default: () => new Date().getMonth() + 1 },
+  year:     { default: () => new Date().getFullYear() },
+  dateFrom: { type: String, default: '' },
+  dateTo:   { type: String, default: '' },
+  userName: { type: String, default: '' },
 })
 const emit = defineEmits(['close'])
 
-const sampleRows = [
-  { date: 'Feb 16, 2026', ppa: 'Green Campus Development Plan', daed: 'Finalization of Highlights (1st Draft)', no: 1, output: 'Review of ECOSMART writeshop outputs', remarks: 'Completed', link: 'https://drive.google.com' },
-  { date: 'Feb 17, 2026', ppa: 'Green Campus Development Plan', daed: 'Finalization of Highlights (1st Draft)', no: 2, output: 'Consolidation of writeshop outputs', remarks: 'Approved', link: 'https://drive.google.com' },
-  { date: 'Feb 18, 2026', ppa: 'Green Campus Development Plan', daed: 'Policy Brief Development', no: 3, output: 'Draft Policy Brief v1', remarks: 'For Revision', link: 'https://drive.google.com' },
-  { date: 'Feb 19, 2026', ppa: 'Green Campus Development Plan', daed: 'Writeshop Conduct', no: 4, output: 'Venue and logistics coordination plan', remarks: 'Approved', link: 'https://drive.google.com' },
-  { date: 'Feb 20, 2026', ppa: 'Smart Campus Development Plan', daed: 'Finalization of Highlights (1st Draft)', no: 5, output: 'Review of ECOSMART writeshop outputs', remarks: 'Approved', link: 'https://drive.google.com' },
-  { date: 'Feb 21, 2026', ppa: 'Smart Campus Development Plan', daed: 'Finalization of Highlights (1st Draft)', no: 6, output: 'Consolidation of writeshop outputs', remarks: 'Approved', link: null },
-  { date: 'Feb 24, 2026', ppa: 'Smart Campus Development Plan', daed: 'Policy Brief Development', no: 7, output: 'Draft Policy Brief v1', remarks: 'Approved', link: 'https://drive.google.com' },
-  { date: 'Feb 25, 2026', ppa: 'Smart Campus Development Plan', daed: 'Policy Brief Development', no: 8, output: 'Internal Review and Revision', remarks: 'For Approval', link: null },
-  { date: 'Feb 26, 2026', ppa: 'Green Campus Development Plan', daed: 'Finalization of Highlights (1st Draft)', no: 9, output: 'Formatting and Structuring of the Highlight', remarks: 'For Revision', link: null },
-  { date: 'Feb 27, 2026', ppa: 'Green Campus Development Plan', daed: 'Writeshop Conduct', no: 10, output: 'Facilitation of writeshop', remarks: 'For Approval', link: null },
-  { date: '', ppa: '', daed: '', no: '', output: '', remarks: '', link: null },
-  { date: '', ppa: '', daed: '', no: '', output: '', remarks: '', link: null },
-]
+const auth  = useAuthStore()
 
-const today = new Date()
+// Fetch the logged-in user's own approved tasks directly — independent of
+// what the store has loaded (e.g. director's store excludes already-approved tasks)
+const ownTasks = ref([])
+
+const loadOwnTasks = async () => {
+  const uid = auth.userID
+  if (!uid) return
+  const { data, error } = await supabase
+    .from('task')
+    .select(`
+      id, assignee,
+      task_profile ( title, description, task_type_ref:task_type(task_type) ),
+      task_approval ( unit_head, director, revision_comment ),
+      task_duration ( created, deadline ),
+      task_output   ( link )
+    `)
+    .is('parent_id', null)
+    .eq('assignee', uid)
+  ownTasks.value = (data || [])
+    .filter(t => t.task_approval?.unit_head || t.task_approval?.director)
+    .map(t => ({
+    assignee:   t.assignee,
+    name:       t.task_profile?.title       || '',
+    description:t.task_profile?.description || '',
+    type:       t.task_profile?.task_type_ref?.task_type || '',
+    unitHead:   !!t.task_approval?.unit_head,
+    director:   !!t.task_approval?.director,
+    startDate:  t.task_duration?.created    || null,
+    endDate:    t.task_duration?.deadline   || null,
+    outputLink: t.task_output?.link         || null,
+  }))
+}
+
+watch(() => props.show, (val) => { if (val) loadOwnTasks() }, { immediate: true })
+
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const today  = new Date()
+
 const periodLabel = computed(() => {
+  if (props.dateFrom && props.dateTo) {
+    const from = new Date(props.dateFrom)
+    const to   = new Date(props.dateTo)
+    const mo   = from.toLocaleString('en-PH', { month: 'long' })
+    const yr   = from.getFullYear()
+    return `${mo} ${from.getDate()}–${to.getDate()}, ${yr}`
+  }
   const mo = +props.month
   const yr = +props.year
   return mo === 0 ? `Year ${yr}` : `${MONTHS[mo - 1]} ${yr}`
+})
+
+// Derive full name: prefer passed prop, fall back to auth store
+const reportName = computed(() => props.userName || auth.fullName || '—')
+
+// Build rows from real Supabase tasks belonging to the current user,
+// filtered to the selected month/year
+const reportRows = computed(() => {
+  const mo = +props.month
+  const yr = +props.year
+
+  const inPeriod = (dateStr) => {
+    if (!dateStr) return false
+    const d = new Date(dateStr)
+    if (isNaN(d)) return false
+    if (props.dateFrom && props.dateTo) {
+      const from = new Date(props.dateFrom)
+      const to   = new Date(props.dateTo)
+      to.setHours(23, 59, 59, 999)
+      return d >= from && d <= to
+    }
+    return d.getFullYear() === yr && (mo === 0 || d.getMonth() + 1 === mo)
+  }
+
+  const FMT = { month: 'short', day: 'numeric', year: 'numeric' }
+  const fmt = (s) => { const d = new Date(s); return isNaN(d) ? '' : d.toLocaleDateString('en-PH', FMT) }
+
+  const remarkOf = (t) => {
+    if (t.director || t.unitHead) return 'Approved'
+    if (t.revision)  return 'For Revision'
+    return 'Pending'
+  }
+
+  const rows = ownTasks.value
+    .filter(t => (inPeriod(t.startDate) || inPeriod(t.endDate)))
+    .map((t, i) => ({
+      date:    fmt(t.startDate || t.from),
+      ppa:     t.type || '',
+      daed:    t.name || '',
+      no:      i + 1,
+      output:  t.description || t.name || '',
+      remarks: remarkOf(t),
+      link:    t.outputLink || null,
+    }))
+
+  // Pad to at least 12 rows so the table doesn't look empty
+  while (rows.length < 12) {
+    rows.push({ date: '', ppa: '', daed: '', no: '', output: '', remarks: '', link: null })
+  }
+  return rows
 })
 </script>
 
@@ -76,7 +161,7 @@ const periodLabel = computed(() => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(row, i) in sampleRows" :key="i" class="h-8">
+            <tr v-for="(row, i) in reportRows" :key="i" class="h-8">
               <td class="border border-gray-300 px-2 py-1 text-gray-600 whitespace-nowrap">{{ row.date }}</td>
               <td class="border border-gray-300 px-2 py-1 text-gray-600">{{ row.ppa }}</td>
               <td class="border border-gray-300 px-2 py-1 text-gray-600">{{ row.daed }}</td>
@@ -96,8 +181,8 @@ const periodLabel = computed(() => {
           <div>
             <p class="mb-6 text-gray-400 font-semibold uppercase tracking-wide text-[10px]">Prepared by:</p>
             <div class="border-t border-gray-400 pt-1">
-              <p class="font-bold text-gray-800 uppercase text-[11px]">Jacky Barneso</p>
-              <p class="text-gray-500">University Architect</p>
+              <p class="font-bold text-gray-800 uppercase text-[11px]">{{ reportName }}</p>
+              <p class="text-gray-500">{{ auth.positionLabel || 'Staff' }}</p>
             </div>
           </div>
 

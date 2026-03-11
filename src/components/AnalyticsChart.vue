@@ -14,7 +14,19 @@ const props = defineProps({
   monthLabels: { type: Array, default: () => [] },
   areaSeries: { type: Array, default: () => [] },
   areaSeriesData: { type: Array, default: () => [] },
+  barTickPos: { type: Array, default: () => [] },
+  lineTickPos: { type: Array, default: () => [] },
+  areaTickPos: { type: Array, default: () => [] },
 })
+
+// Area fills sorted so largest (lowest y peak) renders first (behind smaller series)
+const areaFillOrder = computed(() =>
+  [...props.areaSeries].sort((a, b) => {
+    const aMin = Math.min(...a.pts.map(p => p.y))
+    const bMin = Math.min(...b.pts.map(p => p.y))
+    return aMin - bMin
+  })
+)
 
 const emit = defineEmits(['close'])
 
@@ -54,7 +66,7 @@ function hideTooltip() {
           <span v-if="expandedChart === 'bar'">Completion Rate</span>
           <span v-else-if="expandedChart === 'pie'">Task Distribution</span>
           <span v-else-if="expandedChart === 'line'">Completed tasks trend monthly</span>
-          <span v-else-if="expandedChart === 'area'">Tasks completion by type monthly trend</span>
+          <span v-else-if="expandedChart === 'area'">Pending & Revision Monthly Trend</span>
         </h2>
         <button class="cursor-pointer text-4xl text-gray-400 hover:text-gray-700 leading-none" @click="emit('close')">×</button>
       </div>
@@ -66,23 +78,20 @@ function hideTooltip() {
         <svg v-if="expandedChart === 'bar'" viewBox="0 0 500 245" class="w-full h-full">
           <line x1="40" y1="10" x2="40"  y2="200" stroke="#d1d5db" stroke-width="1" />
           <line x1="40" y1="200" x2="490" y2="200" stroke="#d1d5db" stroke-width="1" />
-          <line x1="40" y1="153" x2="490" y2="153" stroke="#f3f4f6" stroke-width="1" />
-          <line x1="40" y1="105" x2="490" y2="105" stroke="#f3f4f6" stroke-width="1" />
-          <line x1="40" y1="58"  x2="490" y2="58"  stroke="#f3f4f6" stroke-width="1" />
-          <line x1="40" y1="10"  x2="490" y2="10"  stroke="#f3f4f6" stroke-width="1" />
-          <text x="35" y="204" text-anchor="end" font-size="9" fill="#9ca3af">0</text>
-          <text x="35" y="157" text-anchor="end" font-size="9" fill="#9ca3af">25</text>
-          <text x="35" y="109" text-anchor="end" font-size="9" fill="#9ca3af">50</text>
-          <text x="35" y="62"  text-anchor="end" font-size="9" fill="#9ca3af">75</text>
-          <text x="35" y="14"  text-anchor="end" font-size="9" fill="#9ca3af">100</text>
+          <template v-for="t in barTickPos" :key="'bg'+t.v">
+            <line v-if="t.y < 200" x1="40" :y1="t.y" x2="490" :y2="t.y" stroke="#f3f4f6" stroke-width="1" />
+            <text x="35" :y="t.y + 4" text-anchor="end" font-size="9" fill="#9ca3af">{{ t.v }}</text>
+          </template>
           <rect v-for="b in barRects" :key="b.label"
-            :x="b.x" :y="b.y" width="65" :height="b.height" :fill="b.color" rx="2"
+            :x="b.x" :y="b.y" :width="b.barW || 65" :height="b.height" :fill="b.color" rx="2"
             class="cursor-pointer transition-opacity duration-150 hover:opacity-80"
-            @mouseenter="showTooltip($event, `${b.label}\nValue: ${b.value}\nRate: ${b.value}%`)"
-            @mousemove="showTooltip($event, `${b.label}\nValue: ${b.value}\nRate: ${b.value}%`)"
+            @mouseenter="showTooltip($event, `${b.label}\nCount: ${b.count}\nRate: ${b.rate}%`)"
+            @mousemove="showTooltip($event, `${b.label}\nCount: ${b.count}\nRate: ${b.rate}%`)"
             @mouseleave="hideTooltip" />
+          <text v-for="b in barRects" :key="'cnt'+b.label"
+            :x="b.cx || (b.x + 32)" :y="b.count > 0 ? b.y - 5 : 196" text-anchor="middle" font-size="9" font-weight="600" fill="#374151">{{ b.count }}</text>
           <text v-for="b in barRects" :key="'lbl'+b.label"
-            :x="b.x + 32" y="217" text-anchor="middle" font-size="9" fill="#6b7280">{{ b.label }}</text>
+            :x="b.cx || (b.x + 32)" y="217" text-anchor="middle" font-size="9" fill="#6b7280">{{ b.label }}</text>
           <text x="265" y="234" text-anchor="middle" font-size="10" font-weight="bold" fill="#374151">Tasks</text>
         </svg>
 
@@ -92,13 +101,13 @@ function hideTooltip() {
             <path v-for="seg in pieSegments" :key="seg.label"
               :d="seg.path" :fill="seg.color" stroke="white" stroke-width="1.5"
               class="cursor-pointer transition-opacity duration-150 hover:opacity-80"
-              @mouseenter="showTooltip($event, `${seg.label}\nCount: ${seg.value}\nShare: ${seg.value}%`)"
-              @mousemove="showTooltip($event, `${seg.label}\nCount: ${seg.value}\nShare: ${seg.value}%`)"
+              @mouseenter="showTooltip($event, `${seg.label}\nCount: ${seg.count}\nShare: ${seg.pct}%`)"
+              @mousemove="showTooltip($event, `${seg.label}\nCount: ${seg.count}\nShare: ${seg.pct}%`)"
               @mouseleave="hideTooltip" />
             <text v-for="seg in pieSegments" :key="'v'+seg.label"
-              :x="seg.lx" :y="seg.ly - 4" text-anchor="middle" font-size="9" font-weight="bold" fill="white" class="pointer-events-none">{{ seg.value }}</text>
+              :x="seg.lx" :y="seg.ly - 4" text-anchor="middle" font-size="9" font-weight="bold" fill="white" class="pointer-events-none">{{ seg.count }}</text>
             <text v-for="seg in pieSegments" :key="'p'+seg.label"
-              :x="seg.lx" :y="seg.ly + 6" text-anchor="middle" font-size="8" fill="white" class="pointer-events-none">({{ seg.value }}%)</text>
+              :x="seg.lx" :y="seg.ly + 6" text-anchor="middle" font-size="8" fill="white" class="pointer-events-none">({{ seg.pct }}%)</text>
           </svg>
           <div class="flex flex-col gap-4">
             <div v-for="d in pieData" :key="d.label" class="flex items-center gap-3 text-sm text-gray-700">
@@ -112,15 +121,10 @@ function hideTooltip() {
         <svg v-else-if="expandedChart === 'line'" viewBox="0 0 500 215" class="w-full h-full">
           <line x1="35" y1="10"  x2="35"  y2="185" stroke="#d1d5db" stroke-width="1" />
           <line x1="35" y1="185" x2="495" y2="185" stroke="#d1d5db" stroke-width="1" />
-          <line x1="35" y1="145" x2="495" y2="145" stroke="#f3f4f6" stroke-width="1" />
-          <line x1="35" y1="106" x2="495" y2="106" stroke="#f3f4f6" stroke-width="1" />
-          <line x1="35" y1="66"  x2="495" y2="66"  stroke="#f3f4f6" stroke-width="1" />
-          <line x1="35" y1="26"  x2="495" y2="26"  stroke="#f3f4f6" stroke-width="1" />
-          <text x="30" y="189" text-anchor="end" font-size="8" fill="#9ca3af">0</text>
-          <text x="30" y="149" text-anchor="end" font-size="8" fill="#9ca3af">250</text>
-          <text x="30" y="110" text-anchor="end" font-size="8" fill="#9ca3af">500</text>
-          <text x="30" y="70"  text-anchor="end" font-size="8" fill="#9ca3af">750</text>
-          <text x="30" y="30"  text-anchor="end" font-size="8" fill="#9ca3af">1000</text>
+          <template v-for="t in lineTickPos" :key="'lg'+t.v">
+            <line v-if="t.y < 185" x1="35" :y1="t.y" x2="495" :y2="t.y" stroke="#f3f4f6" stroke-width="1" />
+            <text x="30" :y="t.y + 4" text-anchor="end" font-size="8" fill="#9ca3af">{{ t.v }}</text>
+          </template>
           <polyline :points="linePolyline" fill="none" stroke="#16a34a" stroke-width="2" />
           <circle v-for="(p, i) in linePoints" :key="i"
             :cx="p.x" :cy="p.y" r="5" fill="#16a34a" stroke="#16a34a" stroke-width="2" fill-opacity="0.35"
@@ -137,16 +141,13 @@ function hideTooltip() {
           <svg viewBox="0 0 500 200" class="w-full flex-1 min-h-0">
             <line x1="35" y1="10"  x2="35"  y2="175" stroke="#d1d5db" stroke-width="1" />
             <line x1="35" y1="175" x2="495" y2="175" stroke="#d1d5db" stroke-width="1" />
-            <line x1="35" y1="138" x2="495" y2="138" stroke="#f3f4f6" stroke-width="1" />
-            <line x1="35" y1="100" x2="495" y2="100" stroke="#f3f4f6" stroke-width="1" />
-            <line x1="35" y1="63"  x2="495" y2="63"  stroke="#f3f4f6" stroke-width="1" />
-            <line x1="35" y1="25"  x2="495" y2="25"  stroke="#f3f4f6" stroke-width="1" />
-            <text x="30" y="178" text-anchor="end" font-size="8" fill="#9ca3af">0</text>
-            <text x="30" y="141" text-anchor="end" font-size="8" fill="#9ca3af">250</text>
-            <text x="30" y="103" text-anchor="end" font-size="8" fill="#9ca3af">500</text>
-            <text x="30" y="66"  text-anchor="end" font-size="8" fill="#9ca3af">750</text>
-            <text x="30" y="28"  text-anchor="end" font-size="8" fill="#9ca3af">1000</text>
-            <path v-for="s in areaSeries" :key="'a'+s.key" :d="s.areaPath" :fill="s.color" fill-opacity="0.22" />
+            <template v-for="t in areaTickPos" :key="'ag'+t.v">
+              <line v-if="t.y < 175" x1="35" :y1="t.y" x2="495" :y2="t.y" stroke="#f3f4f6" stroke-width="1" />
+              <text x="30" :y="t.y + 4" text-anchor="end" font-size="8" fill="#9ca3af">{{ t.v }}</text>
+            </template>
+            <!-- Fills: largest first so smaller series stay visible on top -->
+            <path v-for="s in areaFillOrder" :key="'a'+s.key" :d="s.areaPath" :fill="s.color" fill-opacity="0.22" />
+            <!-- Lines: original order, always drawn above fills -->
             <path v-for="s in areaSeries" :key="'l'+s.key" :d="s.linePath" fill="none" :stroke="s.color" stroke-width="2" stroke-opacity="0.35" />
             <template v-for="s in areaSeries" :key="'d'+s.key">
               <circle v-for="(p, i) in s.pts" :key="i"
