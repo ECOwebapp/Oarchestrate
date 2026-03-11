@@ -1,5 +1,6 @@
 <script setup>
 import { useAuthStore } from '@/stores/useAuthStore'
+import { mdiAccount, mdiLink } from '@mdi/js'
 import { computed } from 'vue'
 
 const props = defineProps(['task'])
@@ -22,10 +23,17 @@ const progress = computed(() => {
 })
 
 const statusLabel = computed(() => {
-  if (props.task?.director)  return { label: 'Approved',          cls: 'bg-green-100 text-green-800' }
-  if (props.task?.unitHead)  return { label: 'Pending Director',  cls: 'bg-amber-100 text-amber-800' }
-  if (props.task?.revision)  return { label: 'Needs Revision',    cls: 'bg-orange-100 text-orange-700' }
-  return                            { label: 'Pending Unit Head', cls: 'bg-gray-100 text-gray-600'  }
+  if (props.task?.director)   return { label: 'Approved',            cls: 'bg-green-100 text-green-800'  }
+  // unit_head=true means either UH approved OR bypass marker (Office/Self-assigned) — both mean Pending Director
+  if (props.task?.unitHead)   return { label: 'Pending Director',    cls: 'bg-amber-100 text-amber-800'  }
+  if (props.task?.revision)   return { label: 'Needs Revision',      cls: 'bg-orange-100 text-orange-700'}
+  // Office or self-assigned tasks with output submitted but unitHead flag not yet set
+  if ((props.task?.assigneeIsOffice || props.task?.isSelfAssigned) && props.task?.outputLink)
+                              return { label: 'Pending Director',    cls: 'bg-amber-100 text-amber-800'  }
+  // Non-office, non-self-assigned tasks pending unit head review
+  if (!props.task?.assigneeIsOffice && !props.task?.isSelfAssigned && props.task?.outputLink)
+                              return { label: 'Pending Unit Head',   cls: 'bg-gray-100 text-gray-600'    }
+  return                             { label: 'Pending',             cls: 'bg-gray-100 text-gray-600'    }
 })
 
 const cardClass = computed(() => {
@@ -39,6 +47,11 @@ const cardClass = computed(() => {
 // Show assignee name only if the viewer is not the assignee
 const showAssignee = computed(() =>
   props.task?.assigneeName && props.task?.assignee !== auth.userID
+)
+
+// Check if task has been resubmitted (outputLink exists AND no revision flag AND not director approved)
+const isResubmitted = computed(() =>
+  props.task?.outputLink && !props.task?.revision && !props.task?.director && props.task?.revisedAt
 )
 </script>
 
@@ -76,6 +89,13 @@ const showAssignee = computed(() =>
         <span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse inline-block" />
         Revision
       </span>
+      <span v-if="isResubmitted"
+        class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1">
+        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+          <path :d="mdiLink" />
+        </svg>
+        Resubmitted
+      </span>
     </div>
 
     <!-- Title -->
@@ -89,9 +109,8 @@ const showAssignee = computed(() =>
 
     <!-- Assignee (director/unit head view) -->
     <p v-if="showAssignee" class="text-xs text-gray-400 mb-2 truncate flex items-center gap-1">
-      <svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+      <svg class="w-3 h-3 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+        <path :d="mdiAccount" />
       </svg>
       {{ task.assigneeName }}
     </p>
@@ -105,9 +124,8 @@ const showAssignee = computed(() =>
     <!-- Output submitted indicator -->
     <div v-if="task.outputLink && !task.director"
       class="flex items-center gap-1 text-[10px] text-blue-600 font-semibold mb-1">
-      <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-          d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+      <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+        <path :d="mdiLink" />
       </svg>
       Output submitted
     </div>

@@ -2,6 +2,7 @@
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { mdiLink, mdiAlertCircle, mdiCheck, mdiChat, mdiRefresh } from '@mdi/js'
 
 const props = defineProps(['task'])
 const emit  = defineEmits(['close', 'refresh'])
@@ -52,17 +53,32 @@ const unreadCount = computed(() =>
 )
 
 // ── Capabilities ────────────────────────────────────────────
-const canApproveAsUnitHead = computed(() =>
-  auth.isUnitHead && !props.task?.unitHead && !props.task?.director && !!props.task?.outputLink
-)
+// Approval rules per org hierarchy:
+//   Office unit (unit_id=3):            output → Director directly (Unit Head cannot approve)
+//   Self-assigned tasks:                output → Director directly (Unit Head cannot approve)
+//   Planning & Implementation (1 & 2):  output → Unit Head first → then Director
+
+const canApproveAsUnitHead = computed(() => {
+  if (!auth.isUnitHead)             return false  // not a unit head
+  if (props.task?.isOwnTask)        return false  // can't self-approve
+  if (props.task?.isSelfAssigned)   return false  // self-assigned tasks go to director only
+  if (props.task?.unitHead)         return false  // already approved at UH level
+  if (props.task?.director)         return false  // fully approved
+  if (!props.task?.outputLink)      return false  // no output yet
+  if (props.task?.assigneeIsOffice) return false  // Office tasks bypass Unit Head
+  return true
+})
+
 const canApproveAsDirector = computed(() =>
-  auth.isDirector && props.task?.unitHead && !props.task?.director && !!props.task?.outputLink
+  auth.isDirector && !props.task?.director && !!props.task?.outputLink
 )
 const canSubmitOutput = computed(() =>
-  auth.isMember && !props.task?.outputLink && !props.task?.director
+  (auth.isMember || (auth.isUnitHead && props.task?.isOwnTask)) &&
+  !props.task?.outputLink && !props.task?.director
 )
 const canResubmit = computed(() =>
-  auth.isMember && !!props.task?.revision && !props.task?.director
+  (auth.isMember || (auth.isUnitHead && props.task?.isOwnTask)) &&
+  !!props.task?.revision && !props.task?.director
 )
 
 // Revision button only enabled when a comment is typed
@@ -74,11 +90,21 @@ const isOverdue = computed(() =>
   props.task?.to && new Date(props.task.to) < new Date() && !props.task?.director
 )
 
+// Check if task has been resubmitted (outputLink exists AND no revision flag AND not director approved)
+const isResubmitted = computed(() =>
+  props.task?.outputLink && !props.task?.revision && !props.task?.director && props.task?.revisedAt
+)
+
 const statusLabel = computed(() => {
-  if (props.task?.director) return { label: 'Approved by Director',    cls: 'bg-green-100 text-green-800',   icon: '✓' }
-  if (props.task?.unitHead) return { label: 'Pending Director Review', cls: 'bg-amber-100 text-amber-800',   icon: '⏳' }
-  if (props.task?.revision) return { label: 'Revision Requested',      cls: 'bg-orange-100 text-orange-700', icon: '↩' }
-  return                           { label: 'Pending Unit Head',        cls: 'bg-gray-100  text-gray-600',   icon: '⏳' }
+  if (props.task?.director)  return { label: 'Approved by Director',    cls: 'bg-green-100 text-green-800',   icon: '✓' }
+  // unitHead=true means: either UH approved (non-office) OR bypass marker (Office/Self-assigned)
+  // In both cases the task is now pending Director review
+  if (props.task?.unitHead)  return { label: 'Pending Director Review', cls: 'bg-amber-100 text-amber-800',   icon: '⏳' }
+  if (props.task?.revision)  return { label: 'Revision Requested',      cls: 'bg-orange-100 text-orange-700', icon: '↩' }
+  // Office and self-assigned tasks with output but unitHead not yet set = awaiting Director
+  if ((props.task?.assigneeIsOffice || props.task?.isSelfAssigned) && props.task?.outputLink)
+                             return { label: 'Pending Director Review', cls: 'bg-amber-100 text-amber-800',   icon: '⏳' }
+  return                            { label: 'Pending Approval',        cls: 'bg-gray-100  text-gray-600',   icon: '⏳' }
 })
 
 const badgeClass = (val) => ({
@@ -173,6 +199,13 @@ const resubmit = async () => {
             class="px-3 py-1 text-xs font-bold rounded-full bg-purple-600 text-white">
             Revision
           </span>
+          <span v-if="isResubmitted"
+            class="px-3 py-1 text-xs font-bold rounded-full bg-blue-600 text-white flex items-center gap-1">
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+              <path :d="mdiRefresh" />
+            </svg>
+            Resubmitted
+          </span>
           <span class="px-3 py-1 text-xs font-bold rounded-full" :class="statusLabel.cls">
             {{ statusLabel.icon }} {{ statusLabel.label }}
           </span>
@@ -258,11 +291,8 @@ const resubmit = async () => {
             <!-- Has output link -->
             <div v-if="task.outputLink"
               class="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3 bg-green-50">
-              <svg class="w-5 h-5 text-green-700 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101"/>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M14.828 14.828a4 4 0 015.656 0l4-4a4 4 0 01-5.656-5.656l-1.1 1.1"/>
+              <svg class="w-5 h-5 text-green-700 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <path :d="mdiLink" />
               </svg>
               <a :href="task.outputLink" target="_blank"
                 class="text-sm text-green-800 font-semibold hover:underline truncate flex-1">
@@ -292,10 +322,8 @@ const resubmit = async () => {
                 </button>
               </div>
               <p v-if="submitError" class="text-xs text-red-600 font-medium flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd"
-                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                    clip-rule="evenodd"/>
+                <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                  <path :d="mdiAlertCircle" />
                 </svg>
                 {{ submitError }}
               </p>
@@ -306,9 +334,8 @@ const resubmit = async () => {
               <!-- Revision comment banner -->
               <div v-if="task.revisionComment"
                 class="flex items-start gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
-                <svg class="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                <svg class="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                  <path :d="mdiAlertCircle" />
                 </svg>
                 <div class="min-w-0">
                   <p class="text-xs font-bold text-orange-700 mb-0.5">What needs to be revised:</p>
@@ -401,9 +428,8 @@ const resubmit = async () => {
             <!-- Empty state -->
             <div v-else-if="!revisions.length"
               class="flex flex-col items-center justify-center py-14 text-center text-gray-400">
-              <svg class="w-12 h-12 mb-3 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+              <svg class="w-12 h-12 mb-3 opacity-20" viewBox="0 0 24 24" fill="currentColor">
+                <path :d="mdiChat" />
               </svg>
               <p class="text-sm font-semibold">No comments yet</p>
               <p class="text-xs mt-1 max-w-[200px] leading-relaxed">
@@ -530,8 +556,8 @@ const resubmit = async () => {
         <!-- Fully approved -->
         <template v-else-if="task.director">
           <div class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-green-50 border border-green-200">
-            <svg class="w-4 h-4 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+            <svg class="w-4 h-4 text-green-700" viewBox="0 0 24 24" fill="currentColor">
+              <path :d="mdiCheck" />
             </svg>
             <span class="text-sm font-bold text-green-700">Fully Approved</span>
           </div>

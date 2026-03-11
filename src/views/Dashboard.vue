@@ -1,4 +1,5 @@
 <script setup>
+import TaskCard from '@/components/TaskCard.vue'
 import TaskDetail from '@/components/TaskDetail.vue'
 import { supabase } from '@/lib/supabaseClient'
 import { taskStore } from '@/stores/tasks'
@@ -69,8 +70,9 @@ const forMonth = (list) => list.filter(t => {
 
 // ─────────────────────────────────────────────
 // DIRECTOR
+// Director fetches ALL tasks — pending approval = outputLink present & not director-approved
 // ─────────────────────────────────────────────
-const directorPending     = computed(() => store.tasks.filter(t => t.unitHead && !t.director))
+const directorPending     = computed(() => store.tasks.filter(t => t.outputLink && !t.director))
 const directorMonth       = computed(() => forMonth(directorPending.value))
 const directorRegular     = computed(() => directorMonth.value.filter(t => t.type?.toLowerCase() !== 'insertion').sort((a,b) => (b.urgent?1:0)-(a.urgent?1:0)))
 const directorInsertion   = computed(() => directorMonth.value.filter(t => t.type?.toLowerCase() === 'insertion').sort((a,b) => (b.urgent?1:0)-(a.urgent?1:0)))
@@ -90,15 +92,17 @@ const directorDonut = computed(() => {
 
 // ─────────────────────────────────────────────
 // UNIT HEAD
+// UH fetches all tasks from their unit.
+// pending = unit member tasks with output submitted, not yet unit_head approved (excludes UH's own)
+// uhOwn  = tasks assigned to the unit head themselves
 // ─────────────────────────────────────────────
 const uhPending    = computed(() => store.tasks.filter(t =>
-  t.assignee !== auth.userID && // not assigned to current unit head
-  !t.unitHead &&
-  !t.director &&
-  t.outputLink // has output submitted
-  // Removed: t.assigneeRole === 3 - now shows tasks from ALL unit members regardless of role
+  !t.isOwnTask &&          // exclude unit head's own tasks
+  t.outputLink &&          // output has been submitted
+  !t.unitHead &&           // not yet unit-head approved
+  !t.director              // not yet director approved
 ))
-const uhOwn        = computed(() => store.tasks.filter(t => t.assignee === auth.userID))
+const uhOwn        = computed(() => store.tasks.filter(t => t.isOwnTask))
 const uhMonth      = computed(() => forMonth(uhPending.value))
 const uhRegular    = computed(() => uhMonth.value.filter(t => t.type?.toLowerCase() !== 'insertion').sort((a,b)=>(b.urgent?1:0)-(a.urgent?1:0)))
 const uhInsertion  = computed(() => uhMonth.value.filter(t => t.type?.toLowerCase() === 'insertion').sort((a,b)=>(b.urgent?1:0)-(a.urgent?1:0)))
@@ -143,49 +147,6 @@ const activeDonut    = computed(() => auth.isDirector ? directorDonut.value    :
 const activePending  = computed(() => auth.isDirector ? directorMonth.value    : auth.isUnitHead ? uhMonth.value    : store.tasks)
 const activeRegular  = computed(() => auth.isDirector ? directorRegular.value  : auth.isUnitHead ? uhRegular.value  : memberRegular.value)
 const activeInsertion= computed(() => auth.isDirector ? directorInsertion.value: auth.isUnitHead ? uhInsertion.value: memberInsertion.value)
-
-// Debug role and unit information
-const getRoleType = () => {
-  if (auth.isDirector) return 'Director'
-  if (auth.isUnitHead) return 'Unit Head'
-  if (auth.isMember) return 'Member'
-  if (auth.isAdmin) return 'Admin'
-  return 'Unknown'
-}
-
-console.log('=== DASHBOARD DEBUG ===')
-console.log('Role ID:', auth.roleId)
-console.log('Role Type:', getRoleType())
-console.log('Unit ID:', auth.unitId)
-console.log('Unit Name:', auth.unitName)
-console.log('User ID:', auth.userID)
-console.log('User Email:', auth.user?.email)
-console.log('Full Name:', auth.fullName)
-console.log('Total Tasks Loaded:', store.tasks.length)
-
-// Display unit members for unit heads
-if (auth.isUnitHead) {
-  console.log('=== UNIT MEMBERS ===')
-  console.log('Unit Members Count:', store.unitMembers.length)
-  store.unitMembers.forEach((member, index) => {
-    console.log(`${index + 1}. ${member.name} (${member.roleType}) ${member.isCurrentUser ? '(YOU)' : ''}`)
-  })
-  console.log('===================')
-
-  // Log unit head task visibility
-  console.log('=== UNIT HEAD TASK VISIBILITY ===')
-  console.log('Total tasks in store:', store.tasks.length)
-  console.log('Tasks pending approval (uhPending):', uhPending.value.length)
-  console.log('Own tasks (uhOwn):', uhOwn.value.length)
-  const unitTasks = store.tasks.filter(t => {
-    // Find if assignee is in unit members
-    const isUnitMember = store.unitMembers.some(m => m.id === t.assignee)
-    return isUnitMember
-  })
-  console.log('Tasks from unit members:', unitTasks.length)
-  console.log('==================================')
-}
-console.log('=======================')
 </script>
 
 <template>
@@ -370,62 +331,11 @@ console.log('=======================')
             </div>
 
             <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              <div
-                v-for="(task, i) in activeRegular" :key="task.id"
-                class="task-card bg-white rounded-2xl border shadow-sm cursor-pointer group overflow-hidden"
-                :class="task.urgent ? 'border-red-200' : 'border-gray-100'"
-                :style="`animation-delay:${240 + i*35}ms`"
-                @click="openTask(task)">
-
-                <div class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold"
-                  :class="task.urgent ? 'bg-red-600 text-white' : 'bg-green-800 text-white'">
-                  <svg v-if="task.urgent" viewBox="0 0 24 24" class="w-3 h-3 fill-current">
-                    <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                  </svg>
-                  {{ task.urgent ? 'URGENT' : 'REGULAR' }}
-                </div>
-
-                <div class="p-4">
-                  <p class="font-bold text-gray-900 text-sm leading-snug mb-1.5 line-clamp-2
-                             group-hover:text-green-800 transition-colors duration-150">
-                    {{ task.name }}
-                  </p>
-                  <p class="text-xs text-gray-400 line-clamp-2 mb-4 leading-relaxed">{{ task.description }}</p>
-
-                  <div class="flex items-center justify-between text-xs text-gray-400 border-t border-gray-50 pt-3">
-                    <span class="truncate max-w-[60%]">{{ task.assigneeName }}</span>
-                    <span>{{ fmt(task.from) }}</span>
-                  </div>
-
-                  <p v-if="isOverdue(task.to)"
-                    class="mt-2 flex items-center gap-1 text-xs text-red-500 font-medium">
-                    <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>
-                    Overdue · due {{ fmt(task.to) }}
-                  </p>
-                  <p v-else-if="task.to" class="mt-2 text-xs text-gray-400">Due {{ fmt(task.to) }}</p>
-
-                  <p v-if="task.revision"
-                    class="mt-1.5 flex items-center gap-1 text-xs text-orange-600 font-bold">
-                    <span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"/>
-                    Revision requested
-                  </p>
-
-                  <!-- Hover actions (director + unit head) -->
-                  <div v-if="!auth.isMember"
-                    class="flex gap-2 mt-3 opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-200">
-                    <button @click.stop="openTask(task)"
-                      class="flex-1 py-1.5 text-xs font-bold rounded-lg border-2 border-amber-400 text-amber-600
-                             hover:bg-amber-50 transition-colors">
-                      Review
-                    </button>
-                    <button @click.stop="openTask(task)"
-                      class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-green-800 text-white
-                             hover:bg-green-700 transition-colors">
-                      Approve
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <TaskCard
+                v-for="task in activeRegular" :key="task.id"
+                :task="task"
+                @open="openTask"
+              />
             </div>
           </section>
 
@@ -448,61 +358,11 @@ console.log('=======================')
             </div>
 
             <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              <div
-                v-for="(task, i) in activeInsertion" :key="task.id"
-                class="task-card bg-white rounded-2xl border shadow-sm cursor-pointer group overflow-hidden"
-                :class="task.urgent ? 'border-red-200' : 'border-amber-100'"
-                :style="`animation-delay:${280 + i*35}ms`"
-                @click="openTask(task)">
-
-                <div class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold"
-                  :class="task.urgent ? 'bg-red-600 text-white' : 'bg-amber-600 text-white'">
-                  <svg v-if="task.urgent" viewBox="0 0 24 24" class="w-3 h-3 fill-current">
-                    <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                  </svg>
-                  {{ task.urgent ? 'URGENT INSERTION' : 'INSERTION' }}
-                </div>
-
-                <div class="p-4">
-                  <p class="font-bold text-gray-900 text-sm leading-snug mb-1.5 line-clamp-2
-                             group-hover:text-amber-700 transition-colors duration-150">
-                    {{ task.name }}
-                  </p>
-                  <p class="text-xs text-gray-400 line-clamp-2 mb-4 leading-relaxed">{{ task.description }}</p>
-
-                  <div class="flex items-center justify-between text-xs text-gray-400 border-t border-gray-50 pt-3">
-                    <span class="truncate max-w-[60%]">{{ task.assigneeName }}</span>
-                    <span>{{ fmt(task.from) }}</span>
-                  </div>
-
-                  <p v-if="isOverdue(task.to)"
-                    class="mt-2 flex items-center gap-1 text-xs text-red-500 font-medium">
-                    <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>
-                    Overdue · due {{ fmt(task.to) }}
-                  </p>
-                  <p v-else-if="task.to" class="mt-2 text-xs text-gray-400">Due {{ fmt(task.to) }}</p>
-
-                  <p v-if="task.revision"
-                    class="mt-1.5 flex items-center gap-1 text-xs text-orange-600 font-bold">
-                    <span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"/>
-                    Revision requested
-                  </p>
-
-                  <div v-if="!auth.isMember"
-                    class="flex gap-2 mt-3 opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-200">
-                    <button @click.stop="openTask(task)"
-                      class="flex-1 py-1.5 text-xs font-bold rounded-lg border-2 border-amber-400 text-amber-600
-                             hover:bg-amber-50 transition-colors">
-                      Review
-                    </button>
-                    <button @click.stop="openTask(task)"
-                      class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-green-800 text-white
-                             hover:bg-green-700 transition-colors">
-                      Approve
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <TaskCard
+                v-for="task in activeInsertion" :key="task.id"
+                :task="task"
+                @open="openTask"
+              />
             </div>
           </section>
 
@@ -515,26 +375,11 @@ console.log('=======================')
               </span>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              <div v-for="(task, i) in uhOwn.sort((a,b)=>(b.urgent?1:0)-(a.urgent?1:0))" :key="task.id"
-                class="task-card bg-white rounded-2xl border shadow-sm cursor-pointer group overflow-hidden"
-                :class="task.urgent ? 'border-red-200' : 'border-gray-100'"
-                :style="`animation-delay:${300+i*35}ms`"
-                @click="openTask(task)">
-                <div class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold"
-                  :class="task.urgent ? 'bg-red-600 text-white' : task.type?.toLowerCase()==='insertion' ? 'bg-amber-600 text-white' : 'bg-green-800 text-white'">
-                  {{ task.urgent ? 'URGENT' : task.type?.toUpperCase() || 'REGULAR' }}
-                </div>
-                <div class="p-4">
-                  <p class="font-bold text-gray-900 text-sm leading-snug mb-1.5 line-clamp-2 group-hover:text-green-800 transition-colors">{{ task.name }}</p>
-                  <p class="text-xs text-gray-400 line-clamp-2 mb-4">{{ task.description }}</p>
-                  <div class="flex items-center justify-between text-xs text-gray-400 border-t border-gray-50 pt-3">
-                    <span class="font-semibold" :class="task.director ? 'text-green-600' : task.unitHead ? 'text-amber-600' : 'text-gray-400'">
-                      {{ task.director ? '✓ Approved' : task.unitHead ? 'At Director' : 'Pending' }}
-                    </span>
-                    <span>{{ fmt(task.to) }}</span>
-                  </div>
-                </div>
-              </div>
+              <TaskCard
+                v-for="task in uhOwn.slice().sort((a,b)=>(b.urgent?1:0)-(a.urgent?1:0))" :key="task.id"
+                :task="task"
+                @open="openTask"
+              />
             </div>
           </section>
 
