@@ -151,96 +151,96 @@ export const taskStore = defineStore('tasks', () => {
     try {
 
       if (auth.isDirector) {
-        // Director sees:
-        // 1. Tasks approved by unit head (unitHead=true, director=false)
-        // 2. Tasks from Office unit members (direct-to-director) with output submitted
-        // 3. Own assigned tasks
-        const { data: officeUnit } = await supabase
-          .from('unit_name')
-          .select('id')
-          .ilike('name', 'office')
-          .maybeSingle()
-
-        const officeUnitId = officeUnit?.id || null
-
-        let officeMembers = []
-        if (officeUnitId) {
-          const { data: om } = await supabase
-            .from('unit').select('user_id').eq('unit_id', officeUnitId)
-          officeMembers = (om || []).map(m => m.user_id)
-        }
-
-        // Tasks approved by unit heads (regular pipeline)
-        const { data: approvedRows } = await supabase
+        // ── Director: fetch ALL root tasks from every user ──
+        // Single broad query, JS-side filtering avoids Supabase joined-column filter bugs
+        const { data: allRows, error } = await supabase
           .from('task')
           .select(TASK_SELECT)
           .is('parent_id', null)
-          .eq('task_approval.unit_head', true)
-          .eq('task_approval.director', false)
+          .order('id', { ascending: false })
 
-        // Tasks from Office unit (bypass unit head), with output submitted
-        let officeRows = []
-        if (officeMembers.length) {
-          const filter = officeMembers.map(id => `assignee.eq.${id}`).join(',')
-          const { data: or_ } = await supabase
-            .from('task').select(TASK_SELECT)
-            .is('parent_id', null)
-            .or(filter)
-          // Only include if output submitted and not yet director-approved
-          officeRows = (or_ || []).filter(t =>
-            t.task_output?.link && !t.task_approval?.director
-          )
-        }
+        if (error) throw error
 
-        // Director's own assigned tasks
-        const { data: myRows } = await supabase
-          .from('task').select(TASK_SELECT)
-          .is('parent_id', null).eq('assigner', uid)
+        // Resolve all names in one call
+        await resolveNames([
+          ...new Set((allRows || []).flatMap(t => [t.assigner, t.assignee]).filter(Boolean))
+        ])
 
-        const seen = new Set()
-        const rows = [...(approvedRows||[]), ...officeRows, ...(myRows||[])]
-          .filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true })
-        await resolveNames([...new Set(rows.flatMap(t => [t.assigner, t.assignee]).filter(Boolean))])
-        tasks.value = rows.map(mapRow)
-
-      } else if (auth.isUnitHead) {
-        // Unit head sees only their own unit's tasks (not Office)
-        const { data: unitMembers } = await supabase
-          .from('unit')
-          .select('user_id')
-          .eq('unit_id', auth.unitId)
-
-        const memberIds = (unitMembers || []).map(m => m.user_id).filter(id => id !== uid)
-        const assigneeFilter = [uid, ...memberIds].map(id => `assignee.eq.${id}`).join(',')
-        const { data: rows } = await supabase
-          .from('task').select(TASK_SELECT)
-          .is('parent_id', null).or(assigneeFilter)
-        await resolveNames([...new Set((rows||[]).flatMap(t => [t.assigner, t.assignee]).filter(Boolean))])
-        // also fetch roles of assignees so we know who is a member vs head
-        const assigneeIds = [...new Set((rows||[]).map(t => t.assignee).filter(Boolean))]
+        // Attach assignee role so dashboard/detail can identify who's who
+        const assigneeIds = [...new Set((allRows || []).map(t => t.assignee).filter(Boolean))]
         let roleMap = {}
         if (assigneeIds.length) {
           const { data: roles } = await supabase
-            .from('member_type')
-            .select('user_id, role_id')
-            .in('user_id', assigneeIds)
+            .from('member_type').select('user_id, role_id').in('user_id', assigneeIds)
           ;(roles || []).forEach(r => { roleMap[r.user_id] = r.role_id })
         }
-        tasks.value = (rows||[]).map(t => ({
+
+        tasks.value = (allRows || []).map(t => ({
           ...mapRow(t),
           assigneeRole: roleMap[t.assignee] || null,
         }))
 
-        // Fetch unit members for display
+      } else if (auth.isUnitHead) {
+        // ── Unit Head: fetch all tasks assigned to anyone in the same unit ──
+        // Includes the unit head themselves + all their unit members
+        if (!auth.unitId) { tasks.value = []; return }
+
+        const { data: unitUsers } = await supabase
+          .from('unit')
+          .select('user_id')
+          .eq('unit_id', auth.unitId)
+
+        const unitUserIds = (unitUsers || []).map(m => m.user_id)
+        // Always include current user even if not in unit table
+        const allIds = [...new Set([uid, ...unitUserIds])]
+
+        const assigneeFilter = allIds.map(id => `assignee.eq.${id}`).join(',')
+        const { data: rows, error } = await supabase
+          .from('task')
+          .select(TASK_SELECT)
+          .is('parent_id', null)
+          .or(assigneeFilter)
+          .order('id', { ascending: false })
+
+        if (error) throw error
+
+        await resolveNames([
+          ...new Set((rows || []).flatMap(t => [t.assigner, t.assignee]).filter(Boolean))
+        ])
+
+        // Attach assignee role for dashboard filtering
+        const assigneeIds2 = [...new Set((rows || []).map(t => t.assignee).filter(Boolean))]
+        let roleMap2 = {}
+        if (assigneeIds2.length) {
+          const { data: roles } = await supabase
+            .from('member_type').select('user_id, role_id').in('user_id', assigneeIds2)
+          ;(roles || []).forEach(r => { roleMap2[r.user_id] = r.role_id })
+        }
+
+        tasks.value = (rows || []).map(t => ({
+          ...mapRow(t),
+          assigneeRole: roleMap2[t.assignee] || null,
+          isOwnTask: t.assignee === uid,
+        }))
+
+        // Also update unitMembers list for AddTask dropdown etc.
         await fetchUnitMembers()
 
       } else {
-        // Member: own tasks only
-        const { data: rows } = await supabase
-          .from('task').select(TASK_SELECT)
-          .is('parent_id', null).eq('assignee', uid)
-        await resolveNames([...new Set((rows||[]).flatMap(t => [t.assigner, t.assignee]).filter(Boolean))])
-        tasks.value = (rows||[]).map(mapRow)
+        // ── Member: fetch only their own tasks ──
+        const { data: rows, error } = await supabase
+          .from('task')
+          .select(TASK_SELECT)
+          .is('parent_id', null)
+          .eq('assignee', uid)
+          .order('id', { ascending: false })
+
+        if (error) throw error
+
+        await resolveNames([
+          ...new Set((rows || []).flatMap(t => [t.assigner, t.assignee]).filter(Boolean))
+        ])
+        tasks.value = (rows || []).map(mapRow)
       }
 
     } catch(e) {
