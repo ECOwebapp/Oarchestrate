@@ -161,25 +161,27 @@ const reportRows = computed(() => {
 
       <!-- ── Content ── -->
       <div class="overflow-auto flex-1 px-8 py-6">
-        <table class="w-full border-collapse text-xs">
+        <table class="w-full border-collapse text-xs table-fixed">
           <thead>   
             <tr class="bg-green-800 text-white text-[11px] uppercase tracking-wide">
-              <th class="border border-green-700 px-3 py-2 font-semibold text-center w-24">Date</th>
-              <th class="border border-green-700 px-3 py-2 font-semibold text-center w-40">PPAs</th>
-              <th class="border border-green-700 px-3 py-2 font-semibold text-center w-40">DAEDs</th>
-              <th class="border border-green-700 px-3 py-2 font-semibold text-center w-10">No.</th>
-              <th class="border border-green-700 px-3 py-2 font-semibold text-center">Output</th>
-              <th class="border border-green-700 px-3 py-2 font-semibold text-center w-32">Remarks</th>
-              <th class="border border-green-700 px-3 py-2 font-semibold text-center w-48">Drive Link</th>
+              <th class="border border-green-700 px-3 py-2 font-semibold text-center" style="width:10%">Date</th>
+              <th class="border border-green-700 px-3 py-2 font-semibold text-center" style="width:12%">PPAs</th>
+              <th class="border border-green-700 px-3 py-2 font-semibold text-center" style="width:14%">DAEDs</th>
+              <th class="border border-green-700 px-3 py-2 font-semibold text-center" style="width:5%">No.</th>
+              <th class="border border-green-700 px-3 py-2 font-semibold text-center" style="width:28%">Output</th>
+              <th class="border border-green-700 px-3 py-2 font-semibold text-center" style="width:10%">Remarks</th>
+              <th class="border border-green-700 px-3 py-2 font-semibold text-center" style="width:21%">Drive Link</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(row, i) in reportRows" :key="i" class="h-8">
               <td class="border border-gray-300 px-2 py-1 text-gray-600 whitespace-nowrap">{{ row.date }}</td>
-              <td class="border border-gray-300 px-2 py-1 text-gray-600">{{ row.ppa }}</td>
-              <td class="border border-gray-300 px-2 py-1 text-gray-600">{{ row.daed }}</td>
+              <td class="border border-gray-300 px-2 py-1 text-gray-600 break-words">{{ row.ppa }}</td>
+              <td class="border border-gray-300 px-2 py-1 text-gray-600 break-words">{{ row.daed }}</td>
               <td class="border border-gray-300 px-2 py-1 text-center text-gray-600">{{ row.no }}</td>
-              <td class="border border-gray-300 px-2 py-1 text-gray-600">{{ row.output }}</td>
+              <td class="border border-gray-300 px-2 py-1 text-gray-600">
+                <span class="line-clamp-4 break-words">{{ row.output }}</span>
+              </td>
               <td class="border border-gray-300 px-2 py-1 text-center text-gray-600">{{ row.remarks }}</td>
               <td class="border border-gray-300 px-2 py-1 text-center">
                 <span v-if="row.link" class="text-[10px] text-gray-700 break-all">{{ row.link }}</span>
@@ -231,14 +233,11 @@ const reportRows = computed(() => {
     margin: 0;
   }
 
-  /* Hide everything */
   body { visibility: hidden; }
 
-  /* Show only the report card and all its children */
   #indiv-report-printable,
   #indiv-report-printable * { visibility: visible; }
 
-  /* Place it at the top-left, full width */
   #indiv-report-printable {
     position: absolute;
     top: 0;
@@ -249,20 +248,46 @@ const reportRows = computed(() => {
     overflow: visible !important;
     box-shadow: none;
     border-radius: 0;
-    padding: 12mm;
+    padding: 10mm;
   }
 
-  /* Remove scroll container constraints */
   #indiv-report-printable .overflow-auto {
     overflow: visible !important;
     max-height: none !important;
   }
 
-  /* Ensure table borders print */
-  table { border-collapse: collapse !important; width: 100% !important; }
-  th, td { border: 1px solid #aaa !important; }
+  #indiv-report-printable table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    table-layout: fixed !important;
+  }
 
-  /* Preserve background colors (green header) */
+  #indiv-report-printable th,
+  #indiv-report-printable td {
+    border: 1px solid #aaa !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    white-space: normal !important;
+    vertical-align: top !important;
+    font-size: 8pt !important;
+    padding: 3px 5px !important;
+  }
+
+  /* Remove line-clamp in print so full text shows */
+  #indiv-report-printable .line-clamp-4 {
+    display: block !important;
+    -webkit-line-clamp: unset !important;
+    line-clamp: unset !important;
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* Prevent rows from splitting across pages */
+  #indiv-report-printable tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 </style>
