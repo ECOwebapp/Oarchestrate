@@ -11,7 +11,7 @@ import Tasks from '@/views/Tasks.vue'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { taskStore } from '@/stores/tasks'
 import { useMemberStore } from '@/stores/member'
-import { useRolePosStore } from '@/stores/roles'
+import { usePosStore } from '@/stores/positions'
 import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
@@ -95,10 +95,10 @@ router.beforeEach(async (to) => {
   const auth = useAuthStore()
   const tasks = taskStore()
   const members = useMemberStore()
-  const fetchRolePos = useRolePosStore()
+  const fetchPos = usePosStore()
 
-  await fetchRolePos.fetchRoles()
-  await fetchRolePos.fetchMemberRoles()
+  await fetchPos.fetchPos()
+  await fetchPos.fetchMemberPos()
 
   if (to.meta.requiresTasks && tasks.tasks.length === 0) {
     await tasks.fetchTasks()

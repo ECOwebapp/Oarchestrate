@@ -3,14 +3,14 @@ import { storeToRefs } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { useMemberStore } from '@/stores/member';
 import { useNotifStore } from '@/stores/useNotifStore';
-import { useRolePosStore } from '@/stores/roles';
+import { usePosStore } from '@/stores/positions';
 
 // 1. Use storeToRefs to keep the properties reactive
 const memberStore = useMemberStore()
 const notifStore = useNotifStore()
-const roleStore = useRolePosStore()
+const posStore = usePosStore()
 const { members } = storeToRefs(memberStore)
-const { roles, memberRoles } = storeToRefs(roleStore)
+const { position, memberPos } = storeToRefs(posStore)
 const loading = ref({
     update: false,
     delete: false
@@ -30,43 +30,43 @@ const normalMembers = computed(() => {
 
 const isActing = (n) => n.status === 'approving' || n.status === 'denying'
 
-const changeRoleMembers = ref({
+const changePosMembers = ref({
     user_id: null,
-    role_id: null
+    pos_id: null
 })
 
 const deleteMember = ref({ user_id: null })
 
-const availableRoles = computed(() => {
-    const selectedUserId = changeRoleMembers.value.user_id;
+const availablePos = computed(() => {
+    const selectedUserId = changePosMembers.value.user_id;
 
-    // 1. If no ID is selected, return all roles
-    if (!selectedUserId) return roles.value;
+    // 1. If no ID is selected, return all position
+    if (!selectedUserId) return position.value;
 
     // 2. Find the user, forcing both IDs to String and trimming whitespace
-    const currentMember = memberRoles.value.find(p => {
+    const currentMember = memberPos.value.find(p => {
         return String(p.user_id).trim() === String(selectedUserId).trim();
     });
 
-    // 3. If member not found in the roles list, return all roles
-    if (!currentMember) return roles.value;
+    // 3. If member not found in the position list, return all position
+    if (!currentMember) return position.value;
 
-    // 4. Filter out the current role ID (also forcing string comparison)
-    return roles.value.filter(r => {
-        return String(r.id) !== String(currentMember.role_id);
+    // 4. Filter out the current position ID (also forcing string comparison)
+    return position.value.filter(r => {
+        return String(r.id) !== String(currentMember.pos_id);
     });
 });
 
-// Change Member Roles to Director/Unit Head/Unit Member
+// Change Member position to Director/Unit Head/Unit Member
 const submitChangeRole = async () => {
     try {
         loading.value.update = true
-        const response = await roleStore.changeMemberRoles({ member: { ...changeRoleMembers.value } })
+        const response = await posStore.changeMemberPos({ member: { ...changePosMembers.value } })
         if (response === 200) console.log(response)
     } catch (e) {
         console.log('Error submission: ', e)
     } finally {
-        changeRoleMembers.value = {
+        changePosMembers.value = {
             user_id: null,
             role_id: null
         }
@@ -145,7 +145,7 @@ const removeMember = async () => {
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Member:</label>
-                            <select v-model="changeRoleMembers.user_id"
+                            <select v-model="changePosMembers.user_id"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-700 disabled:opacity-50"
                                 :disabled="loading?.update">
                                 <option disabled selected :value="null">-- Select a member --</option>
@@ -158,11 +158,11 @@ const removeMember = async () => {
 
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Position:</label>
-                            <select v-model="changeRoleMembers.role_id"
+                            <select v-model="changePosMembers.role_id"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-700 disabled:opacity-50"
                                 :disabled="loading?.update">
                                 <option disabled selected :value="null">-- Select position --</option>
-                                <option v-for="role in availableRoles" :key="role.id" :value="role.id">{{ role.name }}
+                                <option v-for="pos in availablePos" :key="pos.id" :value="pos.id">{{ pos.name }}
                                 </option>
                             </select>
                         </div>

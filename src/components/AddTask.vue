@@ -34,7 +34,7 @@ onMounted(() => members.fetchMembers?.())
 const assignableMembers = computed(() => {
   if (auth.isDirector) {
     if (newTask.value.type === 2) return members.members
-    return members.members.filter(m => m.role_id === 2)
+    return members.members.filter(m => m.pos_id === 4)
   }
   if (auth.isUnitHead) {
     // their own unit members + themselves

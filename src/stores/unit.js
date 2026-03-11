@@ -5,26 +5,21 @@ import { ref } from 'vue'
 
 export const useUnitStore = defineStore('unit', () => {
 
-    const unitPeers = ref([])
+    const unit = ref([])
 
-    const fetchUnitPeers = async() => {
+    const fetchUnitPeers = async(unitId) => {
         try {
-            const { data: unitRows, error: unitErr } = await supabase
-                .from('unit')
-                .select('user_id, unit_name (id, name)')
+            const { data, error } = await supabase.rpc('get_unit_position', { 
+                target_unit_id: unitId 
+              });
     
-            if (unitErr) throw unitErr
+            if (error) throw error
     
-            unitPeers.value = (unitRows || [])
-                .map(u => ({
-                    user_id: u.user_id,
-                    unit_id: u.unit_name?.id,
-                    unit_name: u.unit_name?.name
-                }))
+            unit.value = data
         } catch(e) {
             console.log('Error fetching peers: ', e)
         }
     }
 
-    return { unitPeers, fetchUnitPeers }
+    return { unit, fetchUnitPeers }
 })

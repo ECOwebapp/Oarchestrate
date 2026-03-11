@@ -19,10 +19,10 @@ export const useMemberStore = defineStore('member', () => {
                     gender_type (gender),
                     position ( 
                         pos_id,
-                        position_name ( pos_name )
-                      ),
-                    member_type (role_id),
-                    unit (unit_id)
+                        unit_id,
+                        position_name ( pos_name ),
+                        unit_name (name)
+                      )
                 `)
 
             const { data: statusRows, error: statusErr } = await supabase
@@ -46,8 +46,7 @@ export const useMemberStore = defineStore('member', () => {
                             pos_id: m.position?.pos_id,
                             pos_name: m.position?.position_name?.pos_name,
                             status_id: statusRows.find(s => s.user_id === m.user_id)?.status_id,
-                            role_id: m.member_type?.role_id,
-                            unit_id: m.unit?.unit_id
+                            unit_id: m.position?.unit_id
                         }))
                 }
             }
@@ -56,7 +55,7 @@ export const useMemberStore = defineStore('member', () => {
         } catch (e) {
             console.log('Failed to fetch members: ', e)
         } finally {
-            console.log(members)
+            // console.log(members)
         }
     }
 

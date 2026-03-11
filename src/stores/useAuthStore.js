@@ -8,9 +8,8 @@ export const useAuthStore = defineStore('auth', () => {
   const user          = ref(null)
   const userID        = ref(null)
   const profile       = ref(null)
-  const roleLabel     = ref(null)
+  const positionId    = ref(null)
   const positionLabel = ref('')
-  const roleId        = ref(null)
   const unitId        = ref(null)
   const unitName      = ref('')
   const accountStatus = ref(null)
@@ -51,12 +50,16 @@ export const useAuthStore = defineStore('auth', () => {
     return `hsl(${hue}, ${sat}%, ${lit}%)`
   })
 
-  const isDirector = computed(() => roleId.value === 1)
-  const isUnitHead = computed(() => roleId.value === 2)
-  const isMember   = computed(() => roleId.value === 3)
-  const isAdmin    = computed(() => roleId.value === 4)
+  const isDirector = computed(() => positionId.value === 1)
+  const isUnitHead = computed(() => positionId.value === 4)
+  const isMember   = computed(() => { 
+    const excludedIds = [1, 4, 11];
+
+    return !excludedIds.includes(Number(positionId.value));
+  })
+  const isAdmin    = computed(() => positionId.value === 11)
   // Office unit members bypass unit head — go straight to director
-  const isOffice   = computed(() => unitName.value === 'office')
+  const isOffice   = computed(() => unitId.value === 3)
 
   // ── Fetch user data ──
   async function fetchUserData(authUser) {
@@ -64,7 +67,7 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     userID.value  = authUser.id
 
-    const [profRes, posRes, roleRes, unitRes, statusRes] = await Promise.all([
+    const [profRes, posRes, statusRes] = await Promise.all([
       supabase
         .from('user_profile')
         .select('fname, lname, middle_initial')
@@ -73,19 +76,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       supabase
         .from('position')
-        .select('position_name:pos_id(pos_name)')
-        .eq('user_id', authUser.id)
-        .maybeSingle(),
-
-      supabase
-        .from('member_type')
-        .select('role_type (id, role_type)')
-        .eq('user_id', authUser.id)
-        .maybeSingle(),
-
-      supabase
-        .from('unit')
-        .select('unit_id, unit_name:unit_id(name)')
+        .select('position_name:pos_id(id, pos_name), unit:unit_id(id, name)')
         .eq('user_id', authUser.id)
         .maybeSingle(),
 
@@ -98,18 +89,15 @@ export const useAuthStore = defineStore('auth', () => {
 
     if (profRes.error)   console.error('[auth] user_profile:',  profRes.error.message)
     if (posRes.error)    console.error('[auth] position:',       posRes.error.message)
-    if (roleRes.error)   console.error('[auth] member_type:',    roleRes.error.message)
-    if (unitRes.error)   console.error('[auth] unit:',           unitRes.error.message)
     if (statusRes.error) console.error('[auth] account_status:', statusRes.error.message)
 
-    console.log('[auth] roleId →', roleRes.data?.role_id, '| isDirector →', roleRes.data?.role_id === 1)
+    console.log('[auth] roleId →', posRes.data?.position_name?.id, '| isDirector →', posRes.data?.position_name?.id === 1)
 
     profile.value       = profRes.data  ?? null
+    positionId.value          = posRes.data?.position_name?.id ?? null
     positionLabel.value = posRes.data?.position_name?.pos_name ?? ''
-    roleId.value        = roleRes.data?.role_type.id ?? null
-    roleLabel.value     = roleRes.data?.role_type.role_type ?? null
-    unitId.value        = unitRes.data?.unit_id   ?? null
-    unitName.value      = unitRes.data?.unit_name?.name ?? ''
+    unitId.value        = posRes.data?.unit.id ?? null
+    unitName.value      = posRes.data?.unit?.name ?? ''
     accountStatus.value = statusRes.data?.status_id ?? 1
 
     loading.value     = false
@@ -151,7 +139,6 @@ export const useAuthStore = defineStore('auth', () => {
     userID.value        = null
     profile.value       = null
     positionLabel.value = ''
-    roleId.value        = null
     unitId.value        = null
     unitName.value      = ''
     accountStatus.value = null
@@ -159,7 +146,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    user, userID, profile, positionLabel, roleId, roleLabel, unitId, unitName, accountStatus, loading, initialized,
+    user, userID, profile, positionLabel, unitId, unitName, accountStatus, loading, initialized,
     isLoggedIn, fullName, initials, avatarColor,
     isDirector, isUnitHead, isMember, isAdmin, isOffice,
     init, listenToAuthChanges, fetchUserData, logout, $reset,

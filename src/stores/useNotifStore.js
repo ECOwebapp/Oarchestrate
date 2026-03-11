@@ -60,21 +60,17 @@ export const useNotifStore = defineStore('notif', () => {
         let unitMap = {}
 
         if (userIds.length) {
-          const [profRes, posRes, unitRes] = await Promise.all([
+          const [profRes, posRes] = await Promise.all([
             supabase.from('user_profile')
               .select('user_id, fname, lname')
               .in('user_id', userIds),
             supabase.from('position')
-              .select('user_id, position_name:pos_id(pos_name)')
-              .in('user_id', userIds),
-            supabase.from('unit')
-              .select('user_id, unit_name:unit_id(name)')
+              .select('user_id, position_name:pos_id(pos_name), unit_name:unit_id(name)')
               .in('user_id', userIds),
           ])
 
           if (profRes.error) console.error('[notifStore] user_profile error:', profRes.error)
           if (posRes.error)  console.error('[notifStore] position error:',     posRes.error)
-          if (unitRes.error) console.error('[notifStore] unit error:',         unitRes.error)
 
           nameMap = Object.fromEntries(
             (profRes.data || []).map(p => [p.user_id, `${p.fname || ''} ${p.lname || ''}`.trim()])
@@ -83,7 +79,7 @@ export const useNotifStore = defineStore('notif', () => {
             (posRes.data || []).map(p => [p.user_id, p.position_name?.pos_name || ''])
           )
           unitMap = Object.fromEntries(
-            (unitRes.data || []).map(u => [u.user_id, u.unit_name?.name || ''])
+            (posRes.data || []).map(u => [u.user_id, u.unit_name?.name || ''])
           )
         }
 
@@ -121,7 +117,7 @@ export const useNotifStore = defineStore('notif', () => {
         let officeFilter = null
         if (officeUnitId) {
           const { data: om } = await supabase
-            .from('unit').select('user_id').eq('unit_id', officeUnitId)
+            .from('position').select('user_id').eq('unit_id', officeUnitId)
           const officeIds = (om || []).map(m => m.user_id)
           if (officeIds.length) officeFilter = officeIds.map(id => `assignee.eq.${id}`).join(',')
         }
@@ -161,7 +157,7 @@ export const useNotifStore = defineStore('notif', () => {
       } else if (auth.isUnitHead) {
         // Unit head: tasks from unit members with output submitted, not yet approved
         const { data: unitMembers } = await supabase
-          .from('unit').select('user_id').eq('unit_id', auth.unitId)
+          .from('position').select('user_id').eq('unit_id', auth.unitId)
         const memberIds = (unitMembers || [])
           .map(m => m.user_id).filter(id => id !== uid)
 

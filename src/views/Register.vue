@@ -2,8 +2,10 @@
 import { supabase } from '@/lib/supabaseClient';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
+import { useUnitStore } from '@/stores/unit';
 
 const router = useRouter()
+const unit = useUnitStore()
 
 const form = reactive({
   firstName:       '',
@@ -25,6 +27,7 @@ const form = reactive({
 
 // ── Dropdown data ──
 const units            = ref([])
+const filteredPositions = ref([])
 const allPositions     = ref([])   // full list from DB
 const genders          = ref([])
 const loadingDropdowns = ref(true)
@@ -55,7 +58,7 @@ onMounted(async () => {
   loadingRegions.value = true
   const [u, p, g, r] = await Promise.all([
     supabase.from('unit_name').select('id, name').order('name'),
-    supabase.from('position_name').select('id, pos_name, unit_id').order('pos_name'),
+    supabase.from('position_name').select('id, pos_name:pos_id(pos_name), unit_id').order('pos_name'),
     supabase.from('gender_type').select('id, gender').order('id'),
     fetch(`${PSGC}/regions/`).then(r => r.json()).catch(() => []),
   ])
@@ -70,10 +73,18 @@ onMounted(async () => {
 })
 
 // ── Positions filtered by selected unit ──
-const filteredPositions = computed(() => {
-  if (!form.unitId) return []
-  return allPositions.value.filter(p => p.unit_id === parseInt(form.unitId))
-})
+watch(() => form.unitId, async (newUnitId) => {
+  if (!newUnitId) {
+    filteredPositions.value = [];
+    return;
+  }
+  
+  // Call your store action
+  await unit.fetchUnitPeers(newUnitId);
+  
+  // Assign the results to your local ref
+  filteredPositions.value = unit.unit; 
+}, { immediate: true }); // 'immediate' runs it once on startup too
 
 // ── Reset positionId when unit changes ──
 watch(() => form.unitId, () => {
@@ -249,9 +260,7 @@ const handleRegister = async () => {
     const [
       contactRes,
       addressRes,
-      unitRes,
       positionRes,
-      memberRes,
       statusRes,
     ] = await Promise.all([
       supabase.from('contact').upsert({
@@ -268,26 +277,22 @@ const handleRegister = async () => {
         barangay_code: form.barangayCode  || null,
       }),
 
-      supabase.from('unit').upsert({
-        user_id: userId,
-        unit_id: parseInt(form.unitId),
-      }),
-
       supabase.from('position').upsert({
         user_id: userId,
         pos_id:  parseInt(form.positionId),
+        unit_id: parseInt(form.unitId)
       }),
 
-      supabase.from('member_type').upsert({
-        user_id: userId,
-        role_id: (() => {
-          const selectedPosition = allPositions.value.find(p => p.id === parseInt(form.positionId))
-          const posName = selectedPosition?.pos_name?.toLowerCase() || ''
-          if (posName.includes('unit head')) return 2
-          if (posName.includes('director')) return 1
-          return 3
-        })(),
-      }),
+      // supabase.from('member_type').upsert({
+      //   user_id: userId,
+      //   role_id: (() => {
+      //     const selectedPosition = allPositions.value.find(p => p.id === parseInt(form.positionId))
+      //     const posName = selectedPosition?.pos_name?.toLowerCase() || ''
+      //     if (posName.includes('unit head')) return 2
+      //     if (posName.includes('director')) return 1
+      //     return 3
+      //   })(),
+      // }),
 
       supabase.from('account_status').upsert({
         user_id:      userId,
@@ -299,9 +304,7 @@ const handleRegister = async () => {
     const errs = [
       contactRes.error  && `Contact: ${contactRes.error.message}`,
       addressRes.error  && `Address: ${addressRes.error.message}`,
-      unitRes.error     && `Unit: ${unitRes.error.message}`,
       positionRes.error && `Position: ${positionRes.error.message}`,
-      memberRes.error   && `Member type: ${memberRes.error.message}`,
       statusRes.error   && `Account status: ${statusRes.error.message}`,
     ].filter(Boolean)
 
@@ -486,7 +489,7 @@ const goToLogin = () => router.push('/login')
                 class="w-full px-3 py-2.5 rounded-lg border bg-white text-gray-700 text-sm transition focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent"
                 :class="errors.positionId ? 'border-red-400' : 'border-gray-300'">
                 <option disabled value="">Select your position</option>
-                <option v-for="p in filteredPositions" :key="p.id" :value="p.id">
+                <option v-for="p in filteredPositions" :key="p.pos_id" :value="p.pos_id">
                   {{ p.pos_name }}
                 </option>
               </select>

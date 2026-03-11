@@ -280,7 +280,7 @@ const ModalBackdrop = {
 
       <div class="w-full flex justify-between items-center mb-1 px-2">
         <div class="flex items-center gap-3">
-          <img src="../../public/image/csu_logo.png" alt="CSU" class="w-20 h-20 object-contain"
+          <img src="../../public/images/csu_seal.png" alt="CSU" class="w-20 h-20 object-contain"
             onerror="this.style.display='none'" />
           <div class="leading-tight">
             <p class="text-sm font-semibold text-[#1b5e3f] uppercase tracking-widest">Caraga State</p>

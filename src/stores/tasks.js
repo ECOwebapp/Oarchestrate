@@ -41,7 +41,7 @@ export const taskStore = defineStore('tasks', () => {
     const missing = uids.filter(id => id && !(id in unitIdMap.value))
     if (!missing.length) return
     const { data } = await supabase
-      .from('unit')
+      .from('position')
       .select('user_id, unit_id')
       .in('user_id', missing)
     ;(data || []).forEach(u => { unitIdMap.value[u.user_id] = u.unit_id })
@@ -117,21 +117,21 @@ export const taskStore = defineStore('tasks', () => {
     if (!auth.isUnitHead || !auth.unitId) return
     try {
       const { data: unitUsers, error } = await supabase
-        .from('unit').select('user_id').eq('unit_id', auth.unitId)
+        .from('position').select('user_id').eq('unit_id', auth.unitId)
       if (error) { console.error('[taskStore] fetchUnitMembers:', error); return }
 
       const userIds = (unitUsers || []).map(u => u.user_id)
       const [, roleRes] = await Promise.all([
         resolveNames(userIds),
-        supabase.from('member_type').select('user_id, role_id').in('user_id', userIds),
+        supabase.from('position').select('user_id, pos_id').in('user_id', userIds),
       ])
       const roleMap = Object.fromEntries((roleRes.data || []).map(r => [r.user_id, r.role_id]))
 
       unitMembers.value = userIds.map(userId => ({
         id:            userId,
         name:          nameMap.value[userId] || 'Unknown',
-        roleId:        roleMap[userId] || null,
-        roleType:      roleMap[userId] === 1 ? 'Director'
+        posId:        roleMap[userId] || null,
+        posType:      roleMap[userId] === 1 ? 'Director'
                      : roleMap[userId] === 2 ? 'Unit Head'
                      : roleMap[userId] === 3 ? 'Unit Member' : 'Unknown',
         isCurrentUser: userId === auth.userID,
@@ -165,7 +165,7 @@ export const taskStore = defineStore('tasks', () => {
         const [, , roleRes] = await Promise.all([
           resolveNames(allUserIds),
           resolveUnitIds(assigneeIds),
-          supabase.from('member_type').select('user_id, role_id').in('user_id', assigneeIds),
+          supabase.from('position').select('user_id, pos_id').in('user_id', assigneeIds),
         ])
         const roleMap = Object.fromEntries((roleRes.data || []).map(r => [r.user_id, r.role_id]))
 
@@ -182,7 +182,7 @@ export const taskStore = defineStore('tasks', () => {
         if (!auth.unitId) { tasks.value = []; return }
 
         const { data: unitUsers } = await supabase
-          .from('unit').select('user_id').eq('unit_id', auth.unitId)
+          .from('position').select('user_id').eq('unit_id', auth.unitId)
         const unitUserIds = (unitUsers || []).map(m => m.user_id)
         const allIds      = [...new Set([uid, ...unitUserIds])]
 
@@ -202,9 +202,9 @@ export const taskStore = defineStore('tasks', () => {
         const [, , roleRes] = await Promise.all([
           resolveNames(allUserIds),
           resolveUnitIds(assigneeIds),
-          supabase.from('member_type').select('user_id, role_id').in('user_id', assigneeIds),
+          supabase.from('position').select('user_id, pos_id').in('user_id', assigneeIds),
         ])
-        const roleMap = Object.fromEntries((roleRes.data || []).map(r => [r.user_id, r.role_id]))
+        const roleMap = Object.fromEntries((roleRes.data || []).map(r => [r.user_id, r.pos_id]))
 
         tasks.value = (rows || []).map(t => ({
           ...mapRow(t),
@@ -274,12 +274,12 @@ export const taskStore = defineStore('tasks', () => {
     } else {
       // Find the Unit Head (role_id=2) of the assignee's unit
       const { data: unitUsers } = await supabase
-        .from('unit').select('user_id').eq('unit_id', assigneeUnitId)
+        .from('position').select('user_id').eq('unit_id', assigneeUnitId)
       if (unitUsers?.length) {
         const unitUserIds = unitUsers.map(u => u.user_id)
         const { data: uhMembers } = await supabase
-          .from('member_type').select('user_id')
-          .eq('role_id', 2).in('user_id', unitUserIds)
+          .from('position').select('user_id')
+          .eq('pos_id', 4).in('user_id', unitUserIds)
         for (const uh of (uhMembers || [])) {
           await supabase.from('task_revision').insert({
             task_id:   taskId,
