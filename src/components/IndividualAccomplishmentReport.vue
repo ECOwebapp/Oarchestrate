@@ -50,6 +50,15 @@ const loadOwnTasks = async () => {
 
 watch(() => props.show, (val) => { if (val) loadOwnTasks() }, { immediate: true })
 
+function printReport() {
+  const prev = document.title
+  document.title = ' '
+  setTimeout(() => {
+    window.print()
+    document.title = prev
+  }, 50)
+}
+
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const today  = new Date()
 
@@ -121,16 +130,20 @@ const reportRows = computed(() => {
   <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
     @click.self="emit('close')">
 
-    <div class="relative bg-white shadow-2xl rounded-xl flex flex-col overflow-hidden"
+    <div id="indiv-report-printable" class="relative bg-white shadow-2xl rounded-xl flex flex-col overflow-hidden"
       style="width: 1100px; max-width: 98vw; max-height: 92vh;">
-
-      <!-- Top accent bar -->
-      <div class="h-1 w-full bg-gradient-to-r from-green-900 to-emerald-500 flex-shrink-0"></div>
 
       <!-- Close -->
       <button
-        class="absolute top-3 right-3 z-30 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-700 transition-all cursor-pointer text-base leading-none"
+        class="absolute top-3 right-3 z-30 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-700 transition-all cursor-pointer text-base leading-none print:hidden"
         @click="emit('close')">×</button>
+
+      <!-- Print -->
+      <button @click="printReport"
+        class="absolute top-3 right-12 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-900 text-white text-[11px] font-semibold hover:bg-green-700 transition-colors cursor-pointer print:hidden">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print
+      </button>
 
       <!-- ── Header ── -->
       <div class="relative flex-shrink-0 px-8 pt-6 pb-5 border-b border-gray-100">
@@ -140,7 +153,7 @@ const reportRows = computed(() => {
           <img src="/images/csu_seal.png" alt="" class="w-12 h-12 object-contain mb-2"
             onerror="this.style.display='none'" />
           <p class="text-[10px] font-bold tracking-[0.15em] text-green-700 uppercase">Caraga State University</p>
-          <h1 class="text-xl font-bold text-gray-900">Individual Accomplishment Report</h1>
+          <h1 class="text-xl font-bold text-gray-900">ACCOMPLISHMENT REPORT</h1>
           <p class="text-[13px] text-gray-500 tracking-wide mt-0.5">Engineering and Construction Office</p>
           <p class="text-[11px] text-green-800 font-semibold mt-1">{{ periodLabel }}</p>
         </div>
@@ -210,3 +223,46 @@ const reportRows = computed(() => {
     </div>
   </div>
 </template>
+
+<style>
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  /* Hide everything */
+  body { visibility: hidden; }
+
+  /* Show only the report card and all its children */
+  #indiv-report-printable,
+  #indiv-report-printable * { visibility: visible; }
+
+  /* Place it at the top-left, full width */
+  #indiv-report-printable {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 12mm;
+  }
+
+  /* Remove scroll container constraints */
+  #indiv-report-printable .overflow-auto {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* Ensure table borders print */
+  table { border-collapse: collapse !important; width: 100% !important; }
+  th, td { border: 1px solid #aaa !important; }
+
+  /* Preserve background colors (green header) */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+</style>

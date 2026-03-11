@@ -200,10 +200,10 @@ const periodLabel = computed(() => {
         <table class="w-full text-xs border-collapse">
           <thead class="sticky top-0 z-10">
             <tr class="bg-green-900 text-white text-[11px] uppercase tracking-wide">
-              <th class="px-3 py-3 font-semibold text-center w-28 border-r border-green-700">Unit / PPAs</th>
+              <th class="px-3 py-3 font-semibold text-center w-28 border-r border-green-700">Unit</th>
               <th class="px-3 py-3 font-semibold text-center w-8 border-r border-green-700">#</th>
               <th class="px-4 py-3 font-semibold text-center border-r border-green-700">Task / Activity</th>
-              <th class="px-3 py-3 font-semibold text-center w-28 border-r border-green-700">Task Type</th>
+              <th class="px-3 py-3 font-semibold text-center w-28 border-r border-green-700">PPAs</th>
               <th class="px-3 py-3 font-semibold text-center w-32 border-r border-green-700">Assigned Personnel</th>
               <th class="px-3 py-3 font-semibold text-center w-24 border-r border-green-700">Start Date</th>
               <th class="px-3 py-3 font-semibold text-center w-24 border-r border-green-700">Due Date</th>
@@ -241,7 +241,7 @@ const periodLabel = computed(() => {
                 <!-- Task / Activity -->
                 <td class="px-4 py-3 font-semibold text-gray-800 border-r border-gray-200 align-top leading-snug">{{ task.name }}</td>
 
-                <!-- Task Type -->
+                <!-- PPAs -->
                 <td class="px-3 py-2 text-center border-r border-gray-200">
                   <span class="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-800 border border-green-200">
                     {{ task.type || '—' }}
