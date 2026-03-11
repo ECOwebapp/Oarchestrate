@@ -160,7 +160,7 @@ const filtered = computed(() => {
     <div v-if="addTask"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
       @click.self="addTask = false">
-      <AddTask @close="addTask = false; store.fetchTasks()" />
+      <AddTask @close="addTask = false" :design="false" />
     </div>
   </Transition>
 </template>

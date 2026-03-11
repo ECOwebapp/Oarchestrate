@@ -5,25 +5,25 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, ref } from 'vue'
 import Icons from './Icons.vue'
 
-const emit    = defineEmits(['close'])
+const emit = defineEmits(['close'])
 const props = defineProps(['design'])
-const store   = taskStore()
+const store = taskStore()
 const members = useMemberStore()
-const auth    = useAuthStore()
+const auth = useAuthStore()
 
-const loading   = ref(false)
-const subTasks  = ref([{ text: '' }])
+const loading = ref(false)
+const subTasks = ref([{ text: '' }])
 const outputUrl = ref('')   // for member insertion task
 
 const newTask = ref({
-  name:        '',
+  name: '',
   description: '',
-  endDate:     null,
-  assignee:    null,
-  type:        '',
-  urgent:      false,
-  design:      false,
-  outputLink:  '',
+  endDate: null,
+  assignee: null,
+  type: '',
+  urgent: false,
+  design: false,
+  outputLink: '',
 })
 
 onMounted(() => members.fetchMembers?.())
@@ -32,8 +32,10 @@ onMounted(() => members.fetchMembers?.())
 
 // ── Who can be assigned ──
 const assignableMembers = computed(() => {
-  if (newTask.value.type === 2) return members.members
-  if (auth.isDirector) return members.members.filter(m => m.role_id === 2)  // anyone
+  if (auth.isDirector) {
+    if (newTask.value.type === 2) return members.members
+    return members.members.filter(m => m.role_id === 2)
+  }
   if (auth.isUnitHead) {
     // their own unit members + themselves
     return members.members.filter(m =>
@@ -102,17 +104,15 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
       <!-- Title -->
       <div>
         <label class="block text-sm font-semibold text-gray-700 mb-1">Title <span class="text-red-500">*</span></label>
-        <input v-model="newTask.name" type="text" maxlength="100" required
-          placeholder="Task title…"
-          class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
+        <input v-model="newTask.name" type="text" maxlength="100" required placeholder="Task title…" class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
                  focus:outline-none focus:border-green-800 transition-colors" />
       </div>
 
       <!-- Description -->
       <div>
-        <label class="block text-sm font-semibold text-gray-700 mb-1">Description <span class="text-red-500">*</span></label>
-        <textarea v-model="newTask.description" rows="4" maxlength="500" required
-          placeholder="Describe the task…"
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Description <span
+            class="text-red-500">*</span></label>
+        <textarea v-model="newTask.description" rows="4" maxlength="500" required placeholder="Describe the task…"
           class="w-full border-2 border-gray-300 rounded-xl px-3 py-2 text-sm resize-none
                  focus:outline-none focus:border-green-800 transition-colors" />
         <p class="text-xs text-gray-400 mt-0.5">{{ newTask.description.length }}/500</p>
@@ -122,26 +122,25 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
       <div class="flex gap-3">
         <div class="flex-1">
           <label class="block text-sm font-semibold text-gray-700 mb-1">Type <span class="text-red-500">*</span></label>
-          <select v-model="newTask.type" required
-            class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
+          <select v-model="newTask.type" required class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
                    focus:outline-none focus:border-green-800 bg-white">
             <option value="" disabled hidden>Select type</option>
             <option v-for="t in typeOptions" :key="t.id" :value="t.id">{{ t.label }}</option>
           </select>
         </div>
         <div class="flex-1">
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Deadline <span class="text-red-500">*</span></label>
-          <input v-model="newTask.endDate" type="date" required
-            class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Deadline <span
+              class="text-red-500">*</span></label>
+          <input v-model="newTask.endDate" type="date" required class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
                    focus:outline-none focus:border-green-800 transition-colors" />
         </div>
       </div>
 
       <!-- Assignee (hidden for members — auto-assigned to self) -->
       <div v-if="!auth.isMember">
-        <label class="block text-sm font-semibold text-gray-700 mb-1">Assign To <span class="text-red-500">*</span></label>
-        <select v-model="newTask.assignee" required
-          class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Assign To <span
+            class="text-red-500">*</span></label>
+        <select v-model="newTask.assignee" required class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
                  focus:outline-none focus:border-green-800 bg-white">
           <option value="" disabled hidden>Select member</option>
           <option v-for="m in assignableMembers" :key="m.id" :value="m.id">
@@ -155,8 +154,7 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
         <label class="block text-sm font-semibold text-gray-700 mb-1">
           Output Link <span class="text-gray-400 font-normal">(Google Drive / URL)</span>
         </label>
-        <input v-model="outputUrl" type="url" placeholder="https://drive.google.com/…"
-          class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
+        <input v-model="outputUrl" type="url" placeholder="https://drive.google.com/…" class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
                  focus:outline-none focus:border-green-800 transition-colors" />
       </div>
 
@@ -170,12 +168,9 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
           </button>
         </div>
         <div class="space-y-2 max-h-40 overflow-y-auto pr-1">
-          <div v-for="(item, i) in subTasks" :key="i"
-            class="flex items-start gap-2">
-            <span class="text-xs text-gray-400 mt-2.5 flex-shrink-0 w-4">{{ i+1 }}</span>
-            <textarea v-model="item.text" rows="1" maxlength="200"
-              :placeholder="`Sub-task ${i+1}…`"
-              class="flex-1 border-2 border-gray-200 rounded-lg px-2 py-1.5 text-sm resize-none
+          <div v-for="(item, i) in subTasks" :key="i" class="flex items-start gap-2">
+            <span class="text-xs text-gray-400 mt-2.5 flex-shrink-0 w-4">{{ i + 1 }}</span>
+            <textarea v-model="item.text" rows="1" maxlength="200" :placeholder="`Sub-task ${i + 1}…`" class="flex-1 border-2 border-gray-200 rounded-lg px-2 py-1.5 text-sm resize-none
                      focus:outline-none focus:border-green-800 transition-colors" />
             <button type="button" @click="removeSubTask(i)"
               class="text-gray-300 hover:text-red-400 mt-1.5 flex-shrink-0 text-lg leading-none">×</button>
@@ -194,7 +189,7 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
         class="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
         <svg class="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
         </svg>
         <p class="text-xs text-amber-700">
           <span v-if="auth.isUnitHead">This task will be sent to the director for final approval.</span>
@@ -205,18 +200,16 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
 
     <!-- Footer -->
     <div class="flex gap-3 px-7 py-4 border-t border-gray-100">
-      <button type="button" @click="emit('close')"
-        class="flex-1 h-11 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm
+      <button type="button" @click="emit('close')" class="flex-1 h-11 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm
                hover:border-green-800 hover:text-green-800 transition-colors">
         Cancel
       </button>
-      <button @click="submitForm" :disabled="loading"
-        class="flex-1 h-11 rounded-xl bg-green-950 text-white font-semibold text-sm
+      <button @click="submitForm" :disabled="loading" class="flex-1 h-11 rounded-xl bg-green-950 text-white font-semibold text-sm
                hover:bg-green-800 active:scale-95 transition-all
                disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
         <svg v-if="loading" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
-          <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
+          <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
         </svg>
         {{ loading ? 'Saving…' : 'Submit' }}
       </button>

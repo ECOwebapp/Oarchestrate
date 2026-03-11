@@ -186,6 +186,8 @@ export const taskStore = defineStore('tasks', () => {
         const unitUserIds = (unitUsers || []).map(m => m.user_id)
         const allIds      = [...new Set([uid, ...unitUserIds])]
 
+        let roleMap2 = {}
+
         const { data: rows, error } = await supabase
           .from('task')
           .select(TASK_SELECT)

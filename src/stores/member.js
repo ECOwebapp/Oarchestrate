@@ -21,7 +21,8 @@ export const useMemberStore = defineStore('member', () => {
                         pos_id,
                         position_name ( pos_name )
                       ),
-                    member_type (role_id)
+                    member_type (role_id),
+                    unit (unit_id)
                 `)
 
             const { data: statusRows, error: statusErr } = await supabase
@@ -45,7 +46,8 @@ export const useMemberStore = defineStore('member', () => {
                             pos_id: m.position?.pos_id,
                             pos_name: m.position?.position_name?.pos_name,
                             status_id: statusRows.find(s => s.user_id === m.user_id)?.status_id,
-                            role_id: m.member_type?.role_id
+                            role_id: m.member_type?.role_id,
+                            unit_id: m.unit?.unit_id
                         }))
                 }
             }
