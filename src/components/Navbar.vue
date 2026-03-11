@@ -104,7 +104,7 @@ const NavInner = defineComponent({
     return () => {
       const RouterLink = resolveComponent('RouterLink')
 
-      const avatarSize = props.expanded ? '128px' : '64px'
+      const avatarSize = props.expanded ? '115px' : '50px'
       const avatarFont = props.expanded ? '64px' : '32px'
       const avatarMb   = props.expanded ? '10px' : '6px'
 
@@ -115,7 +115,7 @@ const NavInner = defineComponent({
         // ════════════════════
         h('div', {
           class: 'relative flex flex-col items-center justify-end flex-shrink-0 overflow-hidden',
-          style: 'height:200px; background: url(/images/bg_profile.jpg) top center / cover no-repeat',
+          style: 'height:220px; background: url(/images/bg_profile.jpg) top center / cover no-repeat',
         }, [
 
           h('div', {
@@ -166,10 +166,12 @@ const NavInner = defineComponent({
                 ])
               : props.expanded
                 ? h('div', { class: 'text-center' }, [
-                    h('p', { class: 'text-white text-xs font-bold leading-tight truncate max-w-[180px]' },
+                    h('p', { class: 'text-white text-sm font-bold leading-tight truncate max-w-[180px]' },
                       props.authStore.fullName),
-                    h('p', { class: 'text-green-300 text-[10px] truncate max-w-[180px] mt-0.5' },
-                      props.authStore.positionLabel),
+                    h('p', { class: 'text-white text-[11px] font-bold mt-2 leading-tight max-w-[180px]'}, 
+                      props.authStore.unitName),
+                    h('p', { class: 'text-green-300 text-[11px] truncate max-w-[180px] mt-0.5' },
+                      `${props.authStore.positionLabel} (${props.authStore.roleLabel})`),
                   ])
                 : null,
           ]),

@@ -8,6 +8,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user          = ref(null)
   const userID        = ref(null)
   const profile       = ref(null)
+  const roleLabel     = ref(null)
   const positionLabel = ref('')
   const roleId        = ref(null)
   const unitId        = ref(null)
@@ -78,7 +79,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       supabase
         .from('member_type')
-        .select('role_id')
+        .select('role_type (id, role_type)')
         .eq('user_id', authUser.id)
         .maybeSingle(),
 
@@ -105,9 +106,10 @@ export const useAuthStore = defineStore('auth', () => {
 
     profile.value       = profRes.data  ?? null
     positionLabel.value = posRes.data?.position_name?.pos_name ?? ''
-    roleId.value        = roleRes.data?.role_id ?? null
+    roleId.value        = roleRes.data?.role_type.id ?? null
+    roleLabel.value     = roleRes.data?.role_type.role_type ?? null
     unitId.value        = unitRes.data?.unit_id   ?? null
-    unitName.value      = unitRes.data?.unit_name?.name?.toLowerCase() ?? ''
+    unitName.value      = unitRes.data?.unit_name?.name ?? ''
     accountStatus.value = statusRes.data?.status_id ?? 1
 
     loading.value     = false
@@ -157,7 +159,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    user, userID, profile, positionLabel, roleId, unitId, unitName, accountStatus, loading, initialized,
+    user, userID, profile, positionLabel, roleId, roleLabel, unitId, unitName, accountStatus, loading, initialized,
     isLoggedIn, fullName, initials, avatarColor,
     isDirector, isUnitHead, isMember, isAdmin, isOffice,
     init, listenToAuthChanges, fetchUserData, logout, $reset,
