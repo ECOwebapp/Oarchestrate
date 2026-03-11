@@ -1,20 +1,29 @@
 <script setup>
-import { computed } from 'vue'
 import {
-    mdiMonitorDashboard,
-    mdiFormatListBulleted,
-    mdiDraw,
-    mdiAccountGroup,
-    mdiPoll,
+    mdiAccount,
     mdiAccountCircleOutline,
-    mdiLogout,
-    mdiPlus,
-    mdiMagnify,
+    mdiAccountGroup,
+    mdiAlertCircle,
+    mdiCheck,
+    mdiCheckCircle,
     mdiClose,
+    mdiDraw,
     mdiFileDocumentOutline,
+    mdiFormatListBulleted,
+    mdiFullscreen,
+    mdiInformation,
+    mdiLink,
+    mdiLoading,
+    mdiLogout,
+    mdiMagnify,
+    mdiMenuDown,
+    mdiMonitorDashboard,
     mdiPaperclip,
-    mdiFullscreen
+    mdiPlus,
+    mdiPoll,
+    mdiRefresh
 } from '@mdi/js';
+import { computed } from 'vue';
 
 const props = defineProps(['icon'])
 const nav = {
@@ -31,7 +40,17 @@ const nav = {
     account: mdiAccountCircleOutline,
     file: mdiFileDocumentOutline,
     attachment: mdiPaperclip,
-    fullscreen: mdiFullscreen
+    fullscreen: mdiFullscreen,
+    user: mdiAccount,
+    link: mdiLink,
+    check: mdiCheck,
+    checkCircle: mdiCheckCircle,
+    alert: mdiAlertCircle,
+    info: mdiInformation,
+    refresh: mdiRefresh,
+    resubmit: mdiRefresh,
+    down: mdiMenuDown,
+    spin: mdiLoading
 }
 
 // Computed property that maps the nav array based on icon prop input
