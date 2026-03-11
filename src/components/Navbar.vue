@@ -171,7 +171,7 @@ const NavInner = defineComponent({
                     h('p', { class: 'text-white text-[11px] font-bold mt-2 leading-tight max-w-[180px]'}, 
                       props.authStore.unitName),
                     h('p', { class: 'text-green-300 text-[11px] truncate max-w-[180px] mt-0.5' },
-                      `${props.authStore.positionLabel} (${props.authStore.roleLabel})`),
+                      `${props.authStore.positionLabel}`),
                   ])
                 : null,
           ]),
