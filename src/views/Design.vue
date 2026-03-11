@@ -9,12 +9,8 @@ import { ref } from 'vue'
 
 const state = ref('Grid View')
 const addTask = ref(false)
-const dropdown = {
-    filter: ["Regular", "Insertion", "Urgent", "Revision", "Pending", "Ongoing", "Completed"],
-    sort: ["Name", "Date Due", "Recently Assigned", "Recently Completed"]
-}
 
-const tasks = taskStore().tasks
+const tasks = taskStore().tasks.filter(t => t.design === true)
 
 </script>
 
@@ -29,7 +25,7 @@ const tasks = taskStore().tasks
         <Teleport to="body">
             <div v-if="addTask == true" class="absolute fixed inset-0 z-9999 flex items-center justify-center bg-black/50"
                 @click.self="addTask = !addTask">
-                <AddTask :add-task="addTask" />
+                <AddTask :design="true" />
             </div>
         </Teleport>
 

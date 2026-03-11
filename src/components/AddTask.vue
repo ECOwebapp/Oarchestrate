@@ -6,6 +6,7 @@ import { computed, onMounted, ref } from 'vue'
 import Icons from './Icons.vue'
 
 const emit    = defineEmits(['close'])
+const props = defineProps(['design'])
 const store   = taskStore()
 const members = useMemberStore()
 const auth    = useAuthStore()
@@ -64,6 +65,7 @@ const submitForm = async () => {
     await store.addTasks({
       mainTask: {
         ...newTask.value,
+        design: props.design,
         outputLink: showOutput.value ? outputUrl.value : '',
       },
       subTasks: validSubs,
