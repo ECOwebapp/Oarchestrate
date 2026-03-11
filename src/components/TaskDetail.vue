@@ -1,7 +1,7 @@
 <script setup>
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { mdiAlertCircle, mdiChat, mdiCheck, mdiLink, mdiRefresh } from '@mdi/js'
+import { mdiAlertCircle, mdiChat, mdiCheck, mdiClockAlert, mdiLink, mdiRefresh } from '@mdi/js'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 const props = defineProps(['task'])
@@ -96,15 +96,15 @@ const isResubmitted = computed(() =>
 )
 
 const statusLabel = computed(() => {
-  if (props.task?.director)  return { label: 'Approved by Director',    cls: 'bg-green-100 text-green-800',   icon: '✓' }
+  if (props.task?.director)  return { label: 'Approved by Director',    cls: 'bg-green-100 text-green-800',   icon: mdiCheck }
   // unitHead=true means: either UH approved (non-office) OR bypass marker (Office/Self-assigned)
   // In both cases the task is now pending Director review
-  if (props.task?.unitHead)  return { label: 'Pending Director Review', cls: 'bg-amber-100 text-amber-800',   icon: '⏳' }
-  if (props.task?.revision)  return { label: 'Revision Requested',      cls: 'bg-orange-100 text-orange-700', icon: '↩' }
+  if (props.task?.unitHead)  return { label: 'Pending Director Review', cls: 'bg-amber-100 text-amber-800',   icon: mdiClockAlert }
+  if (props.task?.revision)  return { label: 'Revision Requested',      cls: 'bg-orange-100 text-orange-700', icon: mdiRefresh }
   // Office and self-assigned tasks with output but unitHead not yet set = awaiting Director
   if ((props.task?.assigneeIsOffice || props.task?.isSelfAssigned) && props.task?.outputLink)
-                             return { label: 'Pending Director Review', cls: 'bg-amber-100 text-amber-800',   icon: '⏳' }
-  return                            { label: 'Pending Approval',        cls: 'bg-gray-100  text-gray-600',   icon: '⏳' }
+                             return { label: 'Pending Director Review', cls: 'bg-amber-100 text-amber-800',   icon: mdiClockAlert }
+  return                            { label: 'Pending Approval',        cls: 'bg-gray-100  text-gray-600',   icon: mdiClockAlert }
 })
 
 const badgeClass = (val) => ({
@@ -206,8 +206,11 @@ const resubmit = async () => {
             </svg>
             Resubmitted
           </span>
-          <span class="px-3 py-1 text-xs font-bold rounded-full" :class="statusLabel.cls">
-            {{ statusLabel.icon }} {{ statusLabel.label }}
+          <span class="px-3 py-1 text-xs font-bold rounded-full flex items-center gap-1" :class="statusLabel.cls">
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+              <path :d="statusLabel.icon" />
+            </svg>
+            {{ statusLabel.label }}
           </span>
           <span v-if="isOverdue"
             class="px-3 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700">
