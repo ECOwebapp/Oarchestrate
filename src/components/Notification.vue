@@ -136,7 +136,7 @@ onUnmounted(() => {
           <div v-else class="py-2">
             <TransitionGroup name="notif-list" tag="div">
               <div
-                v-for="(n, i) in notifStore.visible" :key="n.id"
+                v-for="(n, i) in notifStore.visible" :key="n.userId"
                 class="notif-item mx-2 mb-2 rounded-xl border overflow-hidden"
                 :class="[itemBg(n), !n.read ? 'shadow-sm' : 'opacity-70']"
                 :style="`animation-delay:${i*25}ms`">

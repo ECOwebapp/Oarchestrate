@@ -2,10 +2,12 @@
 import { storeToRefs } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { useMemberStore } from '@/stores/member';
+import { useNotifStore } from '@/stores/useNotifStore';
 import { useRolePosStore } from '@/stores/roles';
 
 // 1. Use storeToRefs to keep the properties reactive
 const memberStore = useMemberStore()
+const notifStore = useNotifStore()
 const roleStore = useRolePosStore()
 const { members } = storeToRefs(memberStore)
 const { roles, memberRoles } = storeToRefs(roleStore)
@@ -15,12 +17,18 @@ const loading = ref({
 })
 
 const pendingMembers = computed(() => {
-    return members.value.filter(m => m.status_id === 1)
+    // 1. Create the list of expected notification IDs (e.g., ["reg-uuid1", "reg-uuid2"])
+    const validRegIds = members.value.map(m => `reg-${m.id}`);
+
+    // 2. Filter notifications to find only those in our list
+    return notifStore.notifs.filter(n => validRegIds.includes(n.id));
 })
 
 const normalMembers = computed(() => {
     return members.value.filter(m => m.status_id === 2)
 })
+
+const isActing = (n) => n.status === 'approving' || n.status === 'denying'
 
 const changeRoleMembers = ref({
     user_id: null,
@@ -67,10 +75,10 @@ const submitChangeRole = async () => {
 }
 
 // Remove Members
-const removeMember = async() => {
+const removeMember = async () => {
     try {
         loading.value.delete = true
-        const response = await memberStore.removeMember({ member: { ...deleteMember.value }})
+        const response = await memberStore.removeMember({ member: { ...deleteMember.value } })
         if (response === 200) console.log(response)
     } catch (e) {
         console.log('Error removal: ', e)
@@ -89,7 +97,7 @@ const removeMember = async() => {
             <h2 class="text-lg font-bold mb-6 text-gray-800">Approve Members</h2>
 
             <div class="space-y-4">
-                <div v-for="member in pendingMembers" :key="member.name"
+                <div v-for="(member, i) in pendingMembers" :key="member.id"
                     class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
@@ -98,17 +106,34 @@ const removeMember = async() => {
                                     d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
                             </svg>
                         </div>
-                        <span class="font-semibold text-gray-700">{{ member.fname }} {{ member.middle_initial }} {{
-                            member.lname }}</span>
+                        <span class="font-semibold text-gray-700">{{ member.title }}</span>
                     </div>
                     <div class="flex gap-2">
-                        <button
-                            class="px-4 py-1 bg-green-700 text-white text-xs font-bold rounded-lg hover:bg-green-800 transition-colors">Approve</button>
-                        <button
-                            class="px-4 py-1 border-2 border-red-500 text-red-500 text-xs font-bold rounded-lg hover:bg-red-50 transition-colors">Decline</button>
+                        <button @click="notifStore.approveUser(member.userId)" :disabled="isActing(member)"
+                            class="flex justify-center items-center gap-2 px-4 py-1 bg-green-700 text-white text-xs font-bold rounded-lg hover:bg-green-800 transition-colors hover:cursor-pointer disabled:cursor-not-allowed">
+                            <svg v-if="member.status === 'approving'" class="animate-spin w-3 h-3" viewBox="0 0 24 24"
+                                fill="none">
+                                <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
+                                <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3"
+                                    stroke-linecap="round" />
+                            </svg>
+                            {{ member.status === 'approving' ? 'Approving…' : 'Approve' }}
+                        </button>
+                        <button @click="notifStore.denyUser(member.userId)" :disabled="isActing(member)"
+                            class="flex justify-center items-center gap-2 px-4 py-1 border-2 border-red-500 text-red-500 text-xs font-bold rounded-lg hover:bg-red-50 transition-colors">
+                            <svg v-if="member.status === 'denying'" class="animate-spin w-3 h-3" viewBox="0 0 24 24"
+                                fill="none">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-opacity="0.3"
+                                    stroke-width="3" />
+                                <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3"
+                                    stroke-linecap="round" />
+                            </svg>
+                            {{ member.status === 'denying' ? 'Denying…' : 'Deny' }}
+                        </button>
                     </div>
                 </div>
-                <p v-if="pendingMembers.length === 0" class="text-gray-500 text-center italic">No pending requests.</p>
+                <p v-if="pendingMembers.length === 0" class="text-gray-500 text-center italic">No pending requests.
+                </p>
             </div>
         </div>
 
@@ -166,8 +191,9 @@ const removeMember = async() => {
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-700 disabled:opacity-50"
                                 :disabled="loading?.delete">
                                 <option disabled selected value="">-- Select a member --</option>
-                                <option v-for="member in normalMembers" :key="member.id" :value="member.id">{{ member.fname }} {{
-                                    member.middle_initial }} {{ member.lname }}</option>
+                                <option v-for="member in normalMembers" :key="member.id" :value="member.id">{{
+                                    member.fname }} {{
+                                        member.middle_initial }} {{ member.lname }}</option>
                             </select>
                             <p class="text-xs text-red-500 mt-1">* Not 2 members at the same time</p>
                         </div>
