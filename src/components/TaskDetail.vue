@@ -1,15 +1,14 @@
 <script setup>
-import { useMemberStore } from '@/stores/member'
+import { uploadOutputFile } from '@/lib/uploadOutput'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { mdiAlertCircle, mdiChat, mdiCheck, mdiClockAlert, mdiLink, mdiRefresh } from '@mdi/js'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 const props = defineProps(['task'])
-const emit  = defineEmits(['close', 'refresh', 'assignSubtask'])
+const emit  = defineEmits(['close', 'refresh'])
 const auth  = useAuthStore()
 const store = taskStore()
-const members = useMemberStore()
+
 // ── State ──────────────────────────────────────────────────
 const outputUrl       = ref(props.task?.outputLink || '')
 const newOutputUrl    = ref('')
@@ -21,8 +20,44 @@ const tab             = ref('detail')  // 'detail' | 'comments'
 const revisions       = ref([])
 const loadingRevs     = ref(false)
 const chatBottom      = ref(null)
-const openDropdown    = ref(null)      // track which subtask dropdown is open
-const assigningSubtask = ref(false)
+
+// ── Upload state ──────────────────────────────────────────────
+const uploadFile      = ref(null)    // File object (first submit)
+const resubmitFile    = ref(null)    // File object (resubmit)
+const uploadProgress  = ref(0)       // 0–100
+const dragOverSubmit  = ref(false)   // drag state for submit zone
+const dragOverResub   = ref(false)   // drag state for resubmit zone
+const fileInputRef    = ref(null)    // hidden <input> for submit
+const resubInputRef   = ref(null)    // hidden <input> for resubmit
+
+const formatBytes = (bytes) => {
+  if (!bytes) return ''
+  if (bytes < 1024)       return `${bytes} B`
+  if (bytes < 1048576)    return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1048576).toFixed(1)} MB`
+}
+
+const onDropSubmit = (e) => {
+  dragOverSubmit.value = false
+  const f = e.dataTransfer?.files?.[0]
+  if (f) { uploadFile.value = f; submitError.value = '' }
+}
+
+const onDropResub = (e) => {
+  dragOverResub.value = false
+  const f = e.dataTransfer?.files?.[0]
+  if (f) { resubmitFile.value = f; submitError.value = '' }
+}
+
+const onFilePickSubmit = (e) => {
+  const f = e.target?.files?.[0]
+  if (f) { uploadFile.value = f; submitError.value = '' }
+}
+
+const onFilePickResub = (e) => {
+  const f = e.target?.files?.[0]
+  if (f) { resubmitFile.value = f; submitError.value = '' }
+}
 
 // ── Load revision thread ────────────────────────────────────
 const loadRevisions = async () => {
@@ -58,13 +93,11 @@ const unreadCount = computed(() =>
 // ── Capabilities ────────────────────────────────────────────
 // Approval rules per org hierarchy:
 //   Office unit (unit_id=3):            output → Director directly (Unit Head cannot approve)
-//   Self-assigned tasks:                output → Director directly (Unit Head cannot approve)
 //   Planning & Implementation (1 & 2):  output → Unit Head first → then Director
 
 const canApproveAsUnitHead = computed(() => {
   if (!auth.isUnitHead)             return false  // not a unit head
   if (props.task?.isOwnTask)        return false  // can't self-approve
-  if (props.task?.isSelfAssigned)   return false  // self-assigned tasks go to director only
   if (props.task?.unitHead)         return false  // already approved at UH level
   if (props.task?.director)         return false  // fully approved
   if (!props.task?.outputLink)      return false  // no output yet
@@ -93,27 +126,16 @@ const isOverdue = computed(() =>
   props.task?.to && new Date(props.task.to) < new Date() && !props.task?.director
 )
 
-// Check if task has been resubmitted (outputLink exists AND no revision flag AND not director approved)
-const isResubmitted = computed(() =>
-  props.task?.outputLink && !props.task?.revision && !props.task?.director && props.task?.revisedAt
-)
-
-// Unit members for assigning subtasks
-const unitMembers = computed(() => {
-  if (!auth.isUnitHead) return []
-  return members.members.filter(m => m.unit_id === auth.unitId)
-})
-
 const statusLabel = computed(() => {
-  if (props.task?.director)  return { label: 'Approved by Director',    cls: 'bg-green-100 text-green-800',   icon: mdiCheck }
-  // unitHead=true means: either UH approved (non-office) OR bypass marker (Office/Self-assigned)
+  if (props.task?.director)  return { label: 'Approved by Director',    cls: 'bg-green-100 text-green-800',   icon: '✓' }
+  // unitHead=true means: either UH approved (non-office) OR Office bypass marker
   // In both cases the task is now pending Director review
-  if (props.task?.unitHead)  return { label: 'Pending Director Review', cls: 'bg-amber-100 text-amber-800',   icon: mdiClockAlert }
-  if (props.task?.revision)  return { label: 'Revision Requested',      cls: 'bg-orange-100 text-orange-700', icon: mdiRefresh }
-  // Office and self-assigned tasks with output but unitHead not yet set = awaiting Director
-  if ((props.task?.assigneeIsOffice || props.task?.isSelfAssigned) && props.task?.outputLink)
-                             return { label: 'Pending Director Review', cls: 'bg-amber-100 text-amber-800',   icon: mdiClockAlert }
-  return                            { label: 'Pending Approval',        cls: 'bg-gray-100  text-gray-600',   icon: mdiClockAlert }
+  if (props.task?.unitHead)  return { label: 'Pending Director Review', cls: 'bg-amber-100 text-amber-800',   icon: '⏳' }
+  if (props.task?.revision)  return { label: 'Revision Requested',      cls: 'bg-orange-100 text-orange-700', icon: '↩' }
+  // Office tasks with output but unitHead not yet set = awaiting Director
+  if (props.task?.assigneeIsOffice && props.task?.outputLink)
+                             return { label: 'Pending Director Review', cls: 'bg-amber-100 text-amber-800',   icon: '⏳' }
+  return                            { label: 'Pending Approval',        cls: 'bg-gray-100  text-gray-600',   icon: '⏳' }
 })
 
 const badgeClass = (val) => ({
@@ -154,43 +176,69 @@ const requestRevision = async () => {
 }
 
 const submitOutput = async () => {
-  if (!outputUrl.value.trim()) return
-  submitting.value  = true
+  if (!uploadFile.value) return
+
+  submitting.value = true
   submitError.value = ''
+  uploadProgress.value = 0
+
   try {
-    await store.submitOutput(props.task.id, outputUrl.value.trim())
+    // Upload file to server → server uploads to Google Drive
+    const result = await uploadOutputFile({
+      file: uploadFile.value,
+      onProgress: (p) => {
+        uploadProgress.value = p
+      }
+    })
+
+    const fileUrl = result.fileUrl
+
+    // Save link to Supabase
+    await store.submitOutput(props.task.id, fileUrl)
+
+    // refresh UI
     emit('refresh')
     emit('close')
-  } catch (e) {
-    submitError.value = e.message || 'Failed to submit. Please check your permissions.'
-  } finally { submitting.value = false }
-}
 
+  } catch (err) {
+    submitError.value = err.message || 'Upload failed. Please try again.'
+  } finally {
+    submitting.value = false
+    uploadProgress.value = 0
+  }
+}
 const resubmit = async () => {
-  if (!newOutputUrl.value.trim()) return
+  if (!resubmitFile.value) return
+
   acting.value = 'resubmit'
+  submitError.value = ''
+  uploadProgress.value = 0
+
   try {
-    await store.resubmitTask(props.task.id, newOutputUrl.value.trim())
-    newOutputUrl.value = ''
+    const result = await uploadOutputFile({
+      file: resubmitFile.value,
+      onProgress: (p) => {
+        uploadProgress.value = p
+      }
+    })
+
+    const fileUrl = result.fileUrl
+
+    await store.resubmitTask(props.task.id, fileUrl)
+
+    resubmitFile.value = null
+    uploadProgress.value = 0
+
     await loadRevisions()
     emit('refresh')
     tab.value = 'comments'
-  } finally { acting.value = '' }
-}
 
-// Assign subtask to a member
-const assignSubtaskToMember = (subtask, memberId) => {
-  const member = unitMembers.value.find(m => m.id === memberId)
-  if (!member) return
-  
-  assigningSubtask.value = true
-  emit('assignSubtask', {
-    subtask: subtask,
-    assignedMemberId: memberId,
-    assignedMemberName: `${member.fname} ${member.lname}`
-  })
-  openDropdown.value = null
-  setTimeout(() => { assigningSubtask.value = false }, 300)
+  } catch (err) {
+    submitError.value = err.message || 'Upload failed. Please try again.'
+  } finally {
+    acting.value = ''
+    uploadProgress.value = 0
+  }
 }
 </script>
 
@@ -223,18 +271,8 @@ const assignSubtaskToMember = (subtask, memberId) => {
             class="px-3 py-1 text-xs font-bold rounded-full bg-purple-600 text-white">
             Revision
           </span>
-          <span v-if="isResubmitted"
-            class="px-3 py-1 text-xs font-bold rounded-full bg-blue-600 text-white flex items-center gap-1">
-            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-              <path :d="mdiRefresh" />
-            </svg>
-            Resubmitted
-          </span>
-          <span class="px-3 py-1 text-xs font-bold rounded-full flex items-center gap-1" :class="statusLabel.cls">
-            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-              <path :d="statusLabel.icon" />
-            </svg>
-            {{ statusLabel.label }}
+          <span class="px-3 py-1 text-xs font-bold rounded-full" :class="statusLabel.cls">
+            {{ statusLabel.icon }} {{ statusLabel.label }}
           </span>
           <span v-if="isOverdue"
             class="px-3 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700">
@@ -318,75 +356,202 @@ const assignSubtaskToMember = (subtask, memberId) => {
             <!-- Has output link -->
             <div v-if="task.outputLink"
               class="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3 bg-green-50">
-              <svg class="w-5 h-5 text-green-700 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                <path :d="mdiLink" />
+              <svg class="w-5 h-5 text-green-700 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M14.828 14.828a4 4 0 015.656 0l4-4a4 4 0 01-5.656-5.656l-1.1 1.1"/>
               </svg>
               <a :href="task.outputLink" target="_blank"
                 class="text-sm text-green-800 font-semibold hover:underline truncate flex-1">
-                View submitted output 
+                View submitted output ↗
               </a>
             </div>
 
-            <!-- Member: first-time submit -->
-            <div v-else-if="canSubmitOutput" class="space-y-2">
-              <div class="flex gap-2">
-                <input v-model="outputUrl" type="url"
-                  placeholder="Paste your Google Drive / output URL…"
-                  class="flex-1 border-2 rounded-xl h-11 px-3 text-sm transition-colors focus:outline-none"
-                  :class="submitError
-                    ? 'border-red-400 bg-red-50 focus:border-red-500'
-                    : 'border-gray-300 focus:border-green-800'" />
-                <button @click="submitOutput"
-                  :disabled="submitting || !outputUrl.trim()"
-                  class="h-11 px-5 rounded-xl bg-green-950 text-white text-sm font-bold
-                         hover:bg-green-800 disabled:opacity-40 transition-all active:scale-95
-                         flex items-center gap-2 flex-shrink-0">
-                  <svg v-if="submitting" class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
-                    <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round"/>
+            <!-- Member: first-time submit — drag/drop or pick file -->
+            <div v-else-if="canSubmitOutput" class="space-y-2.5">
+
+              <!-- Hidden file input -->
+              <input ref="fileInputRef" type="file" class="hidden" @change="onFilePickSubmit" />
+
+              <!-- Drop zone (shown when no file chosen yet) -->
+              <div v-if="!uploadFile"
+                @dragover.prevent="dragOverSubmit = true"
+                @dragleave.prevent="dragOverSubmit = false"
+                @drop.prevent="onDropSubmit"
+                @click="fileInputRef?.click()"
+                class="border-2 border-dashed rounded-2xl px-5 py-7 flex flex-col items-center
+                       justify-center gap-2 cursor-pointer transition-all select-none"
+                :class="dragOverSubmit
+                  ? 'border-green-700 bg-green-50'
+                  : submitError
+                  ? 'border-red-300 bg-red-50'
+                  : 'border-gray-300 bg-gray-50 hover:border-green-700 hover:bg-green-50'">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
+                  :class="dragOverSubmit ? 'bg-green-100' : 'bg-white border border-gray-200'">
+                  <svg class="w-5 h-5 transition-colors"
+                    :class="dragOverSubmit ? 'text-green-700' : 'text-gray-400'"
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                   </svg>
-                  {{ submitting ? 'Submitting…' : 'Submit' }}
-                </button>
+                </div>
+                <p class="text-sm font-semibold text-gray-700">
+                  {{ dragOverSubmit ? 'Drop to attach' : 'Drop file here or click to browse' }}
+                </p>
+                <p class="text-xs text-gray-400">Any file type · stored securely</p>
               </div>
+
+              <!-- File chosen — preview card -->
+              <div v-else
+                class="flex items-center gap-3 border-2 border-green-200 bg-green-50 rounded-2xl px-4 py-3">
+                <div class="w-9 h-9 rounded-xl bg-white border border-green-200 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-4 h-4 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-gray-800 truncate">{{ uploadFile.name }}</p>
+                  <p class="text-xs text-gray-400">{{ formatBytes(uploadFile.size) }}</p>
+                </div>
+                <button @click="uploadFile = null; fileInputRef && (fileInputRef.value = '')"
+                  class="text-gray-300 hover:text-red-400 transition-colors text-xl leading-none flex-shrink-0">×</button>
+              </div>
+
+              <!-- Upload progress bar -->
+              <div v-if="submitting" class="space-y-1">
+                <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div class="h-full bg-green-700 rounded-full transition-all duration-300"
+                    :style="{ width: uploadProgress + '%' }" />
+                </div>
+                <p class="text-xs text-gray-500 text-right">
+                  {{ uploadProgress < 100 ? `Uploading… ${uploadProgress}%` : 'Saving…' }}
+                </p>
+              </div>
+
+              <!-- Error -->
               <p v-if="submitError" class="text-xs text-red-600 font-medium flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                  <path :d="mdiAlertCircle" />
+                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                    clip-rule="evenodd"/>
                 </svg>
                 {{ submitError }}
               </p>
+
+              <!-- Submit button -->
+              <button @click="submitOutput"
+                :disabled="submitting || !uploadFile"
+                class="w-full h-11 rounded-xl bg-green-950 text-white text-sm font-bold
+                       hover:bg-green-800 disabled:opacity-40 transition-all active:scale-95
+                       flex items-center justify-center gap-2">
+                <svg v-if="submitting" class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
+                  <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+                {{ submitting ? (uploadProgress < 100 ? `Uploading ${uploadProgress}%…` : 'Saving…') : 'Upload & Submit' }}
+              </button>
             </div>
 
-            <!-- Member: resubmit after revision -->
-            <div v-else-if="canResubmit" class="space-y-3">
+            <!-- Member: resubmit after revision — same drag/drop UI in orange -->
+            <div v-else-if="canResubmit" class="space-y-2.5">
+
+              <!-- Hidden file input -->
+              <input ref="resubInputRef" type="file" class="hidden" @change="onFilePickResub" />
+
               <!-- Revision comment banner -->
               <div v-if="task.revisionComment"
                 class="flex items-start gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
-                <svg class="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                  <path :d="mdiAlertCircle" />
+                <svg class="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                 </svg>
                 <div class="min-w-0">
                   <p class="text-xs font-bold text-orange-700 mb-0.5">What needs to be revised:</p>
                   <p class="text-xs text-orange-800 leading-relaxed">{{ task.revisionComment }}</p>
                 </div>
               </div>
-              <!-- Resubmit input -->
-              <div class="flex gap-2">
-                <input v-model="newOutputUrl" type="url"
-                  placeholder="Paste your revised output URL…"
-                  class="flex-1 border-2 border-orange-200 rounded-xl h-11 px-3 text-sm
-                         focus:outline-none focus:border-orange-500 transition-colors bg-orange-50" />
-                <button @click="resubmit"
-                  :disabled="acting === 'resubmit' || !newOutputUrl.trim()"
-                  class="h-11 px-5 rounded-xl bg-orange-600 text-white text-sm font-bold
-                         hover:bg-orange-500 disabled:opacity-40 transition-all active:scale-95
-                         flex items-center gap-2 flex-shrink-0">
-                  <svg v-if="acting === 'resubmit'" class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
-                    <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round"/>
+
+              <!-- Drop zone -->
+              <div v-if="!resubmitFile"
+                @dragover.prevent="dragOverResub = true"
+                @dragleave.prevent="dragOverResub = false"
+                @drop.prevent="onDropResub"
+                @click="resubInputRef?.click()"
+                class="border-2 border-dashed rounded-2xl px-5 py-7 flex flex-col items-center
+                       justify-center gap-2 cursor-pointer transition-all select-none"
+                :class="dragOverResub
+                  ? 'border-orange-500 bg-orange-50'
+                  : 'border-orange-200 bg-orange-50/50 hover:border-orange-400 hover:bg-orange-50'">
+                <div class="w-10 h-10 rounded-xl bg-white border border-orange-200 flex items-center justify-center">
+                  <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                   </svg>
-                  {{ acting === 'resubmit' ? 'Resubmitting…' : 'Resubmit' }}
-                </button>
+                </div>
+                <p class="text-sm font-semibold text-orange-700">
+                  {{ dragOverResub ? 'Drop to attach' : 'Drop revised file here or click to browse' }}
+                </p>
+                <p class="text-xs text-orange-400">Replaces your previous submission</p>
               </div>
+
+              <!-- File chosen -->
+              <div v-else
+                class="flex items-center gap-3 border-2 border-orange-200 bg-orange-50 rounded-2xl px-4 py-3">
+                <div class="w-9 h-9 rounded-xl bg-white border border-orange-200 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-4 h-4 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-gray-800 truncate">{{ resubmitFile.name }}</p>
+                  <p class="text-xs text-gray-400">{{ formatBytes(resubmitFile.size) }}</p>
+                </div>
+                <button @click="resubmitFile = null; resubInputRef && (resubInputRef.value = '')"
+                  class="text-gray-300 hover:text-red-400 transition-colors text-xl leading-none flex-shrink-0">×</button>
+              </div>
+
+              <!-- Upload progress bar (resubmit) -->
+              <div v-if="acting === 'resubmit'" class="space-y-1">
+                <div class="h-2 bg-orange-100 rounded-full overflow-hidden">
+                  <div class="h-full bg-orange-500 rounded-full transition-all duration-300"
+                    :style="{ width: uploadProgress + '%' }" />
+                </div>
+                <p class="text-xs text-orange-500 text-right">
+                  {{ uploadProgress < 100 ? `Uploading… ${uploadProgress}%` : 'Saving…' }}
+                </p>
+              </div>
+
+              <!-- Error -->
+              <p v-if="submitError" class="text-xs text-red-600 font-medium flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                    clip-rule="evenodd"/>
+                </svg>
+                {{ submitError }}
+              </p>
+
+              <!-- Resubmit button -->
+              <button @click="resubmit"
+                :disabled="acting === 'resubmit' || !resubmitFile"
+                class="w-full h-11 rounded-xl bg-orange-600 text-white text-sm font-bold
+                       hover:bg-orange-500 disabled:opacity-40 transition-all active:scale-95
+                       flex items-center justify-center gap-2">
+                <svg v-if="acting === 'resubmit'" class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
+                  <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                {{ acting === 'resubmit'
+                  ? (uploadProgress < 100 ? `Uploading ${uploadProgress}%…` : 'Saving…')
+                  : 'Upload & Resubmit' }}
+              </button>
             </div>
 
             <!-- No output yet (viewer, not member) -->
@@ -403,42 +568,13 @@ const assignSubtaskToMember = (subtask, memberId) => {
             </p>
             <div class="space-y-2">
               <div v-for="(sub, i) in task.subtasks" :key="i"
-                class="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-2.5 bg-white group">
+                class="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-2.5 bg-white">
                 <span class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center
                              text-white text-[10px] font-bold"
                   :class="sub.director ? 'bg-green-700' : 'bg-gray-300'">
                   {{ i + 1 }}
                 </span>
                 <p class="flex-1 text-sm text-gray-700 leading-snug min-w-0">{{ sub.name }}</p>
-                
-                <!-- Assign button for unit heads -->
-                <div v-if="auth.isUnitHead && !sub.director" class="relative">
-                  <button
-                    @click="openDropdown = openDropdown === i ? null : i"
-                    :disabled="assigningSubtask"
-                    class="text-xs px-2.5 py-1.5 rounded-lg border border-green-800 text-green-800 font-semibold
-                           hover:bg-green-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                    Assign
-                  </button>
-                  <!-- Dropdown menu -->
-                  <div v-if="openDropdown === i"
-                    class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-40">
-                    <p class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                      Assign to member
-                    </p>
-                    <div class="max-h-60 overflow-y-auto">
-                      <button
-                        v-for="member in unitMembers" :key="member.id"
-                        @click="assignSubtaskToMember(sub, member.id)"
-                        class="block w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-green-50
-                               border-b border-gray-50 last:border-b-0 transition-colors">
-                        <span class="font-semibold">{{ member.fname }} {{ member.lname }}</span>
-                        <span class="text-xs text-gray-400 block">{{ member.pos_name }}</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                
                 <a v-if="sub.outputLink" :href="sub.outputLink" target="_blank"
                   class="text-xs text-green-800 font-semibold hover:underline flex-shrink-0 ml-2">
                   ↗ View
@@ -484,8 +620,9 @@ const assignSubtaskToMember = (subtask, memberId) => {
             <!-- Empty state -->
             <div v-else-if="!revisions.length"
               class="flex flex-col items-center justify-center py-14 text-center text-gray-400">
-              <svg class="w-12 h-12 mb-3 opacity-20" viewBox="0 0 24 24" fill="currentColor">
-                <path :d="mdiChat" />
+              <svg class="w-12 h-12 mb-3 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
               </svg>
               <p class="text-sm font-semibold">No comments yet</p>
               <p class="text-xs mt-1 max-w-[200px] leading-relaxed">
@@ -540,22 +677,51 @@ const assignSubtaskToMember = (subtask, memberId) => {
 
           <!-- Member resubmit bar (sticky at bottom of comments) -->
           <div v-if="canResubmit"
-            class="flex-shrink-0 px-6 sm:px-8 py-3 border-t border-gray-100 bg-orange-50 space-y-1.5">
+            class="flex-shrink-0 px-6 sm:px-8 py-3 border-t border-gray-100 bg-orange-50 space-y-2">
             <p class="text-xs font-bold text-orange-700 flex items-center gap-1.5">
               <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-              Revision requested — submit your updated output:
+              Revision requested — upload your revised file:
             </p>
-            <div class="flex gap-2">
-              <input v-model="newOutputUrl" type="url" placeholder="Paste revised output URL…"
-                class="flex-1 border-2 border-orange-200 rounded-xl h-10 px-3 text-sm
-                       focus:outline-none focus:border-orange-500 transition-colors bg-white" />
-              <button @click="resubmit"
-                :disabled="acting === 'resubmit' || !newOutputUrl.trim()"
-                class="h-10 px-4 rounded-xl bg-orange-600 text-white text-sm font-bold
-                       hover:bg-orange-500 disabled:opacity-40 transition-all active:scale-95">
-                {{ acting === 'resubmit' ? 'Resubmitting…' : 'Resubmit' }}
+
+            <!-- File pick row -->
+            <div class="flex items-center gap-2">
+              <input ref="resubInputRef" type="file" class="hidden" @change="onFilePickResub" />
+              <button @click="resubInputRef?.click()"
+                class="flex items-center gap-2 h-9 px-3 rounded-xl border-2 border-orange-200
+                       bg-white text-orange-700 text-xs font-bold hover:border-orange-400
+                       transition-colors flex-shrink-0">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                </svg>
+                Choose file
               </button>
+              <span class="flex-1 text-xs text-gray-500 truncate">
+                {{ resubmitFile ? resubmitFile.name : 'No file chosen' }}
+              </span>
+              <button v-if="resubmitFile" @click="resubmitFile = null"
+                class="text-gray-300 hover:text-red-400 text-lg leading-none flex-shrink-0 transition-colors">×</button>
             </div>
+
+            <!-- Progress -->
+            <div v-if="acting === 'resubmit'" class="h-1.5 bg-orange-100 rounded-full overflow-hidden">
+              <div class="h-full bg-orange-500 rounded-full transition-all duration-300"
+                :style="{ width: uploadProgress + '%' }" />
+            </div>
+
+            <button @click="resubmit"
+              :disabled="acting === 'resubmit' || !resubmitFile"
+              class="w-full h-9 rounded-xl bg-orange-600 text-white text-xs font-bold
+                     hover:bg-orange-500 disabled:opacity-40 transition-all active:scale-95
+                     flex items-center justify-center gap-1.5">
+              <svg v-if="acting === 'resubmit'" class="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
+                <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+              {{ acting === 'resubmit'
+                  ? (uploadProgress < 100 ? `Uploading ${uploadProgress}%…` : 'Saving…')
+                  : 'Upload & Resubmit' }}
+            </button>
           </div>
 
         </div>
@@ -597,10 +763,9 @@ const assignSubtaskToMember = (subtask, memberId) => {
                    hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
             {{ acting === 'revise' ? 'Sending…' : 'Send for Revision' }}
           </button>
-          <button @click="approve" :disabled="acting !== '' || !task.unitHead"
-            :title="!task.unitHead ? 'Unit head approval required first' : ''"
+          <button @click="approve" :disabled="acting !== ''"
             class="flex-1 h-11 rounded-xl bg-green-950 text-white font-bold text-sm
-                   hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95
+                   hover:bg-green-800 disabled:opacity-40 transition-all active:scale-95
                    flex items-center justify-center gap-2">
             <svg v-if="acting === 'approve'" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
@@ -613,8 +778,8 @@ const assignSubtaskToMember = (subtask, memberId) => {
         <!-- Fully approved -->
         <template v-else-if="task.director">
           <div class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-green-50 border border-green-200">
-            <svg class="w-4 h-4 text-green-700" viewBox="0 0 24 24" fill="currentColor">
-              <path :d="mdiCheck" />
+            <svg class="w-4 h-4 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
             </svg>
             <span class="text-sm font-bold text-green-700">Fully Approved</span>
           </div>

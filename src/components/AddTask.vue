@@ -13,7 +13,7 @@ const auth = useAuthStore()
 
 const loading = ref(false)
 const subTasks = ref([{ text: '' }])
-const outputUrl = ref('')   // for member insertion task
+const outputUrl = ref('')  
 
 const newTask = ref({
   name: '',
