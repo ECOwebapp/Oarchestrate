@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabaseClient'
-import { useAuthStore } from '@/stores/useAuthStore'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 

@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 // ── Org constants ─────────────────────────────────────────────────────────────
 // unit_name:  1 = Planning and Design Unit
@@ -28,7 +28,7 @@ export const taskStore = defineStore('tasks', () => {
     const missing = uids.filter(id => id && !nameMap.value[id])
     if (!missing.length) return
     const { data } = await supabase
-      .from('user_profile')
+      .from('members')
       .select('user_id, fname, lname')
       .in('user_id', missing)
     ;(data || []).forEach(p => {
@@ -41,7 +41,7 @@ export const taskStore = defineStore('tasks', () => {
     const missing = uids.filter(id => id && !(id in unitIdMap.value))
     if (!missing.length) return
     const { data } = await supabase
-      .from('position')
+      .from('position_of_members')
       .select('user_id, unit_id')
       .in('user_id', missing)
     ;(data || []).forEach(u => { unitIdMap.value[u.user_id] = u.unit_id })
@@ -55,7 +55,7 @@ export const taskStore = defineStore('tasks', () => {
 
   const getDirectorId = async () => {
     const { data } = await supabase
-      .from('member_type').select('user_id').eq('role_id', 1).maybeSingle()
+      .from('position_of_members').select('user_id').eq('pos_id', 1).maybeSingle()
     return data?.user_id || null
   }
 
@@ -114,26 +114,36 @@ export const taskStore = defineStore('tasks', () => {
   // ── FETCH UNIT MEMBERS (AddTask dropdown) ──────────────────────────────────
   const fetchUnitMembers = async () => {
     const auth = useAuthStore()
-    if (!auth.isUnitHead || !auth.unitId) return
+    const activeUnitId = computed(() => {
+      // Look for the position entry where they are a Unit Head (ID 4)
+      const headRole = auth.positions?.find(p => p.pos_id === 4);
+      
+      // Return that specific unit_id, or null if they aren't a Unit Head anywhere
+      return headRole?.unit_id ?? null;
+    });
+
+    if (!auth.isUnitHead || !activeUnitId.value) return
     try {
+
       const { data: unitUsers, error } = await supabase
-        .from('position').select('user_id').eq('unit_id', auth.unitId)
+        .from('position_of_members').select('user_id').eq('unit_id', activeUnitId.value)
+
       if (error) { console.error('[taskStore] fetchUnitMembers:', error); return }
 
       const userIds = (unitUsers || []).map(u => u.user_id)
       const [, roleRes] = await Promise.all([
         resolveNames(userIds),
-        supabase.from('position').select('user_id, pos_id').in('user_id', userIds),
+        supabase.from('position_of_members').select('user_id, pos_id').in('user_id', userIds),
       ])
-      const roleMap = Object.fromEntries((roleRes.data || []).map(r => [r.user_id, r.role_id]))
+      const roleMap = Object.fromEntries((roleRes.data || []).map(r => [r.user_id, r.pos_id]))
 
       unitMembers.value = userIds.map(userId => ({
         id:            userId,
         name:          nameMap.value[userId] || 'Unknown',
         posId:        roleMap[userId] || null,
         posType:      roleMap[userId] === 1 ? 'Director'
-                     : roleMap[userId] === 2 ? 'Unit Head'
-                     : roleMap[userId] === 3 ? 'Unit Member' : 'Unknown',
+                     : roleMap[userId] === 4 ? 'Unit Head'
+                     : ![1, 4, 11].includes(roleMap[userId]) ? 'Exempted' : 'Unknown',
         isCurrentUser: userId === auth.userID,
       }))
     } catch (e) {
@@ -165,9 +175,9 @@ export const taskStore = defineStore('tasks', () => {
         const [, , roleRes] = await Promise.all([
           resolveNames(allUserIds),
           resolveUnitIds(assigneeIds),
-          supabase.from('position').select('user_id, pos_id').in('user_id', assigneeIds),
+          supabase.from('position_of_members').select('user_id, pos_id').in('user_id', assigneeIds),
         ])
-        const roleMap = Object.fromEntries((roleRes.data || []).map(r => [r.user_id, r.role_id]))
+        const roleMap = Object.fromEntries((roleRes.data || []).map(r => [r.user_id, r.pos_id]))
 
         tasks.value = (rows || []).map(t => ({
           ...mapRow(t),
@@ -179,10 +189,16 @@ export const taskStore = defineStore('tasks', () => {
       } else if (auth.isUnitHead) {
         // ── Unit Head: all tasks in their own unit (unit_id 1 or 2 only) ─────
         // Unit Heads never see Office unit tasks — those go directly to Director
-        if (!auth.unitId) { tasks.value = []; return }
+
+        const activeUnitId = computed(() => {
+          const headRole = auth.positions?.find(p => p.pos_id === 4);
+          return headRole?.unit_id ?? null;
+        });
+
+        if (!activeUnitId.value) { tasks.value = []; return }
 
         const { data: unitUsers } = await supabase
-          .from('position').select('user_id').eq('unit_id', auth.unitId)
+          .from('position_of_members').select('user_id').eq('unit_id', activeUnitId.value)
         const unitUserIds = (unitUsers || []).map(m => m.user_id)
         const allIds      = [...new Set([uid, ...unitUserIds])]
 
@@ -202,13 +218,13 @@ export const taskStore = defineStore('tasks', () => {
         const [, , roleRes] = await Promise.all([
           resolveNames(allUserIds),
           resolveUnitIds(assigneeIds),
-          supabase.from('position').select('user_id, pos_id').in('user_id', assigneeIds),
+          supabase.from('position_of_members').select('user_id, pos_id').in('user_id', assigneeIds),
         ])
         const roleMap = Object.fromEntries((roleRes.data || []).map(r => [r.user_id, r.pos_id]))
 
         tasks.value = (rows || []).map(t => ({
           ...mapRow(t),
-          assigneeRole:     roleMap2[t.assignee]          || null,
+          assigneeRole:     roleMap[t.assignee]          || null,
           assigneeUnitId:   getAssigneeUnitId(t.assignee),
           assigneeIsOffice: isOfficeUser(t.assignee),
           isOwnTask:        t.assignee === uid,
