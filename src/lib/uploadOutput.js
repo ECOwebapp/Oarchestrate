@@ -1,6 +1,3 @@
-// Replace with your actual Vercel deployment URL
-// e.g. https://your-app.vercel.app/api/upload-to-drive
-// During local dev you can use: http://localhost:3000/api/upload-to-drive
 const UPLOAD_URL = import.meta.env.VITE_UPLOAD_URL || 'http://localhost:3000/api/upload-to-drive'
 
 export async function uploadOutputFile({ file, userName, onProgress }) {
