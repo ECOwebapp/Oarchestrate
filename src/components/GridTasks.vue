@@ -4,6 +4,7 @@ import TaskCard from './TaskCard.vue'
 import TaskDetail from './TaskDetail.vue'
 
 const props      = defineProps(['tasks'])
+const emit       = defineEmits(['assignSubtask'])
 const selected   = ref(null)
 </script>
 
@@ -29,7 +30,7 @@ const selected   = ref(null)
   </div>
 
   <Transition name="modal">
-    <TaskDetail v-if="selected" :task="selected" @close="selected = null" />
+    <TaskDetail v-if="selected" :task="selected" @close="selected = null" @assignSubtask="emit('assignSubtask', $event)" />
   </Transition>
 </template>
 

@@ -15,6 +15,7 @@ const addTask  = ref(false)
 const search   = ref('')
 const filter   = ref('All')
 const sortBy   = ref('Recently Assigned')
+const preFillData = ref(null)  // for subtask assignment
 
 const tasks = store.tasks.filter(t => t.design === false)
 
@@ -88,6 +89,26 @@ const filtered = computed(() => {
     list = [...list].sort((a,b) => new Date(b.from) - new Date(a.from))
   return list
 })
+
+// Handle subtask assignment from TaskDetail
+const onAssignSubtask = (data) => {
+  preFillData.value = {
+    name: data.subtask.name,
+    description: data.subtask.description || '',
+    assignee: data.assignedMemberId,
+    assigneeName: data.assignedMemberName,
+    type: 1,  // Regular task
+    endDate: null,
+    urgent: false,
+    design: false,
+  }
+  addTask.value = true
+}
+
+const onCloseAddTask = () => {
+  addTask.value = false
+  preFillData.value = null
+}
 </script>
 
 <template>
@@ -136,8 +157,8 @@ const filtered = computed(() => {
 
     <!-- ── View ── -->
     <div class="flex-1 overflow-auto bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0">
-      <GridTasks  v-if="state === 'Grid View'"  :tasks="filtered" />
-      <TableTasks v-else-if="state === 'Table View'" :tasks="filtered" />
+      <GridTasks  v-if="state === 'Grid View'"  :tasks="filtered" @assignSubtask="onAssignSubtask" />
+      <TableTasks v-else-if="state === 'Table View'" :tasks="filtered" @assignSubtask="onAssignSubtask" />
       <ChartTasks v-else-if="state === 'Chart View'" :tasks="filtered" />
     </div>
 
@@ -159,8 +180,8 @@ const filtered = computed(() => {
   <Transition name="modal">
     <div v-if="addTask"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-      @click.self="addTask = false">
-      <AddTask @close="addTask = false" :design="false" />
+      @click.self="onCloseAddTask">
+      <AddTask @close="onCloseAddTask" :design="false" :preFill="preFillData" />
     </div>
   </Transition>
 </template>

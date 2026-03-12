@@ -2,11 +2,11 @@
 import { useMemberStore } from '@/stores/member'
 import { taskStore } from '@/stores/tasks.js'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import Icons from './Icons.vue'
 
 const emit = defineEmits(['close'])
-const props = defineProps(['design'])
+const props = defineProps(['design', 'preFill'])
 const store = taskStore()
 const members = useMemberStore()
 const auth = useAuthStore()
@@ -27,6 +27,22 @@ const newTask = ref({
 })
 
 onMounted(() => members.fetchMembers?.())
+
+// Initialize with pre-filled data if provided
+watch(() => props.preFill, (preFill) => {
+  if (preFill) {
+    newTask.value = {
+      name: preFill.name || '',
+      description: preFill.description || '',
+      endDate: preFill.endDate || null,
+      assignee: preFill.assignee || null,
+      type: preFill.type || 1,
+      urgent: preFill.urgent || false,
+      design: preFill.design || false,
+      outputLink: preFill.outputLink || '',
+    }
+  }
+}, { immediate: true })
 
 
 

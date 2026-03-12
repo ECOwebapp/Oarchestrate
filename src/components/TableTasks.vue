@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import TaskDetail from './TaskDetail.vue'
 
 const props    = defineProps(['tasks'])
+const emit     = defineEmits(['assignSubtask'])
 const selected = ref(null)
 
 const fmt = (d) => d
@@ -73,7 +74,7 @@ const statusLabel = (task) => {
   </div>
 
   <Transition name="modal">
-    <TaskDetail v-if="selected" :task="selected" @close="selected = null" />
+    <TaskDetail v-if="selected" :task="selected" @close="selected = null" @assignSubtask="emit('assignSubtask', $event)" />
   </Transition>
 </template>
 

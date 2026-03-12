@@ -1,14 +1,15 @@
 <script setup>
+import { useMemberStore } from '@/stores/member'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { mdiAlertCircle, mdiChat, mdiCheck, mdiClockAlert, mdiLink, mdiRefresh } from '@mdi/js'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 const props = defineProps(['task'])
-const emit  = defineEmits(['close', 'refresh'])
+const emit  = defineEmits(['close', 'refresh', 'assignSubtask'])
 const auth  = useAuthStore()
 const store = taskStore()
-
+const members = useMemberStore()
 // ── State ──────────────────────────────────────────────────
 const outputUrl       = ref(props.task?.outputLink || '')
 const newOutputUrl    = ref('')
@@ -20,6 +21,8 @@ const tab             = ref('detail')  // 'detail' | 'comments'
 const revisions       = ref([])
 const loadingRevs     = ref(false)
 const chatBottom      = ref(null)
+const openDropdown    = ref(null)      // track which subtask dropdown is open
+const assigningSubtask = ref(false)
 
 // ── Load revision thread ────────────────────────────────────
 const loadRevisions = async () => {
@@ -95,6 +98,12 @@ const isResubmitted = computed(() =>
   props.task?.outputLink && !props.task?.revision && !props.task?.director && props.task?.revisedAt
 )
 
+// Unit members for assigning subtasks
+const unitMembers = computed(() => {
+  if (!auth.isUnitHead) return []
+  return members.members.filter(m => m.unit_id === auth.unitId)
+})
+
 const statusLabel = computed(() => {
   if (props.task?.director)  return { label: 'Approved by Director',    cls: 'bg-green-100 text-green-800',   icon: mdiCheck }
   // unitHead=true means: either UH approved (non-office) OR bypass marker (Office/Self-assigned)
@@ -167,6 +176,21 @@ const resubmit = async () => {
     emit('refresh')
     tab.value = 'comments'
   } finally { acting.value = '' }
+}
+
+// Assign subtask to a member
+const assignSubtaskToMember = (subtask, memberId) => {
+  const member = unitMembers.value.find(m => m.id === memberId)
+  if (!member) return
+  
+  assigningSubtask.value = true
+  emit('assignSubtask', {
+    subtask: subtask,
+    assignedMemberId: memberId,
+    assignedMemberName: `${member.fname} ${member.lname}`
+  })
+  openDropdown.value = null
+  setTimeout(() => { assigningSubtask.value = false }, 300)
 }
 </script>
 
@@ -299,7 +323,7 @@ const resubmit = async () => {
               </svg>
               <a :href="task.outputLink" target="_blank"
                 class="text-sm text-green-800 font-semibold hover:underline truncate flex-1">
-                View submitted output ↗
+                View submitted output 
               </a>
             </div>
 
@@ -379,13 +403,42 @@ const resubmit = async () => {
             </p>
             <div class="space-y-2">
               <div v-for="(sub, i) in task.subtasks" :key="i"
-                class="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-2.5 bg-white">
+                class="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-2.5 bg-white group">
                 <span class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center
                              text-white text-[10px] font-bold"
                   :class="sub.director ? 'bg-green-700' : 'bg-gray-300'">
                   {{ i + 1 }}
                 </span>
                 <p class="flex-1 text-sm text-gray-700 leading-snug min-w-0">{{ sub.name }}</p>
+                
+                <!-- Assign button for unit heads -->
+                <div v-if="auth.isUnitHead && !sub.director" class="relative">
+                  <button
+                    @click="openDropdown = openDropdown === i ? null : i"
+                    :disabled="assigningSubtask"
+                    class="text-xs px-2.5 py-1.5 rounded-lg border border-green-800 text-green-800 font-semibold
+                           hover:bg-green-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    Assign
+                  </button>
+                  <!-- Dropdown menu -->
+                  <div v-if="openDropdown === i"
+                    class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-40">
+                    <p class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                      Assign to member
+                    </p>
+                    <div class="max-h-60 overflow-y-auto">
+                      <button
+                        v-for="member in unitMembers" :key="member.id"
+                        @click="assignSubtaskToMember(sub, member.id)"
+                        class="block w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-green-50
+                               border-b border-gray-50 last:border-b-0 transition-colors">
+                        <span class="font-semibold">{{ member.fname }} {{ member.lname }}</span>
+                        <span class="text-xs text-gray-400 block">{{ member.pos_name }}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
                 <a v-if="sub.outputLink" :href="sub.outputLink" target="_blank"
                   class="text-xs text-green-800 font-semibold hover:underline flex-shrink-0 ml-2">
                   ↗ View
@@ -544,9 +597,10 @@ const resubmit = async () => {
                    hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
             {{ acting === 'revise' ? 'Sending…' : 'Send for Revision' }}
           </button>
-          <button @click="approve" :disabled="acting !== ''"
+          <button @click="approve" :disabled="acting !== '' || !task.unitHead"
+            :title="!task.unitHead ? 'Unit head approval required first' : ''"
             class="flex-1 h-11 rounded-xl bg-green-950 text-white font-bold text-sm
-                   hover:bg-green-800 disabled:opacity-40 transition-all active:scale-95
+                   hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95
                    flex items-center justify-center gap-2">
             <svg v-if="acting === 'approve'" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
