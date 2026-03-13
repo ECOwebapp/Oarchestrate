@@ -1,6 +1,6 @@
 <script setup>
 import { useAuthStore } from '@/stores/useAuthStore'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
@@ -10,6 +10,21 @@ const authStore = useAuthStore()
 const expanded = ref(false)
 const mobileOpen = ref(false)
 const closeDrawer = () => { mobileOpen.value = false }
+
+const formattedPositions = computed(() => {
+  return authStore.positions.map(p => p.pos_name).join(' / ') || 'No Position Assigned';
+});
+
+const formattedUnits = computed(() => {
+  // 1. Get an array of all unit names
+  const unitNames = authStore.positions.map(p => p.unit_name)
+
+  // 2. Create a Set to remove duplicates
+  const uniqueUnits = [...new Set(unitNames)]
+
+  // 3. Join them (if only one unique unit exists, no '/' will be added)
+  return uniqueUnits.join(' / ') || 'No Unit Assigned'
+})
 
 const navNames = [
   'Dashboard',
@@ -47,7 +62,7 @@ const version = '0.1 alpha'
     <nav v-if="mobileOpen"
       class="xl:hidden fixed left-0 top-0 bottom-0 z-50 w-68 flex flex-col drop-shadow-2xl bg-[url('/images/csu-background.png')] bg-center bg-cover no-repeat">
       <NavInner :nav-names="navNames" :get-path="getPath" :is-active="isActive" :auth-store="authStore" :expanded="true"
-        :version="version" @logout="authStore.logout(router)" @navigate="closeDrawer" />
+        :version="version" @logout="authStore.logout(router)" :formatted-positions="formattedPositions" :formatted-units="formattedUnits" @navigate="closeDrawer" />
     </nav>
   </Transition>
 
@@ -57,7 +72,7 @@ const version = '0.1 alpha'
            transition-all duration-300 ease-[cubic-bezier(.16,1,.3,1)] overflow-hidden bg-[url('/images/csu.png')] bg-center bg-cover no-repeat"
     :class="expanded ? 'w-60' : 'w-[68px]'" @mouseenter="expanded = true" @mouseleave="expanded = false">
     <NavInner :nav-names="navNames" :get-path="getPath" :is-active="isActive" :auth-store="authStore"
-      :expanded="expanded" :version="version" @logout="authStore.logout(router)" />
+      :expanded="expanded" :version="version" :formatted-positions="formattedPositions" :formatted-units="formattedUnits" @logout="authStore.logout(router)" />
   </nav>
 
 </template>
@@ -75,6 +90,8 @@ const NavInner = defineComponent({
     authStore: Object,
     expanded: Boolean,
     version: String,
+    formattedPositions: String,
+    formattedUnits: String,
   },
   emits: ['logout', 'navigate'],
   setup(props, { emit }) {
@@ -146,9 +163,9 @@ const NavInner = defineComponent({
                   h('p', { class: 'text-white text-sm font-bold leading-tight truncate max-w-[180px]' },
                     props.authStore.fullName),
                   h('p', { class: 'text-green-300 text-[13px] font-bold truncate mt-2 max-w-[180px] mt-0.5' },
-                    `${props.authStore.positionLabel}`),
+                    `${props.formattedPositions}`),
                   h('p', { class: 'text-white text-[12px] leading-tight max-w-[180px]' },
-                    props.authStore.unitName),
+                    props.formattedUnits),
                 ])
                 : null,
           ]),

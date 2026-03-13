@@ -9,21 +9,8 @@ export const useMemberStore = defineStore('member', () => {
     const fetchMembers = async () => {
         try {
             const { data: memberRows, error: memberErr } = await supabase
-                .from('user_profile')
-                .select(`
-                    user_id, 
-                    lname, 
-                    fname, 
-                    middle_initial, 
-                    birthdate, 
-                    gender_type (gender),
-                    position ( 
-                        pos_id,
-                        unit_id,
-                        position_name ( pos_name ),
-                        unit_name (name)
-                      )
-                `)
+                .from('members')
+                .select('*')
 
             const { data: statusRows, error: statusErr } = await supabase
                 .from('account_status')
@@ -42,15 +29,13 @@ export const useMemberStore = defineStore('member', () => {
                             fname: m.fname,
                             middle_initial: m.middle_initial,
                             birthdate: m.birthdate,
-                            gender: m.gender_type?.gender,
-                            pos_id: m.position?.pos_id,
-                            pos_name: m.position?.position_name?.pos_name,
+                            gender: m.gender,
                             status_id: statusRows.find(s => s.user_id === m.user_id)?.status_id,
-                            unit_id: m.position?.unit_id
                         }))
                 }
             }
-            // console.log(memberRows[0])
+            // console.log(memberRows)
+            // console.log(members.value)
 
         } catch (e) {
             console.log('Failed to fetch members: ', e)

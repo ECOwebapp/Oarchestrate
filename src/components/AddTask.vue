@@ -1,6 +1,8 @@
 <script setup>
+import { storeToRefs } from 'pinia'
 import { useMemberStore } from '@/stores/member'
 import { taskStore } from '@/stores/tasks.js'
+import { usePosStore } from '@/stores/positions'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, ref } from 'vue'
 import Icons from './Icons.vue'
@@ -8,8 +10,12 @@ import Icons from './Icons.vue'
 const emit = defineEmits(['close'])
 const props = defineProps(['design'])
 const store = taskStore()
-const members = useMemberStore()
+const memberStore = useMemberStore()
 const auth = useAuthStore()
+const posStore = usePosStore()
+
+const { members } = storeToRefs(memberStore)
+const { position, roles, memberPos } = storeToRefs(posStore)
 
 const loading = ref(false)
 const subTasks = ref([{ text: '' }])
@@ -26,25 +32,47 @@ const newTask = ref({
   outputLink: '',
 })
 
-onMounted(() => members.fetchMembers?.())
-
-
+onMounted(async () => {
+  await memberStore.fetchMembers?.()
+  await posStore.fetchMemberPos?.()
+})
 
 // ── Who can be assigned ──
 const assignableMembers = computed(() => {
+  const allMembers = members.value || [];
+  const allPositions = memberPos.value || [];
+
+  // 1. Pre-calculate the Director/Admin status to skip filtering if not needed
   if (auth.isDirector) {
-    if (newTask.value.type === 2) return members.members
-    return members.members.filter(m => m.pos_id === 4)
+    if (Number(newTask.value.type) === 2) return allMembers;
+    // Director only sees Unit Heads (pos_id 4)
+    const unitHeadIdSet = new Set(
+      allPositions.filter(p => Number(p.pos_id) === 4).map(p => p.user_id)
+    );
+    return allMembers.filter(m => unitHeadIdSet.has(m.id));
   }
+
+  // 2. Optimized Unit Head Logic
   if (auth.isUnitHead) {
-    // their own unit members + themselves
-    return members.members.filter(m =>
-      m.unit_id === auth.unitId || m.id === auth.userID
-    )
+    const headUnitIds = (auth.positions || [])
+      .filter(p => Number(p.pos_id) === 4)
+      .map(p => p.unit_id);
+
+    // Create a Set of User IDs who belong to the Head's units
+    const memberIdInMyUnits = new Set(
+      allPositions
+        .filter(pos => headUnitIds.includes(pos.unit_id))
+        .map(pos => pos.user_id)
+    );
+
+    return allMembers.filter(m => 
+      m.id === auth.userID || memberIdInMyUnits.has(m.id)
+    );
   }
-  // Member: only themselves, insertion only
-  return members.members.filter(m => m.id === auth.userID)
-})
+
+  // 3. Default: Regular members only see themselves
+  return allMembers.filter(m => m.id === auth.userID);
+});
 
 // Members can only do insertion
 const typeOptions = computed(() => {
@@ -158,8 +186,8 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
                  focus:outline-none focus:border-green-800 transition-colors" />
       </div>
 
-      <!-- Sub-tasks (director + unit head only) -->
-      <div v-if="!auth.isMember">
+      <!-- Sub-tasks (director only) -->
+      <div v-if="auth.isDirector">
         <div class="flex items-center justify-between mb-2">
           <label class="text-sm font-semibold text-gray-700">Sub-tasks</label>
           <button type="button" @click="addSubTask"

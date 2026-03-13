@@ -64,8 +64,8 @@ export const useNotifStore = defineStore('notif', () => {
             supabase.from('user_profile')
               .select('user_id, fname, lname')
               .in('user_id', userIds),
-            supabase.from('position')
-              .select('user_id, position_name:pos_id(pos_name), unit_name:unit_id(name)')
+            supabase.from('position_of_members')
+              .select('user_id, pos_name, unit_name')
               .in('user_id', userIds),
           ])
 
@@ -76,10 +76,10 @@ export const useNotifStore = defineStore('notif', () => {
             (profRes.data || []).map(p => [p.user_id, `${p.fname || ''} ${p.lname || ''}`.trim()])
           )
           posMap = Object.fromEntries(
-            (posRes.data || []).map(p => [p.user_id, p.position_name?.pos_name || ''])
+            (posRes.data || []).map(p => [p.user_id, p?.pos_name || ''])
           )
           unitMap = Object.fromEntries(
-            (posRes.data || []).map(u => [u.user_id, u.unit_name?.name || ''])
+            (posRes.data || []).map(u => [u.user_id, u?.unit_name|| ''])
           )
         }
 
@@ -156,8 +156,17 @@ export const useNotifStore = defineStore('notif', () => {
 
       } else if (auth.isUnitHead) {
         // Unit head: tasks from unit members with output submitted, not yet approved
+
+        const activeUnitId = computed(() => {
+          // Look for the position entry where they are a Unit Head (ID 4)
+          const headRole = auth.positions?.find(p => p.pos_id === 4);
+        
+          // Return that specific unit_id, or null if they aren't a Unit Head anywhere
+          return headRole?.unit_id ?? null;
+        });
+
         const { data: unitMembers } = await supabase
-          .from('position').select('user_id').eq('unit_id', auth.unitId)
+          .from('position').select('user_id').eq('unit_id', activeUnitId.value)
         const memberIds = (unitMembers || [])
           .map(m => m.user_id).filter(id => id !== uid)
 
