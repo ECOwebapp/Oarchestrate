@@ -74,6 +74,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   // ── Fetch user data ──
   async function fetchUserData(authUser) {
+    if (initialized.value && user.value) return;
     if (!authUser) return
     loading.value = true
     userID.value = authUser.id
@@ -116,6 +117,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function init() {
+    if (initialized.value && user.value) return;
     loading.value = true
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.user) {
