@@ -1,4 +1,5 @@
 <template>
+  <LoadingScreen :loading="isLoading"/>
   <div class="app" ref="appRef">
 
     <!-- ─── NAVBAR ─── -->
@@ -340,6 +341,7 @@
 
 <script setup>
 import Antigravity from '@/components/Antigravity.vue'
+import LoadingScreen from '@/components/LoadingScreen.vue'
 import { onMounted, onUnmounted, ref } from 'vue'
 
 const isScrolled = ref(false)
@@ -352,6 +354,13 @@ const activeFeature = ref(0)
 const heroRef = ref(null)
 const aboutRef = ref(null)
 const devsRef = ref(null)
+
+const props = defineProps({
+  loading: {
+    type: Boolean,
+    default: true
+  }
+})
 
 const navLinks = [
   { label: 'About', href: '#about', id: 'about' },
