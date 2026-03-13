@@ -78,8 +78,10 @@ export const useAuthStore = defineStore('auth', () => {
   async function fetchUserData(authUser, force = false) {
     if (!force && initialized.value && user.value) return
     if (!authUser) return
+
     loading.value = true
     userID.value = authUser.id
+    console.log('Fetching ->', loading.value)
 
     const [profRes, posRes, statusRes, avatarRes] = await Promise.all([
       supabase
@@ -130,10 +132,16 @@ export const useAuthStore = defineStore('auth', () => {
 
     loading.value = false
     initialized.value = true
+
+    console.log('Fetching ->', loading.value)
   }
 
   async function init() {
+    if (initialized.value && user.value) return;
+    
     loading.value = true
+
+    console.log('Init ->', loading.value)
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.user) {
       user.value = session.user
@@ -141,6 +149,8 @@ export const useAuthStore = defineStore('auth', () => {
     } else {
       loading.value = false
       initialized.value = true
+
+      console.log('Init ->', loading.value)
     }
   }
 

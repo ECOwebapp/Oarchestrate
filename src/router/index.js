@@ -7,6 +7,7 @@ import Organization from '@/views/Organization.vue'
 import Profile from '@/views/Profile.vue'
 import Register from '@/views/Register.vue'
 import Tasks from '@/views/Tasks.vue'
+import Main from '@/views/Main.vue'
 
 import { useAuthStore } from '@/stores/useAuthStore'
 import { taskStore } from '@/stores/tasks'
@@ -17,60 +18,67 @@ import { createRouter, createWebHistory } from 'vue-router'
 const routes = [
   // ── Guest-only ──
   {
-    path: '/',
+    path: '/hero',
     name: 'Hero',
     component: HeroLanding,
-    meta: { guestOnly: true, hideNavbar: true },
+    meta: { guestOnly: true },
   },
   {
     path: '/login',
     name: 'Login',
     component: Login,
-    meta: { guestOnly: true, hideNavbar: true },
+    meta: { guestOnly: true },
   },
   {
     path: '/register',
     name: 'Register',
     component: Register,
-    meta: { guestOnly: true, hideNavbar: true },
+    meta: { guestOnly: true },
   },
 
   // ── Protected ──
   {
-    path: '/dashboard',
-    name: 'Dashboard',
-    component: Dashboard,
-    meta: { requiresTasks: true, requiresAuth: true },
-  },
-  {
-    path: '/tasks',
-    name: 'Tasks',
-    component: Tasks,
-    meta: { requireMembers: true, requiresTasks: true, requiresAuth: true },
-  },
-  {
-    path: '/design',
-    name: 'Design',
-    component: Design,
-    meta: { requireMembers: true, requiresTasks: true, requiresAuth: true },
-  },
-  {
-    path: '/organization',
-    name: 'Organization',
-    component: Organization,
-    meta: { requireMembers: true, requiresAuth: true },
-  },
-  {
-    path: '/analytics',
-    name: 'Analytics',
-    component: Analytics,
+    path: '/',
+    component: Main,
     meta: { requiresAuth: true },
-  },
-  {
-    path: '/profile',
-    name: 'Profile',
-    component: Profile,
-    meta: { requiresAuth: true },
+    children: [
+      {
+        path: 'dashboard',
+        name: 'Dashboard',
+        component: Dashboard,
+        meta: { requiresTasks: true, requiresAuth: true },
+      },
+      {
+        path: 'tasks',
+        name: 'Tasks',
+        component: Tasks,
+        meta: { requireMembers: true, requiresTasks: true, requiresAuth: true },
+      },
+      {
+        path: 'design',
+        name: 'Design',
+        component: Design,
+        meta: { requireMembers: true, requiresTasks: true, requiresAuth: true },
+      },
+      {
+        path: 'organization',
+        name: 'Organization',
+        component: Organization,
+        meta: { requireMembers: true, requiresAuth: true },
+      },
+      {
+        path: 'analytics',
+        name: 'Analytics',
+        component: Analytics,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'profile',
+        name: 'Profile',
+        component: Profile,
+        meta: { requiresAuth: true },
+      },
+    ]
   },
 
   // ── Fallback ──

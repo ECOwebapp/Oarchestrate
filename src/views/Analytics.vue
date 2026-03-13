@@ -8,8 +8,8 @@
     import { taskStore as useTaskStore } from '@/stores/tasks.js'
     import { useAuthStore } from '@/stores/useAuthStore.js'
 
-    const store    = useTaskStore()
-    const auth     = useAuthStore()
+    const store = useTaskStore()
+    const auth = useAuthStore()
 
     onMounted(() => store.fetchTasks())
 
@@ -77,7 +77,7 @@
       })
       return counts
     })
-    const barTicks   = computed(() => niceTicks(Math.max(...Object.values(barCounts.value), 0)))
+    const barTicks = computed(() => niceTicks(Math.max(...Object.values(barCounts.value), 0)))
     const barTickTop = computed(() => barTicks.value[barTicks.value.length - 1] || 1)
     const barTickPos = computed(() =>
       barTicks.value.map(v => ({ v, y: Math.round(200 - (v / barTickTop.value) * 190) }))
@@ -92,8 +92,8 @@
       const total = barData.value.reduce((sum, d) => sum + d.count, 0) || 1
       const n = barData.value.length
       const chartW = 450   // x: 40–490
-      const barW   = Math.min(65, Math.floor(chartW / n * 0.55))
-      const slot   = chartW / n
+      const barW = Math.min(65, Math.floor(chartW / n * 0.55))
+      const slot = chartW / n
       return barData.value.map((d, i) => {
         const h = (d.count / barTickTop.value) * 190
         const cx = 40 + slot * i + slot / 2
@@ -122,16 +122,16 @@
       const total = pieData.value.reduce((a, d) => a + d.pct, 0) || 1
       return pieData.value.map(d => {
         // When one segment is 100%, SVG arc can't draw a full circle — use a circle element flag instead
-        const pct   = d.pct / total
+        const pct = d.pct / total
         const isFull = pct >= 0.9999
         const angle = pct * 2 * Math.PI
-        const end   = start + (isFull ? angle - 0.0001 : angle)
+        const end = start + (isFull ? angle - 0.0001 : angle)
         const cx = 100, cy = 100, r = 80
         const x1 = cx + r * Math.cos(start), y1 = cy + r * Math.sin(start)
-        const x2 = cx + r * Math.cos(end),   y2 = cy + r * Math.sin(end)
+        const x2 = cx + r * Math.cos(end), y2 = cy + r * Math.sin(end)
         const mid = start + angle / 2
-        const lx  = cx + 54 * Math.cos(mid)
-        const ly  = cy + 54 * Math.sin(mid)
+        const lx = cx + 54 * Math.cos(mid)
+        const ly = cy + 54 * Math.sin(mid)
         const path = isFull
           ? null  // signal to use <circle> instead
           : `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${angle > Math.PI ? 1 : 0} 1 ${x2},${y2} Z`
@@ -145,8 +145,8 @@
       if (maxVal <= 0) return [0, 1, 2, 3, 4]
       if (maxVal <= n) return Array.from({ length: n + 1 }, (_, i) => i)
       const rough = maxVal / n
-      const exp   = Math.pow(10, Math.floor(Math.log10(rough)))
-      const step  = Math.ceil(rough / exp) * exp
+      const exp = Math.pow(10, Math.floor(Math.log10(rough)))
+      const step = Math.ceil(rough / exp) * exp
       return Array.from({ length: n + 1 }, (_, i) => i * step)
     }
 
@@ -158,12 +158,12 @@
         .forEach(t => { const m = taskMonth(t); if (m >= 0) counts[m]++ })
       return counts
     })
-    const lineTicks   = computed(() => niceTicks(Math.max(...lineRaw.value, 0)))
+    const lineTicks = computed(() => niceTicks(Math.max(...lineRaw.value, 0)))
     const lineTickTop = computed(() => lineTicks.value[lineTicks.value.length - 1] || 1)
     const lineTickPos = computed(() =>
       lineTicks.value.map(v => ({ v, y: Math.round(185 - (v / lineTickTop.value) * 175) }))
     )
-    const linePoints  = computed(() =>
+    const linePoints = computed(() =>
       lineRaw.value.map((v, i) => ({
         x: 35 + (i / 11) * 455,
         y: 185 - (v / lineTickTop.value) * 175,
@@ -183,13 +183,13 @@
       })
       return Object.entries(def).map(([key, color]) => ({ key, color, data: buckets[key] }))
     })
-    const areaYMax    = computed(() => Math.max(...areaSeriesData.value.flatMap(s => s.data), 0))
-    const areaTicks   = computed(() => niceTicks(areaYMax.value))
+    const areaYMax = computed(() => Math.max(...areaSeriesData.value.flatMap(s => s.data), 0))
+    const areaTicks = computed(() => niceTicks(areaYMax.value))
     const areaTickTop = computed(() => areaTicks.value[areaTicks.value.length - 1] || 1)
     const areaTickPos = computed(() =>
       areaTicks.value.map(v => ({ v, y: Math.round(175 - (v / areaTickTop.value) * 165) }))
     )
-    const areaSeries  = computed(() =>
+    const areaSeries = computed(() =>
       areaSeriesData.value.map(s => {
         const top = areaTickTop.value
         const pts = s.data.map((v, i) => ({
@@ -201,7 +201,7 @@
         return { ...s, pts, areaPath, linePath }
       })
     )
-    </script>
+</script>
 
     <template>
     <div class="flex h-full min-h-0 w-full flex-col gap-4 overflow-y-auto overflow-x-hidden bg-gray-50 p-3 sm:p-4 lg:flex-row lg:overflow-hidden">
@@ -210,13 +210,13 @@
       <div class="w-full rounded-xl bg-white p-4 shadow-sm sm:p-5 lg:h-full lg:w-64 lg:flex lg:flex-col lg:overflow-hidden">
         <div class="flex-shrink-0">
             <h2 class="text-base font-extrabold text-gray-900 leading-snug mb-3">
-            Accomplishment<br />Report Generator
+              Accomplishment<br />Report Generator
             </h2>
             <p class="text-xs text-gray-600 leading-relaxed">
-            The Accomplishment Report is a track record that contains all tasks you performed.
-            This is the proof of your activity within the organisation.
+              The Accomplishment Report is a track record that contains all tasks you performed.
+              This is the proof of your activity within the organisation.
             </p>
-        </div>
+          </div>
 
         <div class="flex-1 overflow-y-auto lg:overflow-hidden">
             <p class="text-xs font-semibold text-gray-700 mb-1">Note:</p>
@@ -225,7 +225,7 @@
             <li>Individual Report shows only your own approved tasks. Directors should use Unit Report to review Submitted, Pending, and Revision items across units.</li>
             <li>It doesn't include the signature of your Division Chief.</li>
             </ul>
-        </div>
+          </div>
 
         <div class="mt-4 flex flex-col gap-2 lg:mt-auto lg:flex-shrink-0">
             <button
@@ -244,7 +244,7 @@
             </svg>
             Individual Report
             </button>
-        </div>
+          </div>
         </div>
 
         <!-- ── Right: 2×2 Chart Grid ── -->
@@ -261,26 +261,28 @@
             <div class="min-h-0 flex-1 overflow-hidden">
             <svg viewBox="0 0 500 245" class="w-full h-full">
                 <!-- Axes -->
-                <line x1="40" y1="10" x2="40"  y2="200" stroke="#d1d5db" stroke-width="1" />
+                <line x1="40" y1="10" x2="40" y2="200" stroke="#d1d5db" stroke-width="1" />
                 <line x1="40" y1="200" x2="490" y2="200" stroke="#d1d5db" stroke-width="1" />
                 <!-- Grid lines (dynamic) -->
-                <line v-for="t in barTickPos.slice(1)" :key="'bg'+t.v" x1="40" :y1="t.y" x2="490" :y2="t.y" stroke="#f3f4f6" stroke-width="1" />
+                <line v-for="t in barTickPos.slice(1)" :key="'bg' + t.v" x1="40" :y1="t.y" x2="490" :y2="t.y"
+                  stroke="#f3f4f6" stroke-width="1" />
                 <!-- Y labels (dynamic) -->
-                <text v-for="t in barTickPos" :key="'by'+t.v" x="35" :y="t.y + 3" text-anchor="end" font-size="9" fill="#9ca3af">{{ t.v }}</text>
+                <text v-for="t in barTickPos" :key="'by' + t.v" x="35" :y="t.y + 3" text-anchor="end" font-size="9"
+                  fill="#9ca3af">{{ t.v }}</text>
                 <!-- Bars -->
-                <rect v-for="b in barRects" :key="b.label"
-                :x="b.x" :y="b.y" :width="b.barW" :height="b.height" :fill="b.color" rx="2" />
+                <rect v-for="b in barRects" :key="b.label" :x="b.x" :y="b.y" :width="b.barW" :height="b.height"
+                  :fill="b.color" rx="2" />
                 <!-- Count label above each bar -->
-                <text v-for="b in barRects" :key="'cnt'+b.label"
-                :x="b.cx" :y="b.count > 0 ? b.y - 5 : 196" text-anchor="middle" font-size="9" font-weight="600" fill="#374151">{{ b.count }}</text>
+                <text v-for="b in barRects" :key="'cnt' + b.label" :x="b.cx" :y="b.count > 0 ? b.y - 5 : 196"
+                  text-anchor="middle" font-size="9" font-weight="600" fill="#374151">{{ b.count }}</text>
                 <!-- X labels -->
-                <text v-for="b in barRects" :key="'lbl'+b.label"
-                :x="b.cx" y="217" text-anchor="middle" font-size="9" fill="#6b7280">{{ b.label }}</text>
+                <text v-for="b in barRects" :key="'lbl' + b.label" :x="b.cx" y="217" text-anchor="middle" font-size="9"
+                  fill="#6b7280">{{ b.label }}</text>
                 <!-- X axis title -->
                 <text x="265" y="234" text-anchor="middle" font-size="10" font-weight="bold" fill="#374151">Tasks</text>
-            </svg>
+              </svg>
             </div>
-        </div>
+          </div>
 
         <!-- Pie Chart: Task Distribution -->
         <div class="relative flex min-h-[260px] flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0">
@@ -301,15 +303,15 @@
                   <path v-else :d="seg.path" :fill="seg.color" stroke="white" stroke-width="1.5" />
                 </template>
                 <template v-for="seg in pieSegments" :key="'v'+seg.label">
-                  <text v-if="seg.count > 0"
-                    :x="seg.lx" :y="seg.ly - 4" text-anchor="middle" font-size="9" font-weight="bold" fill="white" class="pointer-events-none">
-                  {{ seg.count }}
+                  <text v-if="seg.count > 0" :x="seg.lx" :y="seg.ly - 4" text-anchor="middle" font-size="9"
+                    font-weight="bold" fill="white" class="pointer-events-none">
+                    {{ seg.count }}
                   </text>
                 </template>
                 <template v-for="seg in pieSegments" :key="'p'+seg.label">
-                  <text v-if="seg.count > 0"
-                    :x="seg.lx" :y="seg.ly + 6" text-anchor="middle" font-size="8" fill="white" class="pointer-events-none">
-                  ({{ seg.pct }}%)
+                  <text v-if="seg.count > 0" :x="seg.lx" :y="seg.ly + 6" text-anchor="middle" font-size="8" fill="white"
+                    class="pointer-events-none">
+                    ({{ seg.pct }}%)
                   </text>
                 </template>
             </svg>
@@ -318,9 +320,9 @@
                 <span class="w-3 h-3 rounded-sm flex-shrink-0" :style="{ background: d.color }"></span>
                 {{ d.label }}
                 </div>
+              </div>
             </div>
-            </div>
-        </div>
+          </div>
 
         <!-- Line Chart: Completed tasks trend monthly -->
         <div class="relative flex min-h-[260px] flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0">
@@ -333,23 +335,25 @@
             <div class="min-h-0 flex-1 overflow-hidden">
             <svg viewBox="0 0 500 215" class="w-full h-full">
                 <!-- Axes -->
-                <line x1="35" y1="10"  x2="35"  y2="185" stroke="#d1d5db" stroke-width="1" />
+                <line x1="35" y1="10" x2="35" y2="185" stroke="#d1d5db" stroke-width="1" />
                 <line x1="35" y1="185" x2="495" y2="185" stroke="#d1d5db" stroke-width="1" />
                 <!-- Grid lines (dynamic) -->
-                <line v-for="t in lineTickPos.slice(1)" :key="'lg'+t.v" x1="35" :y1="t.y" x2="495" :y2="t.y" stroke="#f3f4f6" stroke-width="1" />
+                <line v-for="t in lineTickPos.slice(1)" :key="'lg' + t.v" x1="35" :y1="t.y" x2="495" :y2="t.y"
+                  stroke="#f3f4f6" stroke-width="1" />
                 <!-- Y labels (dynamic) -->
-                <text v-for="t in lineTickPos" :key="'ly'+t.v" x="30" :y="t.y + 3" text-anchor="end" font-size="8" fill="#9ca3af">{{ t.v }}</text>
+                <text v-for="t in lineTickPos" :key="'ly' + t.v" x="30" :y="t.y + 3" text-anchor="end" font-size="8"
+                  fill="#9ca3af">{{ t.v }}</text>
                 <!-- Line -->
                 <polyline :points="linePolyline" fill="none" stroke="#16a34a" stroke-width="2" />
                 <!-- Dots -->
-                <circle v-for="(p, i) in linePoints" :key="i"
-                :cx="p.x" :cy="p.y" r="3" fill="#16a34a" stroke="#16a34a" stroke-width="2" fill-opacity="0.35" />
+                <circle v-for="(p, i) in linePoints" :key="i" :cx="p.x" :cy="p.y" r="3" fill="#16a34a" stroke="#16a34a"
+                  stroke-width="2" fill-opacity="0.35" />
                 <!-- X labels -->
-                <text v-for="(m, i) in monthLabels" :key="m"
-                :x="35 + (i / 11) * 455" y="200" text-anchor="middle" font-size="8" fill="#6b7280">{{ m }}</text>
-            </svg>
+                <text v-for="(m, i) in monthLabels" :key="m" :x="35 + (i / 11) * 455" y="200" text-anchor="middle"
+                  font-size="8" fill="#6b7280">{{ m }}</text>
+              </svg>
             </div>
-        </div>
+          </div>
 
             <!-- Area Chart: Submitted, Pending & Revision Monthly Trend -->
         <div class="relative flex min-h-[260px] flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0">
@@ -362,39 +366,40 @@
             <div class="min-h-0 flex-1 overflow-hidden">
             <svg viewBox="0 0 500 200" class="w-full h-full">
                 <!-- Axes -->
-                <line x1="35" y1="10"  x2="35"  y2="175" stroke="#d1d5db" stroke-width="1" />
+                <line x1="35" y1="10" x2="35" y2="175" stroke="#d1d5db" stroke-width="1" />
                 <line x1="35" y1="175" x2="495" y2="175" stroke="#d1d5db" stroke-width="1" />
                 <!-- Grid lines (dynamic) -->
-                <line v-for="t in areaTickPos.slice(1)" :key="'ag'+t.v" x1="35" :y1="t.y" x2="495" :y2="t.y" stroke="#f3f4f6" stroke-width="1" />
+                <line v-for="t in areaTickPos.slice(1)" :key="'ag' + t.v" x1="35" :y1="t.y" x2="495" :y2="t.y"
+                  stroke="#f3f4f6" stroke-width="1" />
                 <!-- Y labels (dynamic) -->
-                <text v-for="t in areaTickPos" :key="'ay'+t.v" x="30" :y="t.y + 3" text-anchor="end" font-size="8" fill="#9ca3af">{{ t.v }}</text>
+                <text v-for="t in areaTickPos" :key="'ay' + t.v" x="30" :y="t.y + 3" text-anchor="end" font-size="8"
+                  fill="#9ca3af">{{ t.v }}</text>
                 <!-- Area fills -->
-                <path v-for="s in areaSeries" :key="'a'+s.key"
-                :d="s.areaPath" :fill="s.color" fill-opacity="0.22" />
+                <path v-for="s in areaSeries" :key="'a' + s.key" :d="s.areaPath" :fill="s.color" fill-opacity="0.22" />
                 <!-- Lines on top -->
-                <path v-for="s in areaSeries" :key="'l'+s.key"
-                :d="s.linePath" fill="none" :stroke="s.color" stroke-width="2" stroke-opacity="0.35" />
+                <path v-for="s in areaSeries" :key="'l' + s.key" :d="s.linePath" fill="none" :stroke="s.color"
+                  stroke-width="2" stroke-opacity="0.35" />
                 <!-- Dots -->
                 <template v-for="s in areaSeries" :key="'d'+s.key">
-                <circle v-for="(p, i) in s.pts" :key="i"
-                    :cx="p.x" :cy="p.y" r="3" fill="white" :stroke="s.color" stroke-width="1.5" stroke-opacity="0.35" />
+                  <circle v-for="(p, i) in s.pts" :key="i" :cx="p.x" :cy="p.y" r="3" fill="white" :stroke="s.color"
+                    stroke-width="1.5" stroke-opacity="0.35" />
                 </template>
                 <!-- X labels -->
-                <text v-for="(m, i) in monthLabels" :key="m"
-                :x="35 + (i / 11) * 455" y="190" text-anchor="middle" font-size="8" fill="#6b7280">{{ m }}</text>
-            </svg>
+                <text v-for="(m, i) in monthLabels" :key="m" :x="35 + (i / 11) * 455" y="190" text-anchor="middle"
+                  font-size="8" fill="#6b7280">{{ m }}</text>
+              </svg>
             </div>
             <!-- Legend -->
             <div class="mt-1 flex flex-wrap justify-center gap-3 pb-1 text-xs text-gray-700 sm:gap-4">
             <div v-for="s in areaSeriesData" :key="s.key" class="flex items-center gap-1.5">
                 <span class="w-5 h-2.5 rounded-sm flex-shrink-0" :style="{ background: s.color }"></span>
                 {{ s.key }}
+              </div>
             </div>
-            </div>
-        </div>
+          </div>
 
         </div>
-    </div>
+      </div>
 
     <!-- ── Accomplishment Report Modals ── -->
     <ReportPicker v-if="showUnitPicker" title="Generate Unit Report" :payroll="true"
@@ -406,23 +411,10 @@
     <AccomplishmentReport :show="showReport" :month="unitMonth" :year="unitYear" :dateFrom="unitDateFrom" :dateTo="unitDateTo" @close="showReport = false" />
     <IndividualAccomplishmentReport :show="showIndividualReport" :month="indivMonth" :year="indivYear" :dateFrom="indivDateFrom" :dateTo="indivDateTo" :userName="auth.fullName" @close="showIndividualReport = false" />
 
-    <!-- ── Expanded Chart View (component) ── -->
-    <AnalyticsChart
-        :expandedChart="expandedChart"
-        :barRects="barRects"
-        :barData="barData"
-        :pieSegments="pieSegments"
-        :pieData="pieData"
-        :linePolyline="linePolyline"
-        :linePoints="linePoints"
-        :lineRaw="lineRaw"
-        :monthLabels="monthLabels"
-        :areaSeries="areaSeries"
-        :areaSeriesData="areaSeriesData"
-        :barTickPos="barTickPos"
-        :lineTickPos="lineTickPos"
-        :areaTickPos="areaTickPos"
-        @close="closeModal"
-    />
+      <!-- ── Expanded Chart View (component) ── -->
+      <AnalyticsChart :expandedChart="expandedChart" :barRects="barRects" :barData="barData" :pieSegments="pieSegments"
+        :pieData="pieData" :linePolyline="linePolyline" :linePoints="linePoints" :lineRaw="lineRaw"
+        :monthLabels="monthLabels" :areaSeries="areaSeries" :areaSeriesData="areaSeriesData" :barTickPos="barTickPos"
+        :lineTickPos="lineTickPos" :areaTickPos="areaTickPos" @close="closeModal" />
 
     </template>
