@@ -11,17 +11,25 @@ export const config = {
 const ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID
 
 function getAuthClient() {
-  if (!process.env.GOOGLE_CLIENT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
-    throw new Error("Missing Google Drive environment variables")
+  if (
+    !process.env.GOOGLE_CLIENT_ID ||
+    !process.env.GOOGLE_CLIENT_SECRET ||
+    !process.env.GOOGLE_REFRESH_TOKEN
+  ) {
+    throw new Error("Missing Google OAuth environment variables")
   }
 
-  return new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_CLIENT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-    },
-    scopes: ["https://www.googleapis.com/auth/drive"],
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    "https://developers.google.com/oauthplayground"
+  )
+
+  oauth2Client.setCredentials({
+    refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
   })
+
+  return oauth2Client
 }
 
 async function getOrCreateUserFolder(drive, userName) {
@@ -30,11 +38,6 @@ async function getOrCreateUserFolder(drive, userName) {
   const search = await drive.files.list({
     q: `name='${safeName}' and mimeType='application/vnd.google-apps.folder' and '${ROOT_FOLDER_ID}' in parents and trashed=false`,
     fields: "files(id,name)",
-<<<<<<< HEAD
-=======
-    supportsAllDrives: true,
-    includeItemsFromAllDrives: true,
->>>>>>> 9540d25d273632f780687255815f0d08f0d2d248
   })
 
   if (search.data.files.length > 0) {
@@ -42,12 +45,7 @@ async function getOrCreateUserFolder(drive, userName) {
   }
 
   const folder = await drive.files.create({
-<<<<<<< HEAD
-    resource: {
-=======
-    supportsAllDrives: true,
     requestBody: {
->>>>>>> 9540d25d273632f780687255815f0d08f0d2d248
       name: safeName,
       mimeType: "application/vnd.google-apps.folder",
       parents: [ROOT_FOLDER_ID],
@@ -97,10 +95,6 @@ export default async function handler(req, res) {
     const userFolderId = await getOrCreateUserFolder(drive, userName)
 
     const response = await drive.files.create({
-<<<<<<< HEAD
-=======
-      supportsAllDrives: true,
->>>>>>> 9540d25d273632f780687255815f0d08f0d2d248
       requestBody: {
         name: file.originalFilename || file.newFilename,
         parents: [userFolderId],
@@ -116,10 +110,6 @@ export default async function handler(req, res) {
 
     await drive.permissions.create({
       fileId,
-<<<<<<< HEAD
-=======
-      supportsAllDrives: true,
->>>>>>> 9540d25d273632f780687255815f0d08f0d2d248
       requestBody: {
         role: "reader",
         type: "anyone",
