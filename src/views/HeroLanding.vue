@@ -1,4 +1,5 @@
 <template>
+  <LoadingScreen :loading="isLoading"/>
   <div class="app" ref="appRef">
 
     <!-- ─── NAVBAR ─── -->
@@ -97,7 +98,7 @@
         <!-- Title -->
         <h1 class="font-display font-black leading-[0.92] tracking-[-0.035em] mb-7">
           <span class="block text-[clamp(52px,9vw,108px)] text-green-950 transition-all duration-700 delay-150"
-            :class="heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'">Project</span>
+            :class="heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'">Task</span>
           <span class="block text-[clamp(52px,9vw,108px)] text-green-600 transition-all duration-700 delay-200"
             :class="heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'">Management</span>
           <span class="block text-[clamp(52px,9vw,108px)] transition-all duration-700 delay-300"
@@ -161,7 +162,7 @@
             Built for the <span class="text-green-600">ECO</span> —<br>Designed for Efficiency
           </h2>
           <p class="font-body text-[16px] text-stone-500 max-w-[480px] mx-auto leading-relaxed">
-            The Oarchestrate PMS centralizes all capital project workflows — from task creation to multi-level approvals — in one cohesive platform.
+            The Oarchestrate TMS centralizes all capital project workflows — from task creation to multi-level approvals — in one cohesive platform.
           </p>
         </div>
 
@@ -340,6 +341,7 @@
 
 <script setup>
 import Antigravity from '@/components/Antigravity.vue'
+import LoadingScreen from '@/components/LoadingScreen.vue'
 import { onMounted, onUnmounted, ref } from 'vue'
 
 const isScrolled = ref(false)
@@ -352,6 +354,13 @@ const activeFeature = ref(0)
 const heroRef = ref(null)
 const aboutRef = ref(null)
 const devsRef = ref(null)
+
+const props = defineProps({
+  loading: {
+    type: Boolean,
+    default: true
+  }
+})
 
 const navLinks = [
   { label: 'About', href: '#about', id: 'about' },
