@@ -15,11 +15,6 @@ import { usePosStore } from '@/stores/positions'
 import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
-  {
-    path: '/',
-    redirect: '/',
-  },
-
   // ── Guest-only ──
   {
     path: '/',
