@@ -17,12 +17,12 @@ import { createRouter, createWebHistory } from 'vue-router'
 const routes = [
   {
     path: '/',
-    redirect: '/hero',
+    redirect: '/',
   },
 
   // ── Guest-only ──
   {
-    path: '/hero',
+    path: '/',
     name: 'Hero',
     component: HeroLanding,
     meta: { guestOnly: true, hideNavbar: true },
