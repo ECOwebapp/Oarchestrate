@@ -30,6 +30,11 @@ async function getOrCreateUserFolder(drive, userName) {
   const search = await drive.files.list({
     q: `name='${safeName}' and mimeType='application/vnd.google-apps.folder' and '${ROOT_FOLDER_ID}' in parents and trashed=false`,
     fields: "files(id,name)",
+<<<<<<< HEAD
+=======
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+>>>>>>> 9540d25d273632f780687255815f0d08f0d2d248
   })
 
   if (search.data.files.length > 0) {
@@ -37,7 +42,12 @@ async function getOrCreateUserFolder(drive, userName) {
   }
 
   const folder = await drive.files.create({
+<<<<<<< HEAD
     resource: {
+=======
+    supportsAllDrives: true,
+    requestBody: {
+>>>>>>> 9540d25d273632f780687255815f0d08f0d2d248
       name: safeName,
       mimeType: "application/vnd.google-apps.folder",
       parents: [ROOT_FOLDER_ID],
@@ -87,6 +97,10 @@ export default async function handler(req, res) {
     const userFolderId = await getOrCreateUserFolder(drive, userName)
 
     const response = await drive.files.create({
+<<<<<<< HEAD
+=======
+      supportsAllDrives: true,
+>>>>>>> 9540d25d273632f780687255815f0d08f0d2d248
       requestBody: {
         name: file.originalFilename || file.newFilename,
         parents: [userFolderId],
@@ -102,6 +116,10 @@ export default async function handler(req, res) {
 
     await drive.permissions.create({
       fileId,
+<<<<<<< HEAD
+=======
+      supportsAllDrives: true,
+>>>>>>> 9540d25d273632f780687255815f0d08f0d2d248
       requestBody: {
         role: "reader",
         type: "anyone",
