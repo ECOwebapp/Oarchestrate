@@ -110,7 +110,7 @@ const reportRows = computed(() => {
     .filter(t => (inPeriod(t.startDate) || inPeriod(t.endDate)))
     .map((t, i) => ({
       date:    fmt(t.startDate || t.from),
-      ppa:     t.type || '',
+      ppa:     '',
       daed:    t.name || '',
       no:      i + 1,
       output:  t.description || t.name || '',
@@ -161,16 +161,16 @@ const reportRows = computed(() => {
 
       <!-- ── Content ── -->
       <div class="overflow-auto flex-1 px-8 py-6">
-        <table class="w-full border-collapse text-xs table-fixed">
+        <table class="w-full border-collapse text-[10px] table-fixed">
           <thead>   
-            <tr class="bg-green-800 text-white text-[11px] uppercase tracking-wide">
-              <th class="border border-green-700 px-3 py-2 font-semibold text-center" style="width:10%">Date</th>
-              <th class="border border-green-700 px-3 py-2 font-semibold text-center" style="width:12%">PPAs</th>
-              <th class="border border-green-700 px-3 py-2 font-semibold text-center" style="width:14%">DAEDs</th>
-              <th class="border border-green-700 px-3 py-2 font-semibold text-center" style="width:5%">No.</th>
-              <th class="border border-green-700 px-3 py-2 font-semibold text-center" style="width:28%">Output</th>
-              <th class="border border-green-700 px-3 py-2 font-semibold text-center" style="width:10%">Remarks</th>
-              <th class="border border-green-700 px-3 py-2 font-semibold text-center" style="width:21%">Drive Link</th>
+            <tr class="bg-green-800 text-white text-[9px] uppercase tracking-normal">
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:10%">Date</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:12%">PPAs</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:14%">DAEDs</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:5%">No.</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:28%">Output</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:10%">Remarks</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:21%">Drive Link</th>
             </tr>
           </thead>
           <tbody>
@@ -184,7 +184,7 @@ const reportRows = computed(() => {
               </td>
               <td class="border border-gray-300 px-2 py-1 text-center text-gray-600">{{ row.remarks }}</td>
               <td class="border border-gray-300 px-2 py-1 text-center">
-                <span v-if="row.link" class="text-[10px] text-gray-700 break-all">{{ row.link }}</span>
+                <span v-if="row.link" class="text-[9px] text-gray-700 break-all">{{ row.link }}</span>
               </td>
             </tr>
           </tbody>
@@ -248,7 +248,7 @@ const reportRows = computed(() => {
     overflow: visible !important;
     box-shadow: none;
     border-radius: 0;
-    padding: 10mm;
+    padding: 12mm 10mm;
   }
 
   #indiv-report-printable .overflow-auto {
@@ -262,6 +262,16 @@ const reportRows = computed(() => {
     table-layout: fixed !important;
   }
 
+  /* Repeat header row on every printed page */
+  #indiv-report-printable thead {
+    display: table-header-group !important;
+  }
+
+  /* Keep footer pinned to bottom of last page */
+  #indiv-report-printable tfoot {
+    display: table-footer-group !important;
+  }
+
   #indiv-report-printable th,
   #indiv-report-printable td {
     border: 1px solid #aaa !important;
@@ -273,6 +283,12 @@ const reportRows = computed(() => {
     padding: 3px 5px !important;
   }
 
+  #indiv-report-printable thead th {
+    white-space: nowrap !important;
+    font-size: 7pt !important;
+    padding: 3px 3px !important;
+  }
+
   /* Remove line-clamp in print so full text shows */
   #indiv-report-printable .line-clamp-4 {
     display: block !important;
@@ -282,10 +298,17 @@ const reportRows = computed(() => {
     max-height: none !important;
   }
 
-  /* Prevent rows from splitting across pages */
+  /* Allow rows to break across pages but try to keep each row together */
   #indiv-report-printable tr {
-    page-break-inside: avoid;
     break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Signature block should never be cut across pages */
+  #indiv-report-printable .mt-8 {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    break-before: auto !important;
   }
 
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

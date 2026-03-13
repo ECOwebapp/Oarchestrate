@@ -1,6 +1,6 @@
 <script setup>
 import { storeToRefs } from 'pinia'
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useMemberStore } from '@/stores/member';
 import { useNotifStore } from '@/stores/useNotifStore';
 import { usePosStore } from '@/stores/positions';
@@ -10,11 +10,14 @@ const memberStore = useMemberStore()
 const notifStore = useNotifStore()
 const posStore = usePosStore()
 const { members } = storeToRefs(memberStore)
-const { position, memberPos } = storeToRefs(posStore)
+const { position, roles, memberPos } = storeToRefs(posStore)
+const selectedMember = ref([null])
 const loading = ref({
     update: false,
     delete: false
 })
+
+onMounted(async() => await posStore.fetchRoles())
 
 const pendingMembers = computed(() => {
     // 1. Create the list of expected notification IDs (e.g., ["reg-uuid1", "reg-uuid2"])
@@ -32,16 +35,17 @@ const isActing = (n) => n.status === 'approving' || n.status === 'denying'
 
 const changePosMembers = ref({
     user_id: null,
-    pos_id: null
+    pos_id: null,
+    unit_id: null
 })
 
 const deleteMember = ref({ user_id: null })
 
-const availablePos = computed(() => {
+const availableRoles = computed(() => {
     const selectedUserId = changePosMembers.value.user_id;
 
     // 1. If no ID is selected, return all position
-    if (!selectedUserId) return position.value;
+    if (!selectedUserId) return roles.value;
 
     // 2. Find the user, forcing both IDs to String and trimming whitespace
     const currentMember = memberPos.value.find(p => {
@@ -49,11 +53,11 @@ const availablePos = computed(() => {
     });
 
     // 3. If member not found in the position list, return all position
-    if (!currentMember) return position.value;
+    if (!currentMember) return roles.value;
 
     // 4. Filter out the current position ID (also forcing string comparison)
-    return position.value.filter(r => {
-        return String(r.id) !== String(currentMember.pos_id);
+    return roles.value.filter(r => {
+        return String(r.pos_id) !== String(currentMember.pos_id);
     });
 });
 
@@ -61,14 +65,17 @@ const availablePos = computed(() => {
 const submitChangeRole = async () => {
     try {
         loading.value.update = true
-        const response = await posStore.changeMemberPos({ member: { ...changePosMembers.value } })
+
+        changePosMembers.value.unit_id = memberPos.value.find(p => p.user_id === changePosMembers.value.user_id)?.unit_id || null;
+
+        const response = await posStore.changeMemberRoles({ member: { ...changePosMembers.value } })
         if (response === 200) console.log(response)
     } catch (e) {
         console.log('Error submission: ', e)
     } finally {
         changePosMembers.value = {
             user_id: null,
-            role_id: null
+            pos_id: null
         }
         loading.value.update = false
     }
@@ -158,11 +165,11 @@ const removeMember = async () => {
 
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Position:</label>
-                            <select v-model="changePosMembers.role_id"
+                            <select v-model="changePosMembers.pos_id"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-700 disabled:opacity-50"
                                 :disabled="loading?.update">
                                 <option disabled selected :value="null">-- Select position --</option>
-                                <option v-for="pos in availablePos" :key="pos.id" :value="pos.id">{{ pos.name }}
+                                <option v-for="role in availableRoles" :key="role.pos_id" :value="role.pos_id">{{ role.pos_name }}
                                 </option>
                             </select>
                         </div>

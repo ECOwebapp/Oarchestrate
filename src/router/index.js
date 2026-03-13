@@ -15,14 +15,9 @@ import { usePosStore } from '@/stores/positions'
 import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
-  {
-    path: '/',
-    redirect: '/hero',
-  },
-
   // ── Guest-only ──
   {
-    path: '/hero',
+    path: '/',
     name: 'Hero',
     component: HeroLanding,
     meta: { guestOnly: true, hideNavbar: true },

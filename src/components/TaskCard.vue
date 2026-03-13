@@ -58,8 +58,8 @@ const isResubmitted = computed(() =>
 <template>
   <div
     @click="emit('open', task)"
-    class="relative flex flex-col rounded-2xl py-3 px-4 overflow-hidden bg-white shadow-md
-           hover:shadow-lg cursor-pointer transition-all duration-200 hover:-translate-y-0.5 group
+    class="relative flex flex-col rounded-2xl py-3 px-4 overflow-hidden bg-white shadow-lg
+           hover:shadow-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 group
            h-44"
     :class="[ cardClass,
       task.urgent
@@ -69,9 +69,9 @@ const isResubmitted = computed(() =>
           : 'outline outline-2 outline-green-950' ]">
 
     <!-- Urgent ribbon -->
-    <div v-if="task.urgent" class="absolute top-0 right-0 h-14 w-14 overflow-hidden pointer-events-none">
+    <div v-if="task.urgent" class="absolute top-0 right-0 h-16 w-16 overflow-hidden pointer-events-none">
       <div class="absolute transform rotate-45 bg-red-800 text-white text-[10px]
-                  font-bold py-0.5 w-32 bottom-3 -right-9 text-center uppercase tracking-wide">
+                  font-bold py-0.5 w-40 bottom-7 -right-14 text-center uppercase tracking-wide">
         Urgent
       </div>
     </div>

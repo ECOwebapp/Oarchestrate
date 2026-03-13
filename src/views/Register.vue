@@ -414,7 +414,7 @@ const goToLogin = () => router.push('/login')
 
         <!-- ID Number -->
         <div>
-          <input v-model="form.idNumber" type="text" placeholder="ID Number (e.g. CSU-2024-00123)"
+          <input v-model="form.idNumber" type="text" placeholder="ID Number"
             @input="clearError('idNumber')"
             class="w-full px-4 py-3 rounded-lg border text-gray-700 bg-white text-sm placeholder-gray-400 transition focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent"
             :class="errors.idNumber ? 'border-red-400' : 'border-gray-300'" />
