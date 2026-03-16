@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { ref, computed } from 'vue'
 
 // ── Org constants ─────────────────────────────────────────────────────────────
 // unit_name:  1 = Planning and Design Unit
@@ -68,9 +68,10 @@ export const taskStore = defineStore('tasks', () => {
     task_duration ( created, deadline ),
     task_output   ( link ),
     subtasks:task!parent_id (
-      id, assignee,
+      id, assignee, assigner,
       task_profile ( title, description, urgent ),
       task_approval ( unit_head, director ),
+      task_duration ( deadline ),
       task_output   ( link )
     )
   `
@@ -100,14 +101,18 @@ export const taskStore = defineStore('tasks', () => {
     design:          !!t.design,
     isSelfAssigned:  t.assigner === t.assignee,
     subtasks: (t.subtasks || []).map(s => ({
-      id:          s.id,
-      name:        s.task_profile?.title       || '',
-      description: s.task_profile?.description || '',
-      urgent:      !!s.task_profile?.urgent,
-      unitHead:    !!s.task_approval?.unit_head,
-      director:    !!s.task_approval?.director,
-      outputLink:  s.task_output?.link ?? '',
-      assignee:    s.assignee,
+      id:           s.id,
+      name:         s.task_profile?.title       || '',
+      description:  s.task_profile?.description || '',
+      urgent:       !!s.task_profile?.urgent,
+      unitHead:     !!s.task_approval?.unit_head,
+      director:     !!s.task_approval?.director,
+      outputLink:   s.task_output?.link ?? '',
+      assignee:     s.assignee,
+      assigner:     s.assigner,
+      assigneeName: nameMap.value[s.assignee] || '',
+      assignerName: nameMap.value[s.assigner] || '',
+      endDate:      t.task_duration?.deadline  || null,
     })),
   })
 
@@ -622,10 +627,47 @@ export const taskStore = defineStore('tasks', () => {
     return allowedIds.length
   }
 
+  // -- ASSIGN SUBTASK ----------------------------------------------------------
+  // Unit Head assigns an existing unassigned subtask to a unit member.
+  // Creates a brand-new child task row linked to the parent, pre-filled with
+  // the subtask's title/description, then optionally marks the old placeholder
+  // subtask row as taken (or we simply re-assign the existing row).
+  //
+  // Strategy: update the existing subtask row's assignee + re-insert related
+  // rows so the member sees it as their own task.
+  const assignSubtask = async ({ subtaskId, assigneeId, parentTask }) => {
+    const auth = useAuthStore()
+    const uid  = auth.user?.id
+
+    // Re-assign the subtask to the chosen member
+    const { error: taskErr } = await supabase
+      .from('task')
+      .update({ assignee: assigneeId, assigner: uid })
+      .eq('id', subtaskId)
+    if (taskErr) throw new Error('Failed to assign subtask: ' + taskErr.message)
+
+    // Ensure task_approval row exists and is reset to pending
+    await supabase.from('task_approval')
+      .upsert({ id: subtaskId, unit_head: false, director: false, revision_comment: null, revised_at: null },
+               { onConflict: 'id' })
+
+    // Ensure task_output row exists
+    await supabase.from('task_output')
+      .upsert({ id: subtaskId, link: '' }, { onConflict: 'id' })
+
+    // Notify the assigned member via task_notif
+    await supabase.from('task_notif')
+      .upsert({ task_id: subtaskId, read_by_assignee: false, read_by_unit_head: true, read_by_director: false },
+               { onConflict: 'task_id' })
+
+    await fetchTasks()
+  }
+
+
   return {
     tasks, loading, nameMap, unitMembers,
     fetchTasks, addTasks, submitOutput,
     approveTask, requestRevision, resubmitTask, fetchRevisions,
-    fetchUnitMembers, deleteTasks,
+    fetchUnitMembers, deleteTasks, assignSubtask,
   }
 })
