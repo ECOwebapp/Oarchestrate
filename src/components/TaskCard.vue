@@ -3,8 +3,12 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { mdiAccount, mdiLink } from '@mdi/js'
 import { computed } from 'vue'
 
-const props = defineProps(['task'])
-const emit  = defineEmits(['open'])
+const props = defineProps({
+  task: Object,
+  selectable: { type: Boolean, default: false },
+  selected: { type: Boolean, default: false },
+})
+const emit = defineEmits(['open', 'toggle-select'])
 const auth  = useAuthStore()
 
 const daysLeft = computed(() => {
@@ -24,49 +28,78 @@ const progress = computed(() => {
 
 const statusLabel = computed(() => {
   if (props.task?.director)   return { label: 'Approved',            cls: 'bg-green-100 text-green-800'  }
-  // unit_head=true means either UH approved OR bypass marker (Office/Self-assigned) — both mean Pending Director
   if (props.task?.unitHead)   return { label: 'Pending Director',    cls: 'bg-amber-100 text-amber-800'  }
   if (props.task?.revision)   return { label: 'Needs Revision',      cls: 'bg-orange-100 text-orange-700'}
-  // Office or self-assigned tasks with output submitted but unitHead flag not yet set
   if ((props.task?.assigneeIsOffice || props.task?.isSelfAssigned) && props.task?.outputLink)
                               return { label: 'Pending Director',    cls: 'bg-amber-100 text-amber-800'  }
-  // Non-office, non-self-assigned tasks pending unit head review
   if (!props.task?.assigneeIsOffice && !props.task?.isSelfAssigned && props.task?.outputLink)
                               return { label: 'Pending Unit Head',   cls: 'bg-gray-100 text-gray-600'    }
   return                             { label: 'Pending',             cls: 'bg-gray-100 text-gray-600'    }
 })
 
 const cardClass = computed(() => {
-  // dim card when reviewer role and no submission yet
   if ((auth.isUnitHead || auth.isDirector) && !props.task?.outputLink) {
     return 'opacity-50'
   }
   return ''
 })
 
-// Show assignee name only if the viewer is not the assignee
 const showAssignee = computed(() =>
   props.task?.assigneeName && props.task?.assignee !== auth.userID
 )
 
-// Check if task has been resubmitted (outputLink exists AND no revision flag AND not director approved)
 const isResubmitted = computed(() =>
   props.task?.outputLink && !props.task?.revision && !props.task?.director && props.task?.revisedAt
 )
+
+const handleClick = (e) => {
+  if (props.selectable) {
+    emit('toggle-select', props.task)
+  } else {
+    emit('open', props.task)
+  }
+}
+
+const handleCheckboxClick = (e) => {
+  e.stopPropagation()
+  emit('toggle-select', props.task)
+}
 </script>
 
 <template>
   <div
-    @click="emit('open', task)"
+    @click="handleClick"
     class="relative flex flex-col rounded-2xl py-3 px-4 overflow-hidden bg-white shadow-lg
            hover:shadow-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 group
            h-44"
-    :class="[ cardClass,
+    :class="[
+      cardClass,
+      selected ? 'ring-2 ring-green-600 ring-offset-1' : '',
       task.urgent
         ? 'outline outline-2 outline-red-800'
         : task.revision
           ? 'outline outline-2 outline-orange-400'
-          : 'outline outline-2 outline-green-950' ]">
+          : 'outline outline-2 outline-green-950'
+    ]">
+
+    <!-- Selection checkbox — top-right, always visible in selectable mode -->
+    <div
+      v-if="selectable"
+      @click="handleCheckboxClick"
+      class="absolute top-2.5 right-2.5 z-20 w-5 h-5 rounded-md border-2 flex items-center justify-center
+             transition-all duration-150 cursor-pointer shadow-sm"
+      :class="selected
+        ? 'bg-green-700 border-green-700'
+        : 'bg-white/90 border-gray-400 hover:border-green-600'">
+      <svg v-if="selected" class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+      </svg>
+    </div>
+
+    <!-- Selected overlay tint -->
+    <div
+      v-if="selected"
+      class="absolute inset-0 bg-green-50/40 rounded-2xl pointer-events-none" />
 
     <!-- Urgent ribbon -->
     <div v-if="task.urgent" class="absolute top-0 right-0 h-16 w-16 overflow-hidden pointer-events-none">

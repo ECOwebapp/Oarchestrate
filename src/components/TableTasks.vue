@@ -2,7 +2,13 @@
 import { ref } from 'vue'
 import TaskDetail from './TaskDetail.vue'
 
-const props    = defineProps(['tasks'])
+const props = defineProps({
+  tasks:       Array,
+  selectable:  { type: Boolean,  default: false },
+  selectedIds: { type: Object,   default: () => new Set() },  // Set of selected task ids
+  isDeletable: { type: Function, default: () => false },
+})
+const emit     = defineEmits(['assignSubtask', 'toggle-select'])
 const selected = ref(null)
 
 const fmt = (d) => d
@@ -19,6 +25,12 @@ const statusLabel = (task) => {
   if (task.unitHead) return 'Pending Director'
   return 'Pending Unit Head'
 }
+
+const handleRowClick = (task) => {
+  if (props.selectable && props.isDeletable(task)) {
+    emit('toggle-select', task)
+  }
+}
 </script>
 
 <template>
@@ -26,6 +38,9 @@ const statusLabel = (task) => {
     <table class="min-w-full text-sm border-collapse">
       <thead class="sticky top-0 z-10">
         <tr>
+          <!-- Checkbox column header — only in selection mode -->
+          <th v-if="selectable"
+            class="w-10 px-4 py-3 bg-green-950 border border-green-800" />
           <th v-for="h in ['Title','Assignee','Type','Deadline','Status','Urgent','']"
             :key="h"
             class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider
@@ -36,10 +51,31 @@ const statusLabel = (task) => {
       </thead>
       <tbody>
         <tr v-if="tasks.length === 0">
-          <td colspan="7" class="text-center py-16 text-gray-400 text-sm">No tasks found</td>
+          <td :colspan="selectable ? 8 : 7"
+            class="text-center py-16 text-gray-400 text-sm">No tasks found</td>
         </tr>
         <tr v-for="task in tasks" :key="task.id"
-          class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+          class="border-b border-gray-100 transition-colors"
+          :class="[
+            selectedIds.has(task.id) ? 'bg-green-50' : 'hover:bg-gray-50',
+            selectable && isDeletable(task) ? 'cursor-pointer' : '',
+          ]"
+          @click="handleRowClick(task)">
+
+          <!-- Checkbox cell -->
+          <td v-if="selectable" class="px-4 py-3 text-center" @click.stop="isDeletable(task) && emit('toggle-select', task)">
+            <div class="w-5 h-5 rounded-md border-2 flex items-center justify-center mx-auto transition-all"
+              :class="selectedIds.has(task.id)
+                ? 'bg-green-700 border-green-700'
+                : isDeletable(task)
+                  ? 'border-gray-400 hover:border-green-600 bg-white'
+                  : 'border-gray-200 bg-gray-50 opacity-40'">
+              <svg v-if="selectedIds.has(task.id)" class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+              </svg>
+            </div>
+          </td>
+
           <td class="px-4 py-3 font-semibold text-gray-900 max-w-[180px] truncate">{{ task.name }}</td>
           <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ task.assigneeName || '—' }}</td>
           <td class="px-4 py-3">
@@ -60,10 +96,13 @@ const statusLabel = (task) => {
             <span v-if="task.urgent" class="text-red-600 font-bold text-xs">⚑ Urgent</span>
             <span v-else class="text-gray-300 text-xs">—</span>
           </td>
-          <td class="px-4 py-3 text-center">
-            <button @click="selected = task"
+          <td class="px-4 py-3 text-center" @click.stop>
+            <button
+              :disabled="selectable"
+              @click="selected = task"
               class="bg-green-950 text-white text-xs font-bold px-3 py-1.5 rounded-xl
-                     hover:bg-green-800 active:scale-95 transition-all cursor-pointer">
+                     hover:bg-green-800 active:scale-95 transition-all cursor-pointer
+                     disabled:opacity-30 disabled:cursor-not-allowed">
               View
             </button>
           </td>
@@ -73,7 +112,11 @@ const statusLabel = (task) => {
   </div>
 
   <Transition name="modal">
-    <TaskDetail v-if="selected" :task="selected" @close="selected = null" />
+    <TaskDetail
+      v-if="selected"
+      :task="selected"
+      @close="selected = null"
+      @assignSubtask="emit('assignSubtask', $event)" />
   </Transition>
 </template>
 

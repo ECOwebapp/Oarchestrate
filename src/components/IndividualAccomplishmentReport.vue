@@ -14,12 +14,24 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const auth  = useAuthStore()
+const positionLabel = computed(() => {
+  const positions = auth.positions || []
+  if (!positions.length) return 'Staff'
+  if (positions.some(p => Number(p.pos_id) === 1)) return 'Director'
+  if (positions.some(p => Number(p.pos_id) === 4)) return 'Unit Head'
+  return positions.find(p => p.pos_name)?.pos_name || 'Staff'
+})
 
 // Fetch the logged-in user's own approved tasks directly — independent of
 // what the store has loaded (e.g. director's store excludes already-approved tasks)
 const ownTasks = ref([])
 
 const loadOwnTasks = async () => {
+  if (auth.isAdmin) {
+    ownTasks.value = []
+    return
+  }
+
   const uid = auth.userID
   if (!uid) return
   const { data, error } = await supabase
@@ -87,6 +99,37 @@ const periodLabel = computed(() => {
 
 // Derive full name: prefer passed prop, fall back to auth store
 const reportName = computed(() => props.userName || auth.fullName || '—')
+const emptyMessage = computed(() => {
+  if (auth.isAdmin) {
+    return 'System admin accounts do not have an individual accomplishment report.'
+  }
+  if (approvedTasksInPeriod.value.length === 0) {
+    return 'No approved personal tasks were found for this period. For directors, Submitted and Pending work appears in the Unit Report.'
+  }
+  return ''
+})
+
+const approvedTasksInPeriod = computed(() => {
+  if (auth.isAdmin) return []
+
+  const mo = +props.month
+  const yr = +props.year
+
+  const inPeriod = (dateStr) => {
+    if (!dateStr) return false
+    const d = new Date(dateStr)
+    if (isNaN(d)) return false
+    if (props.dateFrom && props.dateTo) {
+      const from = new Date(props.dateFrom)
+      const to = new Date(props.dateTo)
+      to.setHours(23, 59, 59, 999)
+      return d >= from && d <= to
+    }
+    return d.getFullYear() === yr && (mo === 0 || d.getMonth() + 1 === mo)
+  }
+
+  return ownTasks.value.filter(t => t.director && (inPeriod(t.startDate) || inPeriod(t.endDate)))
+})
 
 // Build rows from real Supabase tasks belonging to the current user,
 // filtered to the selected month/year
@@ -117,8 +160,7 @@ const reportRows = computed(() => {
     return 'Pending'
   }
 
-  const rows = ownTasks.value
-    .filter(t => (inPeriod(t.startDate) || inPeriod(t.endDate)))
+  const rows = approvedTasksInPeriod.value
     .map((t, i) => ({
       date:    fmt(t.startDate || t.from),
       ppa:     '',
@@ -172,13 +214,16 @@ const reportRows = computed(() => {
 
       <!-- ── Content ── -->
       <div class="overflow-auto flex-1 px-8 py-6">
+        <p v-if="emptyMessage" class="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+          {{ emptyMessage }}
+        </p>
         <table class="w-full border-collapse text-[10px] table-fixed">
           <thead>   
             <tr class="bg-green-800 text-white text-[9px] uppercase tracking-normal">
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:5%">No.</th>
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:10%">Date</th>
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:12%">PPAs</th>
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:14%">DAEDs</th>
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:5%">No.</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:14%">Activity</th>
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:28%">Output</th>
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:10%">Remarks</th>
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:21%">Drive Link</th>
@@ -208,7 +253,7 @@ const reportRows = computed(() => {
             <p class="mb-6 text-gray-400 font-semibold uppercase tracking-wide text-[10px]">Prepared by:</p>
             <div class="border-t border-gray-400 pt-1">
               <p class="font-bold text-gray-800 uppercase text-[11px]">{{ reportName }}</p>
-              <p class="text-gray-500">{{ auth.positionLabel || 'Staff' }}</p>
+              <p class="text-gray-500">{{ positionLabel }}</p>
             </div>
           </div>
 

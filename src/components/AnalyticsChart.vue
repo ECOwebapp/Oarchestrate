@@ -65,7 +65,7 @@ function hideTooltip() {
         <h2 class="text-sm font-bold text-gray-800">
           <span v-if="expandedChart === 'bar'">Completion Rate</span>
           <span v-else-if="expandedChart === 'pie'">Task Distribution</span>
-          <span v-else-if="expandedChart === 'line'">Completed tasks trend monthly</span>
+          <span v-else-if="expandedChart === 'line'">Submitted tasks trend monthly</span>
           <span v-else-if="expandedChart === 'area'">Pending & Revision Monthly Trend</span>
         </h2>
         <button class="cursor-pointer text-4xl text-gray-400 hover:text-gray-700 leading-none" @click="emit('close')">×</button>

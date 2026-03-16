@@ -204,6 +204,7 @@
             <p class="text-xs font-semibold text-gray-700 mb-1">Note:</p>
             <ul class="text-xs text-gray-600 space-y-2 list-disc list-outside pl-4">
           <li>Approved = approved by Director, Submitted = waiting Director approval, Pending = not yet submitted, Revision = returned for changes.</li>
+            <li>Individual Report shows only your own approved tasks. Directors should use Unit Report to review Submitted, Pending, and Revision items across units.</li>
             <li>It doesn't include the signature of your Division Chief.</li>
             </ul>
         </div>
@@ -218,6 +219,7 @@
             Unit Report
             </button>
             <button
+            v-if="!auth.isAdmin"
             class="w-full py-2.5 px-3 bg-white text-green-950 text-xs font-semibold rounded-lg border-2 border-green-950 hover:bg-green-50 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
             @click="showIndividualPicker = true">
             <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">

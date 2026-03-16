@@ -13,16 +13,33 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const auth = useAuthStore()
+const currentUserUnitId = computed(() => {
+  const positions = auth.positions || []
+  const pos = positions.find(p => p.unit_id != null)
+  return pos?.unit_id ?? null
+})
 
 // allTasks: array of { unitName, unitId, tasks[] }
 const unitGroups = ref([])
 
 const loadAllTasks = async () => {
-  // 1. Fetch all units with their names
-  const { data: unitRows } = await supabase
-    .from('unit')
-    .select('user_id, unit_id, unit_name_ref:unit_name(name)')
+  if (!auth.userID) {
+    unitGroups.value = []
+    return
+  }
+
+  // 1. Fetch user-to-unit memberships from the same source used by the rest of the app.
+  const { data: unitRows, error: unitRowsError } = await supabase
+    .from('position_of_members')
+    .select('user_id, unit_id, unit_name')
+    .not('unit_id', 'is', null)
     .order('unit_id')
+
+  if (unitRowsError) {
+    console.error('[AccomplishmentReport] position_of_members:', unitRowsError.message)
+    unitGroups.value = []
+    return
+  }
 
   if (!unitRows || !unitRows.length) { unitGroups.value = []; return }
 
@@ -31,8 +48,8 @@ const loadAllTasks = async () => {
   const unitMemberMap = {}
   for (const row of unitRows) {
     const uid  = row.unit_id
-    const name = row.unit_name_ref?.name || `Unit ${uid}`
-    unitNameMap[uid] = name
+    const name = row.unit_name || `Unit ${uid}`
+    if (!unitNameMap[uid]) unitNameMap[uid] = name
     if (!unitMemberMap[uid]) unitMemberMap[uid] = []
     if (row.user_id) unitMemberMap[uid].push(row.user_id)
   }
@@ -46,7 +63,7 @@ const loadAllTasks = async () => {
   // If not director, restrict to own unit only
   const allowedUnitIds = auth.isDirector
     ? Object.keys(unitMemberMap).map(Number)
-    : [auth.unitId]
+    : currentUserUnitId.value ? [currentUserUnitId.value] : []
 
   const allMemberIds = allowedUnitIds.flatMap(uid => unitMemberMap[uid] || [])
   if (!allMemberIds.length) { unitGroups.value = []; return }
@@ -69,10 +86,6 @@ const loadAllTasks = async () => {
 
   if (!data || !data.length) { unitGroups.value = []; return }
 
-  // Unit Accomplishment Report should include only director-approved tasks.
-  const approvedOnly = data.filter(t => t.task_approval?.director)
-  if (!approvedOnly.length) { unitGroups.value = []; return }
-
   const statusOf = (t) => {
     if (t.task_approval?.director) return 'Approved'
     if (t.task_approval?.revision_comment) return 'Revision'
@@ -81,7 +94,7 @@ const loadAllTasks = async () => {
   }
 
   // 5. Resolve names
-  const uids = [...new Set(approvedOnly.map(t => t.assignee).filter(Boolean))]
+  const uids = [...new Set(data.map(t => t.assignee).filter(Boolean))]
   const nameMap = {}
   if (uids.length) {
     const { data: profiles } = await supabase
@@ -105,7 +118,7 @@ const loadAllTasks = async () => {
   }
 
   // 6. Map rows
-  const mapped = approvedOnly.map(t => ({
+  const mapped = data.map(t => ({
     id:           t.id,
     unitId:       userUnitMap[t.assignee] || null,
     ppa:          '',
@@ -148,7 +161,15 @@ const loadAllTasks = async () => {
     .filter(g => g.tasks.length > 0)
 }
 
-watch(() => props.show, (val) => { if (val) loadAllTasks() }, { immediate: true })
+watch(
+  [() => props.show, () => auth.userID, () => auth.isDirector, () => (auth.positions || []).length],
+  ([show, userId, isDirector, positionCount]) => {
+    if (!show || !userId) return
+    if (!isDirector && positionCount === 0) return
+    loadAllTasks()
+  },
+  { immediate: true }
+)
 
 function printReport() {
   const prev = document.title
@@ -305,7 +326,7 @@ const periodLabel = computed(() => {
           </thead>
           <tbody>
             <tr v-if="flatRows.length === 0">
-              <td colspan="8" class="text-center py-10 text-gray-400 text-sm italic">No director-approved tasks found for {{ periodLabel }}.</td>
+              <td colspan="8" class="text-center py-10 text-gray-400 text-sm italic">No tasks found for {{ periodLabel }}.</td>
             </tr>
             <tr v-for="(row, i) in flatRows" :key="i"
               :class="[row.isLastInUnit ? 'border-b-2 border-gray-400' : 'border-b border-gray-100', 'hover:bg-green-50/30 bg-white']">

@@ -33,7 +33,7 @@ function getAuthClient() {
 }
 
 async function getOrCreateUserFolder(drive, userName) {
-  const safeName = userName.replace(/[^\w\s-]/g, "")
+  const safeName = userName.replace(/[^\w\s.\-]/g, "").trim() || "Unknown User"
 
   const search = await drive.files.list({
     q: `name='${safeName}' and mimeType='application/vnd.google-apps.folder' and '${ROOT_FOLDER_ID}' in parents and trashed=false`,
@@ -54,6 +54,15 @@ async function getOrCreateUserFolder(drive, userName) {
   })
 
   return folder.data.id
+}
+
+async function findExistingFile(drive, folderId, fileName) {
+  const search = await drive.files.list({
+    q: `name='${fileName}' and '${folderId}' in parents and trashed=false`,
+    fields: "files(id,name)",
+  })
+
+  return search.data.files.length > 0 ? search.data.files[0].id : null
 }
 
 export default async function handler(req, res) {
@@ -87,47 +96,61 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "No file uploaded" })
     }
 
-    console.log("Uploading file:", file.originalFilename)
+    const fileName = file.originalFilename || file.newFilename
+    console.log(`Uploading file: ${fileName} for user: ${userName}`)
 
     const auth = getAuthClient()
     const drive = google.drive({ version: "v3", auth })
 
     const userFolderId = await getOrCreateUserFolder(drive, userName)
+    const existingFileId = await findExistingFile(drive, userFolderId, fileName)
 
-    const response = await drive.files.create({
-      requestBody: {
-        name: file.originalFilename || file.newFilename,
-        parents: [userFolderId],
-      },
-      media: {
-        mimeType: file.mimetype || "application/octet-stream",
-        body: fs.createReadStream(file.filepath),
-      },
-      fields: "id",
-    })
+    let fileId
 
-    const fileId = response.data.id
+    if (existingFileId) {
+      console.log(`File "${fileName}" exists (${existingFileId}), replacing...`)
+      const updated = await drive.files.update({
+        fileId: existingFileId,
+        media: {
+          mimeType: file.mimetype || "application/octet-stream",
+          body: fs.createReadStream(file.filepath),
+        },
+        fields: "id",
+      })
+      fileId = updated.data.id
+    } else {
+      const created = await drive.files.create({
+        requestBody: {
+          name: fileName,
+          parents: [userFolderId],
+        },
+        media: {
+          mimeType: file.mimetype || "application/octet-stream",
+          body: fs.createReadStream(file.filepath),
+        },
+        fields: "id",
+      })
+      fileId = created.data.id
 
-    await drive.permissions.create({
-      fileId,
-      requestBody: {
-        role: "reader",
-        type: "anyone",
-      },
-    })
+      await drive.permissions.create({
+        fileId,
+        requestBody: {
+          role: "reader",
+          type: "anyone",
+        },
+      })
+    }
 
     fs.unlink(file.filepath, () => {})
-
-    const fileUrl = `https://drive.google.com/file/d/${fileId}/view`
 
     return res.status(200).json({
       success: true,
       fileId,
-      fileUrl,
+      fileUrl: `https://drive.google.com/file/d/${fileId}/view`,
+      replaced: !!existingFileId,
     })
   } catch (error) {
     console.error("UPLOAD ERROR:", error)
-
     return res.status(500).json({
       error: "Upload failed",
       detail: error.message,

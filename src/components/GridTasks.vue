@@ -3,8 +3,19 @@ import { ref } from 'vue'
 import TaskCard from './TaskCard.vue'
 import TaskDetail from './TaskDetail.vue'
 
-const props      = defineProps(['tasks'])
-const selected   = ref(null)
+const props = defineProps({
+  tasks:       Array,
+  selectable:  { type: Boolean, default: false },
+  selectedIds: { type: Object,  default: () => new Set() },  // Set of selected task ids
+  isDeletable: { type: Function, default: () => false },
+})
+const emit     = defineEmits(['assignSubtask', 'toggle-select'])
+const selected = ref(null)
+
+const handleOpen = (task) => {
+  if (props.selectable) return   // block detail open while in selection mode
+  selected.value = task
+}
 </script>
 
 <template>
@@ -25,11 +36,19 @@ const selected   = ref(null)
       v-for="task in props.tasks"
       :key="task.id"
       :task="task"
-      @open="selected = $event" />
+      :selectable="props.selectable"
+      :selected="props.selectedIds.has(task.id)"
+      :is-deletable="props.isDeletable(task)"
+      @open="handleOpen"
+      @toggle-select="emit('toggle-select', $event)" />
   </div>
 
   <Transition name="modal">
-    <TaskDetail v-if="selected" :task="selected" @close="selected = null" />
+    <TaskDetail
+      v-if="selected"
+      :task="selected"
+      @close="selected = null"
+      @assignSubtask="emit('assignSubtask', $event)" />
   </Transition>
 </template>
 
