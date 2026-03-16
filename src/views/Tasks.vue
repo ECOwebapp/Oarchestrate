@@ -166,7 +166,7 @@ const onAssignSubtask = (data) => {
     assignee:     data.assignedMemberId,
     assigneeName: data.assignedMemberName,
     type:         1,
-    endDate:      null,
+    endDate:      data.parentTask?.to || null,
     urgent:       false,
     design:       false,
   }
@@ -304,6 +304,7 @@ const onCloseAddTask = () => {
         :selected-ids="selectedIds"
         :is-deletable="isDeletable"
         @toggle-select="toggleTaskSelect"
+        @assign-subtask="onAssignSubtask"
       />
       <TableTasks
         v-else-if="state === 'Table View'"
@@ -312,6 +313,7 @@ const onCloseAddTask = () => {
         :selected-ids="selectedIds"
         :is-deletable="isDeletable"
         @toggle-select="toggleTaskSelect"
+        @assign-subtask="onAssignSubtask"
       />
       <ChartTasks v-else-if="state === 'Chart View'" :tasks="filtered" />
     </div>
