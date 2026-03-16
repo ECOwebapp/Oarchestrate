@@ -14,63 +14,24 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const auth  = useAuthStore()
+const positionLabel = computed(() => {
+  const positions = auth.positions || []
+  if (!positions.length) return 'Staff'
+  if (positions.some(p => Number(p.pos_id) === 1)) return 'Director'
+  if (positions.some(p => Number(p.pos_id) === 4)) return 'Unit Head'
+  return positions.find(p => p.pos_name)?.pos_name || 'Staff'
+})
 
 // Fetch the logged-in user's own approved tasks directly — independent of
 // what the store has loaded (e.g. director's store excludes already-approved tasks)
 const ownTasks = ref([])
-const recommendingApproval = ref({ name: '—', title: 'Unit Head' })
-
-const loadRecommendingApproval = async () => {
-  const uid = auth.userID
-  if (!uid) return
-
-  // Resolve the current user's unit so we can fetch its assigned unit head.
-  let unitId = auth.positions?.find(p => p.unit_id)?.unit_id ?? null
-  if (!unitId) {
-    const { data: selfPos } = await supabase
-      .from('position_of_members')
-      .select('unit_id')
-      .eq('user_id', uid)
-      .limit(1)
-    unitId = selfPos?.[0]?.unit_id ?? null
-  }
-
-  if (!unitId) {
-    recommendingApproval.value = { name: '—', title: 'Unit Head' }
-    return
-  }
-
-  const { data: headRows } = await supabase
-    .from('position_of_members')
-    .select('user_id, pos_name, unit_name')
-    .eq('unit_id', unitId)
-    .eq('pos_id', 4)
-    .limit(1)
-
-  const headRow = headRows?.[0]
-
-  if (!headRow?.user_id) {
-    recommendingApproval.value = {
-      name: 'N/A',
-      title: unitId === 3 ? 'Office Unit (Direct to Director)' : 'Unit Head not assigned',
-    }
-    return
-  }
-
-  const { data: headProfile } = await supabase
-    .from('members')
-    .select('fname, lname')
-    .eq('user_id', headRow.user_id)
-    .maybeSingle()
-
-  const fullName = `${headProfile?.fname || ''} ${headProfile?.lname || ''}`.trim() || '—'
-  recommendingApproval.value = {
-    name: fullName,
-    title: headRow.pos_name || `Unit Head, ${headRow.unit_name || 'Assigned Unit'}`,
-  }
-}
 
 const loadOwnTasks = async () => {
+  if (auth.isAdmin) {
+    ownTasks.value = []
+    return
+  }
+
   const uid = auth.userID
   if (!uid) return
   const { data, error } = await supabase
@@ -84,27 +45,20 @@ const loadOwnTasks = async () => {
     `)
     .is('parent_id', null)
     .eq('assignee', uid)
-  ownTasks.value = (data || [])
-    .filter(t => t.task_approval?.director || t.task_output?.link)
-    .map(t => ({
+  ownTasks.value = (data || []).map(t => ({
     assignee:   t.assignee,
     name:       t.task_profile?.title       || '',
     description:t.task_profile?.description || '',
     type:       t.task_profile?.task_type_ref?.task_type || '',
     unitHead:   !!t.task_approval?.unit_head,
     director:   !!t.task_approval?.director,
-    revisionComment: t.task_approval?.revision_comment || '',
     startDate:  t.task_duration?.created    || null,
     endDate:    t.task_duration?.deadline   || null,
     outputLink: t.task_output?.link         || null,
   }))
 }
 
-watch(() => props.show, async (val) => {
-  if (val) {
-    await Promise.all([loadOwnTasks(), loadRecommendingApproval()])
-  }
-}, { immediate: true })
+watch(() => props.show, (val) => { if (val) loadOwnTasks() }, { immediate: true })
 
 function printReport() {
   const prev = document.title
@@ -122,9 +76,21 @@ const periodLabel = computed(() => {
   if (props.dateFrom && props.dateTo) {
     const from = new Date(props.dateFrom)
     const to   = new Date(props.dateTo)
-    const mo   = from.toLocaleString('en-PH', { month: 'long' })
-    const yr   = from.getFullYear()
-    return `${mo} ${from.getDate()}–${to.getDate()}, ${yr}`
+    if (isNaN(from) || isNaN(to)) return 'Invalid period'
+
+    const sameMonthYear =
+      from.getFullYear() === to.getFullYear() &&
+      from.getMonth() === to.getMonth()
+
+    if (sameMonthYear) {
+      const mo = from.toLocaleString('en-PH', { month: 'long' })
+      const yr = from.getFullYear()
+      return `${mo} ${from.getDate()}-${to.getDate()}, ${yr}`
+    }
+
+    const fromLabel = from.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+    const toLabel = to.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+    return `${fromLabel} - ${toLabel}`
   }
   const mo = +props.month
   const yr = +props.year
@@ -133,12 +99,37 @@ const periodLabel = computed(() => {
 
 // Derive full name: prefer passed prop, fall back to auth store
 const reportName = computed(() => props.userName || auth.fullName || '—')
-const hasDirectorApproved = computed(() =>
-  ownTasks.value.some(t => t.director),
-)
-const footerGridClass = computed(() =>
-  hasDirectorApproved.value ? 'grid-cols-3' : 'grid-cols-2',
-)
+const emptyMessage = computed(() => {
+  if (auth.isAdmin) {
+    return 'System admin accounts do not have an individual accomplishment report.'
+  }
+  if (approvedTasksInPeriod.value.length === 0) {
+    return 'No approved personal tasks were found for this period. For directors, Submitted and Pending work appears in the Unit Report.'
+  }
+  return ''
+})
+
+const approvedTasksInPeriod = computed(() => {
+  if (auth.isAdmin) return []
+
+  const mo = +props.month
+  const yr = +props.year
+
+  const inPeriod = (dateStr) => {
+    if (!dateStr) return false
+    const d = new Date(dateStr)
+    if (isNaN(d)) return false
+    if (props.dateFrom && props.dateTo) {
+      const from = new Date(props.dateFrom)
+      const to = new Date(props.dateTo)
+      to.setHours(23, 59, 59, 999)
+      return d >= from && d <= to
+    }
+    return d.getFullYear() === yr && (mo === 0 || d.getMonth() + 1 === mo)
+  }
+
+  return ownTasks.value.filter(t => t.director && (inPeriod(t.startDate) || inPeriod(t.endDate)))
+})
 
 // Build rows from real Supabase tasks belonging to the current user,
 // filtered to the selected month/year
@@ -165,25 +156,24 @@ const reportRows = computed(() => {
   const remarkOf = (t) => {
     if (t.director) return 'Approved'
     if (t.revisionComment) return 'For Revision'
-    if (t.outputLink && !t.director) return 'Pending'
+    if (t.outputLink && !t.director) return 'Submitted'
     return 'Pending'
   }
 
-  const rows = ownTasks.value
-    .filter(t => (inPeriod(t.startDate) || inPeriod(t.endDate)))
+  const rows = approvedTasksInPeriod.value
     .map((t, i) => ({
-      date:    fmt(t.startDate),
+      date:    fmt(t.startDate || t.from),
       ppa:     '',
-      activity: t.name || '',
+      daed:    t.name || '',
       no:      i + 1,
-      output:  t.description || '',
+      output:  t.description || t.name || '',
       remarks: remarkOf(t),
       link:    t.outputLink || null,
     }))
 
   // Pad to at least 12 rows so the table doesn't look empty
   while (rows.length < 12) {
-    rows.push({ date: '', ppa: '', activity: '', no: '', output: '', remarks: '', link: null })
+    rows.push({ date: '', ppa: '', daed: '', no: '', output: '', remarks: '', link: null })
   }
   return rows
 })
@@ -224,6 +214,9 @@ const reportRows = computed(() => {
 
       <!-- ── Content ── -->
       <div class="overflow-auto flex-1 px-8 py-6">
+        <p v-if="emptyMessage" class="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+          {{ emptyMessage }}
+        </p>
         <table class="w-full border-collapse text-[10px] table-fixed">
           <thead>   
             <tr class="bg-green-800 text-white text-[9px] uppercase tracking-normal">
@@ -231,37 +224,36 @@ const reportRows = computed(() => {
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:10%">Date</th>
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:12%">PPAs</th>
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:14%">Activity</th>
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:28%">Description</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:28%">Output</th>
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:10%">Remarks</th>
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:21%">MOVS</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:21%">Drive Link</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(row, i) in reportRows" :key="i" class="h-8">
-              <td class="border border-gray-300 px-2 py-1 text-center text-gray-600">{{ row.no }}</td>
               <td class="border border-gray-300 px-2 py-1 text-gray-600 whitespace-nowrap">{{ row.date }}</td>
               <td class="border border-gray-300 px-2 py-1 text-gray-600 break-words">{{ row.ppa }}</td>
-              <td class="border border-gray-300 px-2 py-1 text-gray-600 break-words">{{ row.activity }}</td>
+              <td class="border border-gray-300 px-2 py-1 text-gray-600 break-words">{{ row.daed }}</td>
+              <td class="border border-gray-300 px-2 py-1 text-center text-gray-600">{{ row.no }}</td>
               <td class="border border-gray-300 px-2 py-1 text-gray-600">
                 <span class="line-clamp-4 break-words">{{ row.output }}</span>
               </td>
               <td class="border border-gray-300 px-2 py-1 text-center text-gray-600">{{ row.remarks }}</td>
               <td class="border border-gray-300 px-2 py-1 text-center">
                 <span v-if="row.link" class="text-[9px] text-gray-700 break-all">{{ row.link }}</span>
-                <span v-else class="text-[9px] text-gray-400">—</span>
               </td>
             </tr>
           </tbody>
         </table>
 
         <!-- Footer -->
-        <div class="mt-8 grid gap-4 text-xs text-gray-600" :class="footerGridClass">
+        <div class="mt-8 grid grid-cols-3 gap-4 text-xs text-gray-600">
           <!-- Prepared by -->
           <div>
             <p class="mb-6 text-gray-400 font-semibold uppercase tracking-wide text-[10px]">Prepared by:</p>
             <div class="border-t border-gray-400 pt-1">
               <p class="font-bold text-gray-800 uppercase text-[11px]">{{ reportName }}</p>
-              <p class="text-gray-500">{{ auth.positionLabel || 'Staff' }}</p>
+              <p class="text-gray-500">{{ positionLabel }}</p>
             </div>
           </div>
 
@@ -269,13 +261,13 @@ const reportRows = computed(() => {
           <div>
             <p class="mb-6 text-gray-400 font-semibold uppercase tracking-wide text-[10px]">Recommending Approval:</p>
             <div class="border-t border-gray-400 pt-1">
-              <p class="font-bold text-gray-800 uppercase text-[11px]">{{ recommendingApproval.name }}</p>
-              <p class="text-gray-500">{{ recommendingApproval.title }}</p>
+              <p class="font-bold text-gray-800 uppercase text-[11px]">Ar. Derwin T. Gumban</p>
+              <p class="text-gray-500">Head, Planning and Design Unit</p>
             </div>
           </div>
 
           <!-- Approved by -->
-          <div v-if="hasDirectorApproved">
+          <div>
             <p class="mb-6 text-gray-400 font-semibold uppercase tracking-wide text-[10px]">Approved by:</p>
             <div class="border-t border-gray-400 pt-1">
               <p class="font-bold text-gray-800 uppercase text-[11px]">AR. Magichael B. Cloribel</p>

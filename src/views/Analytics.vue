@@ -23,6 +23,8 @@
     const showIndividualPicker = ref(false)
     const unitMonth = ref(new Date().getMonth() + 1)
     const unitYear  = ref(new Date().getFullYear())
+    const unitDateFrom = ref('')
+    const unitDateTo   = ref('')
     const indivMonth   = ref(new Date().getMonth() + 1)
     const indivYear    = ref(new Date().getFullYear())
     const indivDateFrom = ref('')
@@ -41,15 +43,16 @@
       return d ? new Date(d).getFullYear() : -1
     }
     const statusOf = (t) => {
-      if (t.director) return 'Submitted'
+      if (t.director) return 'Approved'
       if (t.revisionComment) return 'Revision'
+      if (t.outputLink) return 'Submitted'
       return 'Pending'
     }
 
     // ── Bar Chart: counts per status ───────────────────────────
-    const STATUS_COLORS = { Submitted: '#16a34a', Pending: '#eab308', Revision: '#ea580c' }
+    const STATUS_COLORS = { Approved: '#16a34a', Submitted: '#0ea5e9', Pending: '#eab308', Revision: '#ea580c' }
     const barCounts = computed(() => {
-      const counts = { Submitted: 0, Pending: 0, Revision: 0 }
+      const counts = { Approved: 0, Submitted: 0, Pending: 0, Revision: 0 }
       store.tasks.forEach(t => {
         const s = statusOf(t)
         if (s in counts) counts[s]++
@@ -83,7 +86,7 @@
     // ── Pie Chart: raw counts ──────────────────────────────────
     const pieHasData = computed(() => store.tasks.length > 0)
     const pieData = computed(() => {
-      const counts = { Submitted: 0, Pending: 0, Revision: 0 }
+      const counts = { Approved: 0, Submitted: 0, Pending: 0, Revision: 0 }
       store.tasks.forEach(t => {
         const s = statusOf(t)
         if (s in counts) counts[s]++
@@ -129,7 +132,7 @@
       return Array.from({ length: n + 1 }, (_, i) => i * step)
     }
 
-    // ── Line Chart: submitted tasks per month ───────────────────
+    // ── Line Chart: completed tasks per month ──────────────────
     const lineRaw = computed(() => {
       const counts = Array(12).fill(0)
       const yr = new Date().getFullYear()
@@ -153,13 +156,12 @@
     // ── Area Chart: per-status counts by month ─────────────────
     const areaSeriesData = computed(() => {
       const yr  = new Date().getFullYear()
-      const def = { Pending: '#eab308', Revision: '#ea580c' }
+      const def = { Submitted: '#0ea5e9', Pending: '#eab308', Revision: '#ea580c' }
       const buckets = {}
       Object.keys(def).forEach(k => { buckets[k] = Array(12).fill(0) })
       store.tasks.filter(t => taskYear(t) === yr).forEach(t => {
         const m = taskMonth(t); if (m < 0) return
-        const s = statusOf(t)
-        if (s in buckets) buckets[s][m]++
+        const s = statusOf(t); if (s in buckets) buckets[s][m]++
       })
       return Object.entries(def).map(([key, color]) => ({ key, color, data: buckets[key] }))
     })
@@ -201,7 +203,8 @@
         <div>
             <p class="text-xs font-semibold text-gray-700 mb-1">Note:</p>
             <ul class="text-xs text-gray-600 space-y-2 list-disc list-outside pl-4">
-          <li>Submitted tasks not yet approved by the Director are tagged as Pending.</li>
+          <li>Approved = approved by Director, Submitted = waiting Director approval, Pending = not yet submitted, Revision = returned for changes.</li>
+            <li>Individual Report shows only your own approved tasks. Directors should use Unit Report to review Submitted, Pending, and Revision items across units.</li>
             <li>It doesn't include the signature of your Division Chief.</li>
             </ul>
         </div>
@@ -216,6 +219,7 @@
             Unit Report
             </button>
             <button
+            v-if="!auth.isAdmin"
             class="w-full py-2.5 px-3 bg-white text-green-950 text-xs font-semibold rounded-lg border-2 border-green-950 hover:bg-green-50 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
             @click="showIndividualPicker = true">
             <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -229,7 +233,7 @@
         <!-- ── Right: 2×2 Chart Grid ── -->
         <div class="flex-1 grid grid-cols-2 grid-rows-2 gap-4 min-h-0">
 
-            <!-- Bar Chart: Completion Rate -->
+        <!-- Bar Chart: Completion Rate -->
         <div class="bg-white rounded-xl shadow-sm p-4 flex flex-col relative">
             <div class="flex items-center justify-between mb-1">
               <h3 class="text-xs font-semibold text-gray-700">Completion Rate</h3>
@@ -261,7 +265,7 @@
             </div>
         </div>
 
-            <!-- Pie Chart: Task Distribution -->
+        <!-- Pie Chart: Task Distribution -->
         <div class="bg-white rounded-xl shadow-sm p-4 flex flex-col relative">
             <div class="flex items-center justify-between mb-1">
               <h3 class="text-xs font-semibold text-gray-700">Task Distribution</h3>
@@ -301,10 +305,10 @@
             </div>
         </div>
 
-            <!-- Line Chart: Submitted tasks trend monthly -->
+        <!-- Line Chart: Completed tasks trend monthly -->
         <div class="bg-white rounded-xl shadow-sm p-4 flex flex-col relative">
             <div class="flex items-center justify-between mb-1">
-              <h3 class="text-xs font-semibold text-gray-700">Submitted tasks trend monthly</h3>
+              <h3 class="text-xs font-semibold text-gray-700">Approved tasks trend monthly</h3>
               <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer" @click="openModal('line')">
                 <Icons icon="fullscreen" class="w-4 h-4" />
               </button>
@@ -330,10 +334,10 @@
             </div>
         </div>
 
-            <!-- Area Chart: Pending & Revision Monthly Trend -->
+            <!-- Area Chart: Submitted, Pending & Revision Monthly Trend -->
         <div class="bg-white rounded-xl shadow-sm p-4 flex flex-col relative">
             <div class="flex items-center justify-between mb-1">
-              <h3 class="text-xs font-semibold text-gray-700">Pending & Revision Monthly Trend</h3>
+              <h3 class="text-xs font-semibold text-gray-700">Submitted, Pending & Revision Monthly Trend</h3>
               <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer" @click="openModal('area')">
                 <Icons icon="fullscreen" class="w-4 h-4" />
               </button>
@@ -376,13 +380,13 @@
     </div>
 
     <!-- ── Accomplishment Report Modals ── -->
-    <ReportPicker v-if="showUnitPicker" title="Generate Unit Report"
+    <ReportPicker v-if="showUnitPicker" title="Generate Unit Report" :payroll="true"
         @cancel="showUnitPicker = false"
-        @generate="({ month, year }) => { unitMonth = month; unitYear = year; showUnitPicker = false; showReport = true }" />
+      @generate="({ dateFrom, dateTo, month, year }) => { unitDateFrom = dateFrom; unitDateTo = dateTo; unitMonth = month; unitYear = year; showUnitPicker = false; showReport = true }" />
     <ReportPicker v-if="showIndividualPicker" title="Generate Individual Report" :payroll="true"
         @cancel="showIndividualPicker = false"
         @generate="({ dateFrom, dateTo, month, year }) => { indivDateFrom = dateFrom; indivDateTo = dateTo; indivMonth = month; indivYear = year; showIndividualPicker = false; showIndividualReport = true }" />
-    <AccomplishmentReport :show="showReport" :month="unitMonth" :year="unitYear" @close="showReport = false" />
+    <AccomplishmentReport :show="showReport" :month="unitMonth" :year="unitYear" :dateFrom="unitDateFrom" :dateTo="unitDateTo" @close="showReport = false" />
     <IndividualAccomplishmentReport :show="showIndividualReport" :month="indivMonth" :year="indivYear" :dateFrom="indivDateFrom" :dateTo="indivDateTo" :userName="auth.fullName" @close="showIndividualReport = false" />
 
     <!-- ── Expanded Chart View (component) ── -->

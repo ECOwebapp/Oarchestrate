@@ -20,6 +20,17 @@ function generate() {
   if (props.payroll) {
     const yr  = year.value
     const mo  = month.value
+
+    if (mo === 0) {
+      emit('generate', {
+        dateFrom: `${yr}-01-01`,
+        dateTo: `${yr}-12-31`,
+        month: 0,
+        year: yr,
+      })
+      return
+    }
+
     const pad = String(mo).padStart(2, '0')
     const lastDay = new Date(yr, mo, 0).getDate()
     const dateFrom = payrollPeriod.value === 1 ? `${yr}-${pad}-01` : `${yr}-${pad}-16`
@@ -43,7 +54,7 @@ function generate() {
           <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1">Month</label>
           <select v-model.number="month"
             class="w-full text-sm border border-gray-200 rounded-md px-3 py-2 text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-green-700">
-            <option v-if="!payroll" :value="0">All Months</option>
+            <option :value="0">All Months</option>
             <option v-for="(m, i) in months" :key="i" :value="i + 1">{{ m }}</option>
           </select>
         </div>
@@ -55,7 +66,7 @@ function generate() {
           </select>
         </div>
         <!-- Payroll period selector -->
-        <div v-if="payroll">
+        <div v-if="payroll && month !== 0">
           <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1">Payroll Period</label>
           <div class="flex gap-2">
             <button
