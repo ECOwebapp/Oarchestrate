@@ -33,7 +33,6 @@ function getAuthClient() {
 }
 
 async function getOrCreateUserFolder(drive, userName) {
-  // Sanitize: allow letters, numbers, spaces, dots, hyphens
   const safeName = userName.replace(/[^\w\s.\-]/g, "").trim() || "Unknown User"
 
   const search = await drive.files.list({
@@ -42,7 +41,7 @@ async function getOrCreateUserFolder(drive, userName) {
   })
 
   if (search.data.files.length > 0) {
-    return search.data.files[0].id  // ← folder already exists, reuse it
+    return search.data.files[0].id
   }
 
   const folder = await drive.files.create({
@@ -58,7 +57,6 @@ async function getOrCreateUserFolder(drive, userName) {
 }
 
 async function findExistingFile(drive, folderId, fileName) {
-  // Search for a file with the same name inside the user's folder
   const search = await drive.files.list({
     q: `name='${fileName}' and '${folderId}' in parents and trashed=false`,
     fields: "files(id,name)",
@@ -104,16 +102,12 @@ export default async function handler(req, res) {
     const auth = getAuthClient()
     const drive = google.drive({ version: "v3", auth })
 
-    // Get or create the user's folder (named after fullName from authStore)
     const userFolderId = await getOrCreateUserFolder(drive, userName)
-
-    // Check if a file with the same name already exists in that folder
     const existingFileId = await findExistingFile(drive, userFolderId, fileName)
 
     let fileId
 
     if (existingFileId) {
-      // ── REPLACE: update content of the existing file ──
       console.log(`File "${fileName}" exists (${existingFileId}), replacing...`)
       const updated = await drive.files.update({
         fileId: existingFileId,
@@ -125,7 +119,6 @@ export default async function handler(req, res) {
       })
       fileId = updated.data.id
     } else {
-      // ── CREATE: upload as a new file ──
       const created = await drive.files.create({
         requestBody: {
           name: fileName,
@@ -139,7 +132,6 @@ export default async function handler(req, res) {
       })
       fileId = created.data.id
 
-      // Make new files publicly readable
       await drive.permissions.create({
         fileId,
         requestBody: {
@@ -149,14 +141,13 @@ export default async function handler(req, res) {
       })
     }
 
-    // Clean up the temp file
     fs.unlink(file.filepath, () => {})
 
     return res.status(200).json({
       success: true,
       fileId,
       fileUrl: `https://drive.google.com/file/d/${fileId}/view`,
-      replaced: !!existingFileId,  // helpful flag so the UI can show "Updated" vs "Uploaded"
+      replaced: !!existingFileId,
     })
   } catch (error) {
     console.error("UPLOAD ERROR:", error)

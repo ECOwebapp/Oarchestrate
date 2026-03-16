@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 
 // ── Org constants ─────────────────────────────────────────────────────────────
 // unit_name:  1 = Planning and Design Unit
@@ -115,16 +115,12 @@ export const taskStore = defineStore('tasks', () => {
   const fetchUnitMembers = async () => {
     const auth = useAuthStore()
     const activeUnitId = computed(() => {
-      // Look for the position entry where they are a Unit Head (ID 4)
-      const headRole = auth.positions?.find(p => p.pos_id === 4);
-      
-      // Return that specific unit_id, or null if they aren't a Unit Head anywhere
-      return headRole?.unit_id ?? null;
-    });
+      const headRole = auth.positions?.find(p => p.pos_id === 4)
+      return headRole?.unit_id ?? null
+    })
 
     if (!auth.isUnitHead || !activeUnitId.value) return
     try {
-
       const { data: unitUsers, error } = await supabase
         .from('position_of_members').select('user_id').eq('unit_id', activeUnitId.value)
 
@@ -140,10 +136,10 @@ export const taskStore = defineStore('tasks', () => {
       unitMembers.value = userIds.map(userId => ({
         id:            userId,
         name:          nameMap.value[userId] || 'Unknown',
-        posId:        roleMap[userId] || null,
-        posType:      roleMap[userId] === 1 ? 'Director'
-                     : roleMap[userId] === 4 ? 'Unit Head'
-                     : ![1, 4, 11].includes(roleMap[userId]) ? 'Exempted' : 'Unknown',
+        posId:         roleMap[userId] || null,
+        posType:       roleMap[userId] === 1 ? 'Director'
+                      : roleMap[userId] === 4 ? 'Unit Head'
+                      : ![1, 4, 11].includes(roleMap[userId]) ? 'Exempted' : 'Unknown',
         isCurrentUser: userId === auth.userID,
       }))
     } catch (e) {
@@ -171,7 +167,6 @@ export const taskStore = defineStore('tasks', () => {
         const allUserIds  = [...new Set((rows || []).flatMap(t => [t.assigner, t.assignee]).filter(Boolean))]
         const assigneeIds = [...new Set((rows || []).map(t => t.assignee).filter(Boolean))]
 
-        // Resolve names, unit IDs, and roles in parallel
         const [, , roleRes] = await Promise.all([
           resolveNames(allUserIds),
           resolveUnitIds(assigneeIds),
@@ -188,12 +183,10 @@ export const taskStore = defineStore('tasks', () => {
 
       } else if (auth.isUnitHead) {
         // ── Unit Head: all tasks in their own unit (unit_id 1 or 2 only) ─────
-        // Unit Heads never see Office unit tasks — those go directly to Director
-
         const activeUnitId = computed(() => {
-          const headRole = auth.positions?.find(p => p.pos_id === 4);
-          return headRole?.unit_id ?? null;
-        });
+          const headRole = auth.positions?.find(p => p.pos_id === 4)
+          return headRole?.unit_id ?? null
+        })
 
         if (!activeUnitId.value) { tasks.value = []; return }
 
@@ -201,8 +194,6 @@ export const taskStore = defineStore('tasks', () => {
           .from('position_of_members').select('user_id').eq('unit_id', activeUnitId.value)
         const unitUserIds = (unitUsers || []).map(m => m.user_id)
         const allIds      = [...new Set([uid, ...unitUserIds])]
-
-        let roleMap2 = {}
 
         const { data: rows, error } = await supabase
           .from('task')
@@ -228,7 +219,6 @@ export const taskStore = defineStore('tasks', () => {
           assigneeUnitId:   getAssigneeUnitId(t.assignee),
           assigneeIsOffice: isOfficeUser(t.assignee),
           isOwnTask:        t.assignee === uid,
-          isOwnTask: t.assignee === uid,
         }))
 
         await fetchUnitMembers()
@@ -261,12 +251,7 @@ export const taskStore = defineStore('tasks', () => {
   }
 
   // ── NOTIFICATION HELPER ─────────────────────────────────────────────────────
-  // Routes a submission notification to the correct reviewer based on assignee's unit.
-  //   Office (unit_id=3)              → Director (role_id=1)
-  //   Self-assigned tasks             → Director (role_id=1)
-  //   Planning / Implementation       → Unit Head of that unit (role_id=2)
   const _notifySubmission = async (taskId, assigneeId, fromUserId, message = null, isSelfAssigned = false) => {
-    // Ensure unit is resolved (may already be cached)
     await resolveUnitIds([assigneeId])
     const assigneeIsOffice = isOfficeUser(assigneeId)
     const assigneeUnitId   = getAssigneeUnitId(assigneeId)
@@ -288,7 +273,6 @@ export const taskStore = defineStore('tasks', () => {
         { onConflict: 'task_id' }
       )
     } else {
-      // Find the Unit Head (role_id=2) of the assignee's unit
       const { data: unitUsers } = await supabase
         .from('position').select('user_id').eq('unit_id', assigneeUnitId)
       if (unitUsers?.length) {
@@ -318,7 +302,6 @@ export const taskStore = defineStore('tasks', () => {
   const addTasks = async ({ mainTask, subTasks = [] }) => {
     const auth = useAuthStore()
     const uid  = auth.user?.id
-    // Unit Members always self-assign; Director / Unit Head pick an assignee
     const assigneeId = auth.isMember ? uid : mainTask.assignee
 
     const { data: taskRow, error: taskErr } = await supabase
@@ -331,24 +314,18 @@ export const taskStore = defineStore('tasks', () => {
     const outputLink = mainTask.outputLink || ''
     const hasOutput  = !!outputLink
 
-    // Resolve assignee unit before deciding approval flags
     await resolveUnitIds([assigneeId])
     const assigneeIsOffice     = isOfficeUser(assigneeId)
     const isDirectorSelfAssign = auth.isDirector && assigneeId === uid
 
-    // ── Initial approval flags ───────────────────────────────────────────────
-    //  Director self-assign           → unit_head=true, director=true  (done)
-    //  Self-assigned (any user)       → unit_head=true (bypass marker), director=false
-    //  Office assignee + output now   → unit_head=true (bypass marker), director=false
-    //  Anything else                  → both false (pending)
     let initialUnitHead = false
     let initialDirector = false
-    const isSelfAssigned = assigneeId === uid  // Task creator is assigning to themselves
+    const isSelfAssigned = assigneeId === uid
     if (isDirectorSelfAssign) {
       initialUnitHead = true
       initialDirector = true
     } else if (isSelfAssigned || (hasOutput && assigneeIsOffice)) {
-      initialUnitHead = true   // Self-assigned or Office: bypass Unit Head
+      initialUnitHead = true
     }
 
     await Promise.all([
@@ -397,7 +374,6 @@ export const taskStore = defineStore('tasks', () => {
       if (insErr) throw new Error(insErr.message)
     }
 
-    // Fetch the task's actual assignee and assigner (not the logged-in user — could be UH submitting on behalf)
     const { data: taskRow } = await supabase
       .from('task').select('assignee, assigner').eq('id', taskId).maybeSingle()
     const assigneeId = taskRow?.assignee || auth.user.id
@@ -406,7 +382,6 @@ export const taskStore = defineStore('tasks', () => {
 
     await resolveUnitIds([assigneeId])
 
-    // Self-assigned tasks or Office unit → set unit_head=true (bypass marker) so Director's filter picks it up
     if (isSelfAssigned || isOfficeUser(assigneeId)) {
       await supabase.from('task_approval').update({ unit_head: true }).eq('id', taskId)
     }
@@ -416,7 +391,6 @@ export const taskStore = defineStore('tasks', () => {
   }
 
   // ── APPROVE ─────────────────────────────────────────────────────────────────
-  // role: 'unit_head' | 'director'
   const approveTask = async (taskId, role) => {
     const auth = useAuthStore()
     const col  = role === 'director' ? 'director' : 'unit_head'
@@ -446,7 +420,6 @@ export const taskStore = defineStore('tasks', () => {
     const task = tasks.value.find(t => t.id === taskId)
     if (!task) return
 
-    // Director revision resets both flags; Unit Head resets only unit_head
     const resetCols = role === 'director'
       ? { unit_head: false, director: false, revision_comment: comment, revised_at: new Date().toISOString() }
       : { unit_head: false, revision_comment: comment, revised_at: new Date().toISOString() }
@@ -481,7 +454,6 @@ export const taskStore = defineStore('tasks', () => {
       }
     }
 
-    // Who requested the last revision decides where the resubmission goes
     const { data: lastRevision } = await supabase
       .from('task_revision')
       .select('role, from_user')
@@ -496,7 +468,6 @@ export const taskStore = defineStore('tasks', () => {
     await supabase.from('task_profile').update({ revision: false }).eq('id', taskId)
 
     if (revisorRole === 'director') {
-      // ── Director sent it back → straight back to Director (skip Unit Head) ──
       await supabase.from('task_approval')
         .update({ unit_head: true, director: false, revision_comment: null, revised_at: null })
         .eq('id', taskId)
@@ -517,8 +488,6 @@ export const taskStore = defineStore('tasks', () => {
       )
 
     } else {
-      // ── Unit Head sent it back → re-route normally via _notifySubmission ────
-      // Office unit members and self-assigned tasks still bypass Unit Head even on resubmit
       await resolveUnitIds([assigneeId])
       const assigneeIsOffice = isOfficeUser(assigneeId)
       const assignerData = await supabase.from('task').select('assigner').eq('id', taskId).maybeSingle()
@@ -564,10 +533,99 @@ export const taskStore = defineStore('tasks', () => {
     }))
   }
 
+  // ── DELETE TASKS ────────────────────────────────────────────────────────────
+  // Permission rules:
+  //   Director  → can delete any task
+  //   Unit Head → can only delete tasks they created (assigner === their uid)
+  //
+  // DELETE TASKS
+  // Permission rules:
+  //   Director  - can delete any task
+  //   Unit Head - can only delete tasks they created (assigner === their uid)
+  //
+  // Each child table is deleted sequentially (not in parallel) so FK errors
+  // surface immediately with a clear message instead of being swallowed.
+  const deleteTasks = async (taskIds) => {
+    const auth = useAuthStore()
+    const uid  = auth.user?.id
+
+    if (!auth.isDirector && !auth.isUnitHead) {
+      throw new Error('You do not have permission to delete tasks.')
+    }
+
+    // Authorization filter
+    // Unit Heads may only delete tasks where they are the assigner
+    let allowedIds = [...taskIds]
+    if (auth.isUnitHead && !auth.isDirector) {
+      allowedIds = tasks.value
+        .filter(t => taskIds.includes(t.id) && t.assigner === uid)
+        .map(t => t.id)
+      if (!allowedIds.length) {
+        throw new Error('You can only delete tasks that you assigned.')
+      }
+    }
+
+    // Collect subtask IDs so they are cleaned up too
+    const { data: subtaskRows, error: subFetchErr } = await supabase
+      .from('task')
+      .select('id')
+      .in('parent_id', allowedIds)
+    if (subFetchErr) throw new Error('Failed to fetch subtasks: ' + subFetchErr.message)
+
+    const subtaskIds = (subtaskRows || []).map(r => r.id)
+    const allIds     = [...allowedIds, ...subtaskIds]
+
+    console.log('[deleteTasks] allIds:', allIds)
+
+    // Helper: delete rows and log result without throwing on empty-result
+    const del = async (table, column, ids) => {
+      if (!ids.length) return
+      const { error } = await supabase.from(table).delete().in(column, ids)
+      if (error) {
+        console.warn('[deleteTasks] ' + table + '.' + column + ':', error.message)
+        // Do not throw here - missing rows are fine, we just log and continue
+      } else {
+        console.log('[deleteTasks] deleted from ' + table)
+      }
+    }
+
+    // Delete in strict dependency order to avoid FK violations
+
+    // Step 1: tables referencing task via task_id column
+    await del('task_revision',   'task_id', allIds)
+    await del('task_poke',       'task_id', allIds)
+    await del('comment_section', 'task_id', allIds)
+    await del('task_notif',      'task_id', allIds)
+
+    // Step 2: tables referencing task via id column
+    await del('design_approval', 'id', allIds)
+    await del('task_output',     'id', allIds)
+    await del('task_approval',   'id', allIds)
+    await del('task_duration',   'id', allIds)
+    await del('task_profile',    'id', allIds)
+
+    // Step 3: delete subtasks before parents (FK: task.parent_id -> task.id)
+    if (subtaskIds.length) {
+      const { error } = await supabase.from('task').delete().in('id', subtaskIds)
+      if (error) throw new Error('Failed to delete subtasks: ' + error.message)
+      console.log('[deleteTasks] deleted subtasks')
+    }
+
+    // Step 4: delete parent tasks
+    const { error: delErr } = await supabase.from('task').delete().in('id', allowedIds)
+    if (delErr) throw new Error('Failed to delete tasks: ' + delErr.message)
+    console.log('[deleteTasks] deleted parent tasks')
+
+    // Step 5: remove from local store so UI updates immediately
+    tasks.value = tasks.value.filter(t => !allIds.includes(t.id))
+
+    return allowedIds.length
+  }
+
   return {
     tasks, loading, nameMap, unitMembers,
     fetchTasks, addTasks, submitOutput,
     approveTask, requestRevision, resubmitTask, fetchRevisions,
-    fetchUnitMembers,
+    fetchUnitMembers, deleteTasks,
   }
 })
