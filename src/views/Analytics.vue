@@ -30,6 +30,24 @@
     const indivDateFrom = ref('')
     const indivDateTo   = ref('')
 
+    const onGenerateUnitReport = ({ dateFrom, dateTo, month, year }) => {
+      unitDateFrom.value = dateFrom
+      unitDateTo.value = dateTo
+      unitMonth.value = month
+      unitYear.value = year
+      showUnitPicker.value = false
+      showReport.value = true
+    }
+
+    const onGenerateIndividualReport = ({ dateFrom, dateTo, month, year }) => {
+      indivDateFrom.value = dateFrom
+      indivDateTo.value = dateTo
+      indivMonth.value = month
+      indivYear.value = year
+      showIndividualPicker.value = false
+      showIndividualReport.value = true
+    }
+
     const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
     // ── Helpers ────────────────────────────────────────────────
@@ -219,7 +237,6 @@
             Unit Report
             </button>
             <button
-            v-if="!auth.isAdmin"
             class="w-full py-2.5 px-3 bg-white text-green-950 text-xs font-semibold rounded-lg border-2 border-green-950 hover:bg-green-50 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
             @click="showIndividualPicker = true">
             <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -382,10 +399,10 @@
     <!-- ── Accomplishment Report Modals ── -->
     <ReportPicker v-if="showUnitPicker" title="Generate Unit Report" :payroll="true"
         @cancel="showUnitPicker = false"
-      @generate="({ dateFrom, dateTo, month, year }) => { unitDateFrom = dateFrom; unitDateTo = dateTo; unitMonth = month; unitYear = year; showUnitPicker = false; showReport = true }" />
+      @generate="onGenerateUnitReport" />
     <ReportPicker v-if="showIndividualPicker" title="Generate Individual Report" :payroll="true"
         @cancel="showIndividualPicker = false"
-        @generate="({ dateFrom, dateTo, month, year }) => { indivDateFrom = dateFrom; indivDateTo = dateTo; indivMonth = month; indivYear = year; showIndividualPicker = false; showIndividualReport = true }" />
+        @generate="onGenerateIndividualReport" />
     <AccomplishmentReport :show="showReport" :month="unitMonth" :year="unitYear" :dateFrom="unitDateFrom" :dateTo="unitDateTo" @close="showReport = false" />
     <IndividualAccomplishmentReport :show="showIndividualReport" :month="indivMonth" :year="indivYear" :dateFrom="indivDateFrom" :dateTo="indivDateTo" :userName="auth.fullName" @close="showIndividualReport = false" />
 

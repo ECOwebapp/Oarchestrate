@@ -27,11 +27,6 @@ const positionLabel = computed(() => {
 const ownTasks = ref([])
 
 const loadOwnTasks = async () => {
-  if (auth.isAdmin) {
-    ownTasks.value = []
-    return
-  }
-
   const uid = auth.userID
   if (!uid) return
   const { data, error } = await supabase
@@ -100,17 +95,13 @@ const periodLabel = computed(() => {
 // Derive full name: prefer passed prop, fall back to auth store
 const reportName = computed(() => props.userName || auth.fullName || '—')
 const emptyMessage = computed(() => {
-  if (auth.isAdmin) {
-    return 'System admin accounts do not have an individual accomplishment report.'
-  }
   if (approvedTasksInPeriod.value.length === 0) {
-    return 'No approved personal tasks were found for this period. For directors, Submitted and Pending work appears in the Unit Report.'
+    return 'No tasks were found for this period.'
   }
   return ''
 })
 
 const approvedTasksInPeriod = computed(() => {
-  if (auth.isAdmin) return []
 
   const mo = +props.month
   const yr = +props.year
@@ -163,17 +154,16 @@ const reportRows = computed(() => {
   const rows = approvedTasksInPeriod.value
     .map((t, i) => ({
       date:    fmt(t.startDate || t.from),
-      ppa:     '',
-      daed:    t.name || '',
+      ppa:     t.name || '',
+      activity:t.description || t.type || t.name || '',
       no:      i + 1,
-      output:  t.description || t.name || '',
       remarks: remarkOf(t),
       link:    t.outputLink || null,
     }))
 
   // Pad to at least 12 rows so the table doesn't look empty
   while (rows.length < 12) {
-    rows.push({ date: '', ppa: '', daed: '', no: '', output: '', remarks: '', link: null })
+    rows.push({ date: '', ppa: '', activity: '', no: '', remarks: '', link: null })
   }
   return rows
 })
@@ -222,22 +212,18 @@ const reportRows = computed(() => {
             <tr class="bg-green-800 text-white text-[9px] uppercase tracking-normal">
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:5%">No.</th>
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:10%">Date</th>
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:12%">PPAs</th>
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:14%">Activity</th>
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:28%">Output</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:24%">PPAs</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:30%">Activity</th>
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:10%">Remarks</th>
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:21%">Drive Link</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(row, i) in reportRows" :key="i" class="h-8">
+              <td class="border border-gray-300 px-2 py-1 text-center text-gray-600">{{ row.no }}</td>
               <td class="border border-gray-300 px-2 py-1 text-gray-600 whitespace-nowrap">{{ row.date }}</td>
               <td class="border border-gray-300 px-2 py-1 text-gray-600 break-words">{{ row.ppa }}</td>
-              <td class="border border-gray-300 px-2 py-1 text-gray-600 break-words">{{ row.daed }}</td>
-              <td class="border border-gray-300 px-2 py-1 text-center text-gray-600">{{ row.no }}</td>
-              <td class="border border-gray-300 px-2 py-1 text-gray-600">
-                <span class="line-clamp-4 break-words">{{ row.output }}</span>
-              </td>
+              <td class="border border-gray-300 px-2 py-1 text-gray-600 break-words">{{ row.activity }}</td>
               <td class="border border-gray-300 px-2 py-1 text-center text-gray-600">{{ row.remarks }}</td>
               <td class="border border-gray-300 px-2 py-1 text-center">
                 <span v-if="row.link" class="text-[9px] text-gray-700 break-all">{{ row.link }}</span>
