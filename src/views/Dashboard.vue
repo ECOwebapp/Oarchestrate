@@ -1,4 +1,5 @@
 <script setup>
+import AddTask from '@/components/AddTask.vue'
 import TaskCard from '@/components/TaskCard.vue'
 import TaskDetail from '@/components/TaskDetail.vue'
 import { supabase } from '@/lib/supabaseClient'
@@ -68,10 +69,6 @@ const forMonth = (list) => list.filter(t => {
   return d.getMonth() === selectedMonth.value && d.getFullYear() === selectedYear.value
 })
 
-// ─────────────────────────────────────────────
-// DIRECTOR
-// Director fetches ALL tasks — pending approval = outputLink present & not director-approved
-// ─────────────────────────────────────────────
 const directorPending     = computed(() => store.tasks.filter(t => t.outputLink && !t.director))
 const directorMonth       = computed(() => forMonth(directorPending.value))
 const directorRegular     = computed(() => directorMonth.value.filter(t => t.type?.toLowerCase() !== 'insertion').sort((a,b) => (b.urgent?1:0)-(a.urgent?1:0)))
@@ -90,17 +87,11 @@ const directorDonut = computed(() => {
   ].map(s => { const len = CIRC*(s.value/total); const seg = {...s,len,offset:-offset}; offset+=len; return seg })
 })
 
-// ─────────────────────────────────────────────
-// UNIT HEAD
-// UH fetches all tasks from their unit.
-// pending = unit member tasks with output submitted, not yet unit_head approved (excludes UH's own)
-// uhOwn  = tasks assigned to the unit head themselves
-// ─────────────────────────────────────────────
 const uhPending    = computed(() => store.tasks.filter(t =>
-  !t.isOwnTask &&          // exclude unit head's own tasks
-  t.outputLink &&          // output has been submitted
-  !t.unitHead &&           // not yet unit-head approved
-  !t.director              // not yet director approved
+  !t.isOwnTask &&
+  t.outputLink &&
+  !t.unitHead &&
+  !t.director
 ))
 const uhOwn        = computed(() => store.tasks.filter(t => t.isOwnTask))
 const uhMonth      = computed(() => forMonth(uhPending.value))
@@ -120,9 +111,6 @@ const uhDonut = computed(() => {
   ].map(s => { const len = CIRC*(s.value/total); const seg = {...s,len,offset:-offset}; offset+=len; return seg })
 })
 
-// ─────────────────────────────────────────────
-// MEMBER
-// ─────────────────────────────────────────────
 const memberRegular   = computed(() => store.tasks.filter(t => t.type?.toLowerCase() !== 'insertion').sort((a,b)=>(b.urgent?1:0)-(a.urgent?1:0)))
 const memberInsertion = computed(() => store.tasks.filter(t => t.type?.toLowerCase() === 'insertion').sort((a,b)=>(b.urgent?1:0)-(a.urgent?1:0)))
 const memberRevisions = computed(() => store.tasks.filter(t => t.revision && !t.director))
@@ -140,15 +128,35 @@ const memberDonut = computed(() => {
   ].map(s => { const len = CIRC*(s.value/total); const seg = {...s,len,offset:-offset}; offset+=len; return seg })
 })
 
-// ─────────────────────────────────────────────
-// Computed shorthands for template
-// ─────────────────────────────────────────────
 const activeDonut    = computed(() => auth.isDirector ? directorDonut.value    : auth.isUnitHead ? uhDonut.value    : memberDonut.value)
 const activePending  = computed(() => auth.isDirector ? directorMonth.value    : auth.isUnitHead ? uhMonth.value    : store.tasks)
 const activeRegular  = computed(() => auth.isDirector ? directorRegular.value  : auth.isUnitHead ? uhRegular.value  : memberRegular.value)
 const activeInsertion= computed(() => auth.isDirector ? directorInsertion.value: auth.isUnitHead ? uhInsertion.value: memberInsertion.value)
-</script>
 
+// ── Subtask assign modal (Unit Head) ─────────────────────────────────────────
+const showAddTask  = ref(false)
+const preFillData  = ref(null)
+
+const onAssignSubtask = (data) => {
+  preFillData.value = {
+    name:         data.subtask.name,
+    description:  data.subtask.description || '',
+    assignee:     data.assignedMemberId,
+    assigneeName: data.assignedMemberName,
+    type:         1,
+    endDate:      data.parentTask?.to || null,
+    urgent:       false,
+    design:       false,
+  }
+  selectedTask.value = null   // close TaskDetail first
+  showAddTask.value  = true
+}
+
+const onCloseAddTask = () => {
+  showAddTask.value = false
+  preFillData.value = null
+}
+</script>
 <template>
   <div class="director-dash flex flex-col w-full h-full overflow-hidden bg-gray-50">
 
@@ -394,7 +402,17 @@ const activeInsertion= computed(() => auth.isDirector ? directorInsertion.value:
         :task="selectedTask"
         @close="closeTask"
         @refresh="onRefresh"
+        @assignSubtask="onAssignSubtask"
       />
+    </Transition>
+
+    <!-- ══ ADD TASK MODAL (Unit Head subtask assign) ══ -->
+    <Transition name="modal">
+      <div v-if="showAddTask"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+        @click.self="onCloseAddTask">
+        <AddTask @close="onCloseAddTask" :design="false" :pre-fill="preFillData" />
+      </div>
     </Transition>
 
   </div>
