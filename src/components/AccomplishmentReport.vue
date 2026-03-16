@@ -65,12 +65,11 @@ const loadAllTasks = async () => {
     ? Object.keys(unitMemberMap).map(Number)
     : currentUserUnitId.value ? [currentUserUnitId.value] : []
 
-  const allMemberIds = allowedUnitIds.flatMap(uid => unitMemberMap[uid] || [])
+  const allMemberIds = [...new Set(allowedUnitIds.flatMap(uid => unitMemberMap[uid] || []))]
   if (!allMemberIds.length) { unitGroups.value = []; return }
 
   // 3. Fetch tasks for those members
-  const assigneeFilter = allMemberIds.map(id => `assignee.eq.${id}`).join(',')
-  const { data } = await supabase
+  const { data, error: taskError } = await supabase
     .from('task')
     .select(`
       id, parent_id, assignee,
@@ -81,8 +80,14 @@ const loadAllTasks = async () => {
       subtasks:task!parent_id ( id, task_profile(title) )
     `)
     .is('parent_id', null)
-    .or(assigneeFilter)
+    .in('assignee', allMemberIds)
     .order('id')
+
+  if (taskError) {
+    console.error('[AccomplishmentReport] task:', taskError.message)
+    unitGroups.value = []
+    return
+  }
 
   if (!data || !data.length) { unitGroups.value = []; return }
 
@@ -97,8 +102,13 @@ const loadAllTasks = async () => {
   const uids = [...new Set(data.map(t => t.assignee).filter(Boolean))]
   const nameMap = {}
   if (uids.length) {
-    const { data: profiles } = await supabase
+    const { data: profiles, error: profilesError } = await supabase
       .from('user_profile').select('user_id, fname, lname').in('user_id', uids)
+
+    if (profilesError) {
+      console.error('[AccomplishmentReport] user_profile:', profilesError.message)
+    }
+
     ;(profiles || []).forEach(p => {
       nameMap[p.user_id] = `${p.fname || ''} ${p.lname || ''}`.trim()
     })
