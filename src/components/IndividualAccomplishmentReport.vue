@@ -231,7 +231,7 @@ const reportRows = computed(() => {
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:10%">Date</th>
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:12%">PPAs</th>
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:14%">Activity</th>
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:28%">Output</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:28%">Description</th>
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:10%">Remarks</th>
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:21%">MOVS</th>
             </tr>
