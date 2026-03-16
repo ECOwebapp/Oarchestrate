@@ -41,16 +41,19 @@
       return d ? new Date(d).getFullYear() : -1
     }
     const statusOf = (t) => {
-      if (t.director || t.unitHead) return 'Approved'
-      if (t.revision)  return 'Revision'
+      if (t.director) return 'Submitted'
+      if (t.revisionComment) return 'Revision'
       return 'Pending'
     }
 
     // ── Bar Chart: counts per status ───────────────────────────
-    const STATUS_COLORS = { Approved: '#16a34a', Pending: '#eab308', Revision: '#ea580c' }
+    const STATUS_COLORS = { Submitted: '#16a34a', Pending: '#eab308', Revision: '#ea580c' }
     const barCounts = computed(() => {
-      const counts = { Approved: 0, Pending: 0, Revision: 0 }
-      store.tasks.forEach(t => { const s = statusOf(t); if (s in counts) counts[s]++ })
+      const counts = { Submitted: 0, Pending: 0, Revision: 0 }
+      store.tasks.forEach(t => {
+        const s = statusOf(t)
+        if (s in counts) counts[s]++
+      })
       return counts
     })
     const barTicks   = computed(() => niceTicks(Math.max(...Object.values(barCounts.value), 0)))
@@ -80,8 +83,11 @@
     // ── Pie Chart: raw counts ──────────────────────────────────
     const pieHasData = computed(() => store.tasks.length > 0)
     const pieData = computed(() => {
-      const counts = { Approved: 0, Pending: 0, Revision: 0 }
-      store.tasks.forEach(t => { const s = statusOf(t); if (s in counts) counts[s]++ })
+      const counts = { Submitted: 0, Pending: 0, Revision: 0 }
+      store.tasks.forEach(t => {
+        const s = statusOf(t)
+        if (s in counts) counts[s]++
+      })
       const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1
       return Object.entries(counts).map(([label, count]) => ({
         label,
@@ -123,7 +129,7 @@
       return Array.from({ length: n + 1 }, (_, i) => i * step)
     }
 
-    // ── Line Chart: completed tasks per month ──────────────────
+    // ── Line Chart: submitted tasks per month ───────────────────
     const lineRaw = computed(() => {
       const counts = Array(12).fill(0)
       const yr = new Date().getFullYear()
@@ -152,7 +158,8 @@
       Object.keys(def).forEach(k => { buckets[k] = Array(12).fill(0) })
       store.tasks.filter(t => taskYear(t) === yr).forEach(t => {
         const m = taskMonth(t); if (m < 0) return
-        const s = statusOf(t); if (s in buckets) buckets[s][m]++
+        const s = statusOf(t)
+        if (s in buckets) buckets[s][m]++
       })
       return Object.entries(def).map(([key, color]) => ({ key, color, data: buckets[key] }))
     })
@@ -194,7 +201,7 @@
         <div>
             <p class="text-xs font-semibold text-gray-700 mb-1">Note:</p>
             <ul class="text-xs text-gray-600 space-y-2 list-disc list-outside pl-4">
-            <li>Tasks that are tagged as Pending will not appear in your Accomplishment Report.</li>
+          <li>Submitted tasks not yet approved by the Director are tagged as Pending.</li>
             <li>It doesn't include the signature of your Division Chief.</li>
             </ul>
         </div>
@@ -222,7 +229,7 @@
         <!-- ── Right: 2×2 Chart Grid ── -->
         <div class="flex-1 grid grid-cols-2 grid-rows-2 gap-4 min-h-0">
 
-        <!-- Bar Chart: Completion Rate -->
+            <!-- Bar Chart: Completion Rate -->
         <div class="bg-white rounded-xl shadow-sm p-4 flex flex-col relative">
             <div class="flex items-center justify-between mb-1">
               <h3 class="text-xs font-semibold text-gray-700">Completion Rate</h3>
@@ -254,7 +261,7 @@
             </div>
         </div>
 
-        <!-- Pie Chart: Task Distribution -->
+            <!-- Pie Chart: Task Distribution -->
         <div class="bg-white rounded-xl shadow-sm p-4 flex flex-col relative">
             <div class="flex items-center justify-between mb-1">
               <h3 class="text-xs font-semibold text-gray-700">Task Distribution</h3>
@@ -294,10 +301,10 @@
             </div>
         </div>
 
-        <!-- Line Chart: Completed tasks trend monthly -->
+            <!-- Line Chart: Submitted tasks trend monthly -->
         <div class="bg-white rounded-xl shadow-sm p-4 flex flex-col relative">
             <div class="flex items-center justify-between mb-1">
-              <h3 class="text-xs font-semibold text-gray-700">Completed tasks trend monthly</h3>
+              <h3 class="text-xs font-semibold text-gray-700">Submitted tasks trend monthly</h3>
               <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer" @click="openModal('line')">
                 <Icons icon="fullscreen" class="w-4 h-4" />
               </button>
@@ -323,7 +330,7 @@
             </div>
         </div>
 
-        <!-- Area Chart: Pending & Revision Monthly Trend -->
+            <!-- Area Chart: Pending & Revision Monthly Trend -->
         <div class="bg-white rounded-xl shadow-sm p-4 flex flex-col relative">
             <div class="flex items-center justify-between mb-1">
               <h3 class="text-xs font-semibold text-gray-700">Pending & Revision Monthly Trend</h3>
