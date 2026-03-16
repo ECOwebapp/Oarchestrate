@@ -1,9 +1,8 @@
 <script setup>
-import { useUnitStore }   from '@/stores/unit'
 import { useMemberStore } from '@/stores/member'
-import { usePosStore }    from '@/stores/positions'
-import { taskStore }      from '@/stores/tasks'
-import { useAuthStore }   from '@/stores/useAuthStore'
+import { usePosStore } from '@/stores/positions'
+import { taskStore } from '@/stores/tasks'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, ref, watch } from 'vue'
 import Icons from './Icons.vue'
 
@@ -13,7 +12,6 @@ const props = defineProps({
   preFill:   { type: Object,  default: null  },
 })
 
-const unitStore   = useUnitStore()
 const memberStore = useMemberStore()
 const posStore    = usePosStore()
 const store       = taskStore()
@@ -36,20 +34,17 @@ const newTask = ref({
 })
 
 onMounted(async () => {
+  // Always fetch members + positions first so the assignee <select> has options
   await Promise.all([
     memberStore.fetchMembers(),
     posStore.fetchMemberPos(),
     posStore.fetchPos(),
   ])
-  // For UH: fetch their unit peers for the member dropdown
-  if (auth.isUnitHead) {
-    const unitId = auth.positions.find(p => Number(p.pos_id) === 4)?.unit_id
-    if (unitId) await unitStore.fetchUnitPeers(unitId)
-  }
+  // Now apply preFill AFTER options are loaded so the <select> can match the value
+  if (props.preFill) applyPreFill(props.preFill)
 })
 
-// Populate form when preFill is provided (subtask assign mode)
-watch(() => props.preFill, (fill) => {
+const applyPreFill = (fill) => {
   if (!fill) return
   newTask.value = {
     name:        fill.name        || '',
@@ -61,7 +56,14 @@ watch(() => props.preFill, (fill) => {
     design:      fill.design      || false,
     outputLink:  fill.outputLink  || '',
   }
-}, { immediate: true })
+}
+
+// Also watch in case preFill changes after mount (edge case)
+watch(() => props.preFill, (fill) => {
+  if (!fill) return
+  // Only apply immediately if members are already loaded
+  if (memberStore.members.length > 0) applyPreFill(fill)
+})
 
 // ── Assign-subtask mode ───────────────────────────────────────────────────────
 // preFill is set when UH assigns a subtask — form is pre-populated but
@@ -70,7 +72,7 @@ const isAssignMode = computed(() => !!props.preFill)
 
 // ── Assignable members ────────────────────────────────────────────────────────
 // Director  → all members from memberStore + positions from posStore
-// Unit Head → unit peers from useUnitStore.unit (scoped by fetchUnitPeers)
+// Unit Head → unit peers from posStore.memberPos filtered by unit_id
 //             + themselves for self-assign in normal mode
 // Member    → only themselves
 const assignableMembers = computed(() => {
@@ -100,31 +102,44 @@ const assignableMembers = computed(() => {
 
   // ── Unit Head ─────────────────────────────────────────────────────────────
   if (auth.isUnitHead) {
-    // unitStore.unit is scoped to this UH's unit by fetchUnitPeers
-    const peers = (unitStore.unit || [])
-      .map(u => {
-        const m = allMembers.find(mb => mb.id === u.user_id)
+    // Get UH's unit_id from their auth positions (pos_id 4 = Unit Head)
+    const uhPos  = auth.positions.find(p => p.pos_id === 4)
+    const unitId = uhPos?.unit_id ?? null
+
+    // Build peers from posStore.memberPos filtered to same unit, deduped by user_id
+    const seen = new Set()
+    const peers = (allPositions || [])
+      .filter(p => p.unit_id === unitId)
+      .filter(p => {
+        if (seen.has(p.user_id)) return false
+        seen.add(p.user_id)
+        return true
+      })
+      .map(p => {
+        const m = allMembers.find(mb => String(mb.id) === String(p.user_id))
+        if (!m) return null
         return {
-          id:             u.user_id,
-          fname:          m?.fname           || u.fname           || '',
-          lname:          m?.lname           || u.lname           || '',
-          middle_initial: m?.middle_initial  || u.middle_initial  || '',
+          id:             m.id,
+          fname:          m.fname          || '',
+          lname:          m.lname          || '',
+          middle_initial: m.middle_initial || '',
         }
       })
+      .filter(Boolean)
 
     // In assign-subtask mode: exclude the UH themselves
     if (isAssignMode.value) {
-      return peers.filter(u => u.id !== auth.userID)
+      return peers.filter(u => String(u.id) !== String(auth.userID))
     }
 
     // Normal mode: include the UH themselves at the top for self-assign
-    const hasSelf = peers.some(u => u.id === auth.userID)
+    const hasSelf = peers.some(u => String(u.id) === String(auth.userID))
     if (!hasSelf) {
-      const selfMember = allMembers.find(m => m.id === auth.userID)
+      const selfMember = allMembers.find(m => String(m.id) === String(auth.userID))
       if (selfMember) {
         return [
           { id: selfMember.id, fname: selfMember.fname, lname: selfMember.lname, middle_initial: selfMember.middle_initial },
-          ...peers.filter(u => u.id !== auth.userID),
+          ...peers.filter(u => String(u.id) !== String(auth.userID)),
         ]
       }
     }
@@ -152,7 +167,7 @@ const showOutput = computed(() => auth.isMember && newTask.value.type === 2)
 const memberLabel = (u) => {
   const name = [u.fname, u.middle_initial ? u.middle_initial + '.' : '', u.lname]
     .filter(Boolean).join(' ')
-  // pos_name comes directly from unitStore.unit (RPC) for UH peers
+  // pos_name comes from posStore.position lookup
   if (u.pos_name) return `${name} — ${u.pos_name}`
   // For Director view: look up via posStore
   const posRow  = posStore.memberPos.find(p => p.user_id === u.id)

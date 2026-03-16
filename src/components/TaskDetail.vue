@@ -1,9 +1,9 @@
 <script setup>
 import { uploadOutputFile } from '@/lib/uploadOutput'
-import { useMemberStore } from '@/stores/member'
-import { usePosStore } from '@/stores/positions'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useMemberStore } from '@/stores/member'
+import { usePosStore } from '@/stores/positions'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
 const props = defineProps(['task'])
