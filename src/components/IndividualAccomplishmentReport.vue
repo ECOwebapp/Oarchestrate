@@ -33,9 +33,7 @@ const loadOwnTasks = async () => {
     `)
     .is('parent_id', null)
     .eq('assignee', uid)
-  ownTasks.value = (data || [])
-    .filter(t => t.task_approval?.unit_head || t.task_approval?.director)
-    .map(t => ({
+  ownTasks.value = (data || []).map(t => ({
     assignee:   t.assignee,
     name:       t.task_profile?.title       || '',
     description:t.task_profile?.description || '',
@@ -66,9 +64,21 @@ const periodLabel = computed(() => {
   if (props.dateFrom && props.dateTo) {
     const from = new Date(props.dateFrom)
     const to   = new Date(props.dateTo)
-    const mo   = from.toLocaleString('en-PH', { month: 'long' })
-    const yr   = from.getFullYear()
-    return `${mo} ${from.getDate()}–${to.getDate()}, ${yr}`
+    if (isNaN(from) || isNaN(to)) return 'Invalid period'
+
+    const sameMonthYear =
+      from.getFullYear() === to.getFullYear() &&
+      from.getMonth() === to.getMonth()
+
+    if (sameMonthYear) {
+      const mo = from.toLocaleString('en-PH', { month: 'long' })
+      const yr = from.getFullYear()
+      return `${mo} ${from.getDate()}-${to.getDate()}, ${yr}`
+    }
+
+    const fromLabel = from.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+    const toLabel = to.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+    return `${fromLabel} - ${toLabel}`
   }
   const mo = +props.month
   const yr = +props.year
@@ -101,8 +111,9 @@ const reportRows = computed(() => {
   const fmt = (s) => { const d = new Date(s); return isNaN(d) ? '' : d.toLocaleDateString('en-PH', FMT) }
 
   const remarkOf = (t) => {
-    if (t.director || t.unitHead) return 'Approved'
-    if (t.revision)  return 'For Revision'
+    if (t.director) return 'Approved'
+    if (t.revisionComment) return 'For Revision'
+    if (t.outputLink && !t.director) return 'Submitted'
     return 'Pending'
   }
 

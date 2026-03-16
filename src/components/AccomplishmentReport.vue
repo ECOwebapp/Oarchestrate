@@ -3,7 +3,13 @@ import { computed, ref, watch } from 'vue'
 import { supabase } from '@/lib/supabaseClient.js'
 import { useAuthStore } from '@/stores/useAuthStore.js'
 
-const props = defineProps({ show: Boolean, month: { default: () => new Date().getMonth() + 1 }, year: { default: () => new Date().getFullYear() } })
+const props = defineProps({
+  show: Boolean,
+  month: { default: () => new Date().getMonth() + 1 },
+  year: { default: () => new Date().getFullYear() },
+  dateFrom: { type: String, default: '' },
+  dateTo: { type: String, default: '' },
+})
 const emit = defineEmits(['close'])
 
 const auth = useAuthStore()
@@ -45,14 +51,14 @@ const loadAllTasks = async () => {
   const allMemberIds = allowedUnitIds.flatMap(uid => unitMemberMap[uid] || [])
   if (!allMemberIds.length) { unitGroups.value = []; return }
 
-  // 3. Fetch approved tasks for those members
+  // 3. Fetch tasks for those members
   const assigneeFilter = allMemberIds.map(id => `assignee.eq.${id}`).join(',')
   const { data } = await supabase
     .from('task')
     .select(`
       id, parent_id, assignee,
       task_profile ( title, task_type_ref:task_type(task_type) ),
-      task_approval ( unit_head, director ),
+      task_approval ( unit_head, director, revision_comment ),
       task_duration ( created, deadline ),
       task_output   ( link ),
       subtasks:task!parent_id ( id, task_profile(title) )
@@ -63,11 +69,19 @@ const loadAllTasks = async () => {
 
   if (!data || !data.length) { unitGroups.value = []; return }
 
-  // 4. Filter to approved only (unit_head OR director approved)
-  const approved = data.filter(t => t.task_approval?.unit_head || t.task_approval?.director)
+  // Unit Accomplishment Report should include only director-approved tasks.
+  const approvedOnly = data.filter(t => t.task_approval?.director)
+  if (!approvedOnly.length) { unitGroups.value = []; return }
+
+  const statusOf = (t) => {
+    if (t.task_approval?.director) return 'Approved'
+    if (t.task_approval?.revision_comment) return 'Revision'
+    if (t.task_output?.link) return 'Submitted'
+    return 'Pending'
+  }
 
   // 5. Resolve names
-  const uids = [...new Set(approved.map(t => t.assignee).filter(Boolean))]
+  const uids = [...new Set(approvedOnly.map(t => t.assignee).filter(Boolean))]
   const nameMap = {}
   if (uids.length) {
     const { data: profiles } = await supabase
@@ -91,7 +105,7 @@ const loadAllTasks = async () => {
   }
 
   // 6. Map rows
-  const mapped = approved.map(t => ({
+  const mapped = approvedOnly.map(t => ({
     id:           t.id,
     unitId:       userUnitMap[t.assignee] || null,
     ppa:          '',
@@ -105,6 +119,7 @@ const loadAllTasks = async () => {
     progress:     progressOf(t),
     subtaskNames: (t.subtasks || []).map(s => s.task_profile?.title || '').filter(Boolean),
     mov:          t.task_output?.link ? { label: 'View Output', url: t.task_output.link } : null,
+    remarks:      statusOf(t),
     rawStart:     t.task_duration?.created  || null,
     rawEnd:       t.task_duration?.deadline || null,
   }))
@@ -117,7 +132,7 @@ const loadAllTasks = async () => {
   for (const t of mapped) {
     const uid = t.unitId
     if (!unitTaskMap[uid]) continue
-    const key = t.name || '(Untitled)'
+    const key = `${t.name || '(Untitled)'}::${t.remarks}`
     if (!unitTaskMap[uid][key]) {
       unitTaskMap[uid][key] = { ...t, assignedTo: [] }
     }
@@ -153,14 +168,24 @@ const programs = computed(() => {
     const check = (s) => {
       if (!s) return false
       const d = new Date(s)
-      return !isNaN(d) && d.getFullYear() === yr && (mo === 0 || d.getMonth() + 1 === mo)
+      if (isNaN(d)) return false
+
+      if (props.dateFrom && props.dateTo) {
+        const from = new Date(props.dateFrom)
+        const to = new Date(props.dateTo)
+        to.setHours(23, 59, 59, 999)
+        return d >= from && d <= to
+      }
+
+      return d.getFullYear() === yr && (mo === 0 || d.getMonth() + 1 === mo)
     }
+
     return check(t.rawStart) || check(t.rawEnd)
   }
 
   return unitGroups.value
     .map(g => {
-      const tasks = g.tasks.filter(t => inPeriod(t) && t.mov)
+      const tasks = g.tasks.filter(t => inPeriod(t))
       return { ...g, tasks, rowspan: tasks.length }
     })
     .filter(g => g.tasks.length > 0)
@@ -190,6 +215,7 @@ const flatRows = computed(() => {
           startDate:    task.startDate,
           endDate:      task.endDate,
           mov:          task.mov,
+          remarks:      task.remarks,
           isLastInUnit: false,
         })
         unitRendered = true
@@ -203,6 +229,26 @@ const flatRows = computed(() => {
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const periodLabel = computed(() => {
+  if (props.dateFrom && props.dateTo) {
+    const from = new Date(props.dateFrom)
+    const to = new Date(props.dateTo)
+    if (isNaN(from) || isNaN(to)) return 'Invalid period'
+
+    const sameMonthYear =
+      from.getFullYear() === to.getFullYear() &&
+      from.getMonth() === to.getMonth()
+
+    if (sameMonthYear) {
+      const mo = from.toLocaleString('en-PH', { month: 'long' })
+      const yr = from.getFullYear()
+      return `${mo} ${from.getDate()}-${to.getDate()}, ${yr}`
+    }
+
+    const fromLabel = from.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+    const toLabel = to.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+    return `${fromLabel} - ${toLabel}`
+  }
+
   const mo = +props.month
   const yr = +props.year
   return mo === 0 ? `Year ${yr}` : `${MONTHS[mo - 1]} ${yr}`
@@ -259,7 +305,7 @@ const periodLabel = computed(() => {
           </thead>
           <tbody>
             <tr v-if="flatRows.length === 0">
-              <td colspan="8" class="text-center py-10 text-gray-400 text-sm italic">No approved tasks found for {{ periodLabel }}.</td>
+              <td colspan="8" class="text-center py-10 text-gray-400 text-sm italic">No director-approved tasks found for {{ periodLabel }}.</td>
             </tr>
             <tr v-for="(row, i) in flatRows" :key="i"
               :class="[row.isLastInUnit ? 'border-b-2 border-gray-400' : 'border-b border-gray-100', 'hover:bg-green-50/30 bg-white']">
@@ -314,7 +360,7 @@ const periodLabel = computed(() => {
               <!-- Remarks (spans task rows) -->
               <td v-if="row.showTask" :rowspan="row.taskRowspan"
                 class="px-3 py-2 text-center text-[10px] text-gray-600 font-medium align-middle">
-                Approved
+                {{ row.remarks }}
               </td>
             </tr>
           </tbody>
