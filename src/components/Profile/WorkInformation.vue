@@ -103,7 +103,7 @@ const handleSave = async () => {
                 </td>
             </tr>
         </table>
-        <div class="self-center flex gap-3 bg-green-950 mt-5 px-4 py-3 rounded-full text-white hover:cursor-pointer"
+        <div v-if="!auth.isDirector" class="self-center flex gap-3 bg-green-950 mt-5 px-4 py-3 rounded-full text-white hover:cursor-pointer"
             @click="openAddModal">
             <Icons :icon="'add'" />
             Add Position
