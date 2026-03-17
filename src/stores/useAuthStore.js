@@ -84,7 +84,7 @@ export const useAuthStore = defineStore('auth', () => {
     const [profRes, posRes, statusRes, avatarRes] = await Promise.all([
       supabase
         .from('members')
-        .select('fname, lname, middle_initial')
+        .select('*')
         .eq('user_id', authUser.id)
         .maybeSingle(),
 
@@ -156,6 +156,24 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
+  async function editProfile(payload) {
+    try {
+      const { data, error, status } = await supabase
+        .from('user_profile')
+        .update(payload)
+        .eq('user_id', userID.value)
+        .select()
+
+         if(error) throw error
+
+         await fetchUserData(user.value)
+
+         return status
+    } catch(e) {
+      console.log('Error updating profile: ', e)
+    }
+  }
+
   async function logout(router) {
     await supabase.auth.signOut()
     $reset()
@@ -176,6 +194,6 @@ export const useAuthStore = defineStore('auth', () => {
     user, userID, profile, positions, accountStatus, loading, initialized,
     isLoggedIn, fullName, initials, avatarColor, avatarUrl, // ← avatarUrl added
     isDirector, isUnitHead, isMember, isAdmin, isOffice,
-    init, listenToAuthChanges, fetchUserData, logout, $reset,
+    init, listenToAuthChanges, fetchUserData, logout, $reset, editProfile
   }
 })
