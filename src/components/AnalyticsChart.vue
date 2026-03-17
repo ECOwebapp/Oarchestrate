@@ -58,24 +58,25 @@ function hideTooltip() {
       {{ tooltip.content }}
     </div>
 
-    <div ref="modalRef" class="bg-white rounded-2xl shadow-2xl w-[80vw] h-[80vh] max-w-5xl mx-4 flex flex-col overflow-hidden relative">
+    <div ref="modalRef" class="relative mx-2 flex h-[88vh] w-[96vw] max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl sm:mx-4 sm:h-[80vh] sm:w-[90vw]">
 
       <!-- Modal Header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b flex-shrink-0">
-        <h2 class="text-sm font-bold text-gray-800">
+      <div class="flex flex-shrink-0 items-start justify-between gap-3 border-b px-4 py-3 sm:px-6 sm:py-4">
+        <h2 class="text-sm font-bold text-gray-800 sm:text-base">
           <span v-if="expandedChart === 'bar'">Completion Rate</span>
           <span v-else-if="expandedChart === 'pie'">Task Distribution</span>
           <span v-else-if="expandedChart === 'line'">Submitted tasks trend monthly</span>
           <span v-else-if="expandedChart === 'area'">Pending & Revision Monthly Trend</span>
         </h2>
-        <button class="cursor-pointer text-4xl text-gray-400 hover:text-gray-700 leading-none" @click="emit('close')">×</button>
+        <button class="leading-none text-3xl text-gray-400 hover:text-gray-700 cursor-pointer sm:text-4xl" @click="emit('close')">×</button>
       </div>
 
       <!-- Modal Body -->
-      <div class="flex-1 min-h-0 p-6 flex items-center justify-center">
+      <div class="flex flex-1 min-h-0 items-center justify-center overflow-auto p-3 sm:p-6">
 
         <!-- Bar Chart -->
-        <svg v-if="expandedChart === 'bar'" viewBox="0 0 500 245" class="w-full h-full">
+        <div v-if="expandedChart === 'bar'" class="h-full w-full overflow-x-auto">
+        <svg viewBox="0 0 500 245" class="h-full min-w-[520px] w-full">
           <line x1="40" y1="10" x2="40"  y2="200" stroke="#d1d5db" stroke-width="1" />
           <line x1="40" y1="200" x2="490" y2="200" stroke="#d1d5db" stroke-width="1" />
           <template v-for="t in barTickPos" :key="'bg'+t.v">
@@ -94,22 +95,30 @@ function hideTooltip() {
             :x="b.cx || (b.x + 32)" y="217" text-anchor="middle" font-size="9" fill="#6b7280">{{ b.label }}</text>
           <text x="265" y="234" text-anchor="middle" font-size="10" font-weight="bold" fill="#374151">Tasks</text>
         </svg>
+        </div>
 
         <!-- Pie Chart -->
-        <div v-else-if="expandedChart === 'pie'" class="flex items-center justify-center gap-10 w-full h-full">
-          <svg viewBox="0 0 200 200" class="h-full max-h-150">
-            <path v-for="seg in pieSegments" :key="seg.label"
-              :d="seg.path" :fill="seg.color" stroke="white" stroke-width="1.5"
-              class="cursor-pointer transition-opacity duration-150 hover:opacity-80"
-              @mouseenter="showTooltip($event, `${seg.label}\nCount: ${seg.count}\nShare: ${seg.pct}%`)"
-              @mousemove="showTooltip($event, `${seg.label}\nCount: ${seg.count}\nShare: ${seg.pct}%`)"
-              @mouseleave="hideTooltip" />
+        <div v-else-if="expandedChart === 'pie'" class="flex h-full w-full flex-col items-center justify-center gap-5 sm:flex-row sm:gap-10">
+          <svg viewBox="0 0 200 200" class="w-full max-w-[260px] flex-shrink-0">
+            <template v-for="seg in pieSegments" :key="seg.label">
+              <circle v-if="seg.isFull" :cx="seg.cx" :cy="seg.cy" :r="seg.r" :fill="seg.color"
+                class="cursor-pointer transition-opacity duration-150 hover:opacity-80"
+                @mouseenter="showTooltip($event, `${seg.label}\nCount: ${seg.count}\nShare: ${seg.pct}%`)"
+                @mousemove="showTooltip($event, `${seg.label}\nCount: ${seg.count}\nShare: ${seg.pct}%`)"
+                @mouseleave="hideTooltip" />
+              <path v-else
+                :d="seg.path" :fill="seg.color" stroke="white" stroke-width="1.5"
+                class="cursor-pointer transition-opacity duration-150 hover:opacity-80"
+                @mouseenter="showTooltip($event, `${seg.label}\nCount: ${seg.count}\nShare: ${seg.pct}%`)"
+                @mousemove="showTooltip($event, `${seg.label}\nCount: ${seg.count}\nShare: ${seg.pct}%`)"
+                @mouseleave="hideTooltip" />
+            </template>
             <text v-for="seg in pieSegments" :key="'v'+seg.label"
               :x="seg.lx" :y="seg.ly - 4" text-anchor="middle" font-size="9" font-weight="bold" fill="white" class="pointer-events-none">{{ seg.count }}</text>
             <text v-for="seg in pieSegments" :key="'p'+seg.label"
               :x="seg.lx" :y="seg.ly + 6" text-anchor="middle" font-size="8" fill="white" class="pointer-events-none">({{ seg.pct }}%)</text>
           </svg>
-          <div class="flex flex-col gap-4">
+          <div class="grid w-full max-w-xs grid-cols-1 gap-3 sm:flex sm:max-w-none sm:flex-col sm:gap-4">
             <div v-for="d in pieData" :key="d.label" class="flex items-center gap-3 text-sm text-gray-700">
               <span class="w-4 h-4 rounded-sm flex-shrink-0" :style="{ background: d.color }"></span>
               {{ d.label }}
@@ -118,7 +127,8 @@ function hideTooltip() {
         </div>
 
         <!-- Line Chart -->
-        <svg v-else-if="expandedChart === 'line'" viewBox="0 0 500 215" class="w-full h-full">
+        <div v-else-if="expandedChart === 'line'" class="h-full w-full overflow-x-auto">
+        <svg viewBox="0 0 500 215" class="h-full min-w-[520px] w-full">
           <line x1="35" y1="10"  x2="35"  y2="185" stroke="#d1d5db" stroke-width="1" />
           <line x1="35" y1="185" x2="495" y2="185" stroke="#d1d5db" stroke-width="1" />
           <template v-for="t in lineTickPos" :key="'lg'+t.v">
@@ -135,10 +145,12 @@ function hideTooltip() {
           <text v-for="(m, i) in monthLabels" :key="m"
             :x="35 + (i / 11) * 455" y="200" text-anchor="middle" font-size="8" fill="#6b7280">{{ m }}</text>
         </svg>
+        </div>
 
         <!-- Area Chart -->
-        <div v-else-if="expandedChart === 'area'" class="flex flex-col w-full h-full">
-          <svg viewBox="0 0 500 200" class="w-full flex-1 min-h-0">
+        <div v-else-if="expandedChart === 'area'" class="flex h-full w-full flex-col">
+          <div class="min-h-0 flex-1 overflow-x-auto">
+          <svg viewBox="0 0 500 200" class="min-w-[520px] w-full flex-1 min-h-0">
             <line x1="35" y1="10"  x2="35"  y2="175" stroke="#d1d5db" stroke-width="1" />
             <line x1="35" y1="175" x2="495" y2="175" stroke="#d1d5db" stroke-width="1" />
             <template v-for="t in areaTickPos" :key="'ag'+t.v">
@@ -160,7 +172,8 @@ function hideTooltip() {
             <text v-for="(m, i) in monthLabels" :key="m"
               :x="35 + (i / 11) * 455" y="190" text-anchor="middle" font-size="8" fill="#6b7280">{{ m }}</text>
           </svg>
-          <div class="flex gap-6 justify-center flex-wrap text-sm text-gray-700 flex-shrink-0 pt-2">
+          </div>
+          <div class="flex flex-shrink-0 flex-wrap justify-center gap-4 pt-3 text-sm text-gray-700 sm:gap-6">
             <div v-for="s in areaSeriesData" :key="s.key" class="flex items-center gap-2">
               <span class="w-6 h-3 rounded-sm flex-shrink-0" :style="{ background: s.color }"></span>
               {{ s.key }}
