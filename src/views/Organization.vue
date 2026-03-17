@@ -47,12 +47,70 @@ const orgData = ref({
 })
 
 const showManagement = ref(false)
+const showUnitStructureModal = ref(false)
+const unitStructureModalData = ref({ title: '', sections: [] })
 const pendingMembers = ref([
   { name: 'Seniour San T. Elmo' },
   { name: 'Jarakai T. Warlord' },
   { name: 'Traileou T. Tralala' },
   { name: 'Morokoy P. Suka' },
 ])
+
+const openUnitStructureModal = (unitKey) => {
+  if (unitKey === 'pdu') {
+    unitStructureModalData.value = {
+      title: 'Planning and Design Unit Functional Structure',
+      sections: [
+        {
+          heading: 'Unit Head',
+          items: [orgData.value.pdu.head],
+        },
+        {
+          heading: 'Professional Staff',
+          items: orgData.value.pdu.members,
+        },
+        {
+          heading: 'Drafting Staff',
+          items: orgData.value.pdu.subMembers,
+        },
+      ],
+    }
+  } else if (unitKey === 'office') {
+    unitStructureModalData.value = {
+      title: 'Office Staff Functional Structure',
+      sections: [
+        {
+          heading: 'Office Staff Members',
+          items: orgData.value.officeStaff,
+        },
+      ],
+    }
+  } else if (unitKey === 'piu') {
+    unitStructureModalData.value = {
+      title: 'Project Implementation Unit Functional Structure',
+      sections: [
+        {
+          heading: 'Unit Head',
+          items: [orgData.value.piu.head],
+        },
+        {
+          heading: 'Construction Management',
+          items: [orgData.value.piu.manager],
+        },
+        {
+          heading: 'Site Engineers',
+          items: orgData.value.piu.siteEngineers,
+        },
+      ],
+    }
+  }
+
+  showUnitStructureModal.value = true
+}
+
+const closeUnitStructureModal = () => {
+  showUnitStructureModal.value = false
+}
 
 /* ── inline card sizes ── */
 const sz = {
@@ -148,6 +206,58 @@ const VLine = {
   }
 }
 
+const HLine = {
+  props: { count: Number, slotWidth: String },
+  setup(props) {
+    const useSlots = !!props.slotWidth
+    return () => h('div', {
+      style: {
+        position: 'relative',
+        width: '100%',
+        minHeight: '14px'
+      }
+    }, [
+      h('div', {
+        style: {
+          position: 'absolute',
+          top: '0',
+          left: '0',
+          right: '0',
+          height: '1px',
+          background: '#000'
+        }
+      }),
+      h('div', {
+        style: {
+          display: 'flex',
+          justifyContent: useSlots ? 'space-between' : 'space-around',
+          alignItems: 'flex-start'
+        }
+      }, Array.from({ length: props.count || 0 }).map(() => useSlots
+        ? h('div', {
+          style: {
+            width: props.slotWidth,
+            display: 'flex',
+            justifyContent: 'center'
+          }
+        }, [h('div', {
+          style: {
+            width: '1px',
+            height: '14px',
+            background: '#000'
+          }
+        })])
+        : h('div', {
+          style: {
+            width: '1px',
+            height: '14px',
+            background: '#000'
+          }
+        })))
+    ])
+  }
+}
+
 // ── Component: ProfileModal ──
 const ProfileModal = {
   props: { name: String, title: String, show: Boolean },
@@ -213,7 +323,7 @@ const ModalBackdrop = {
 
     <div v-if="!showManagement" class="relative z-10 flex flex-col items-center py-2 px-2 w-full">
 
-      <!-- Header -->
+      <!-- Header (non-draggable) -->
       <div class="w-full flex justify-between items-center mb-1 px-2">
         <div class="flex items-center gap-3">
           <img src="../../public/images/csu_seal.png" alt="CSU" class="w-20 h-20 object-contain" onerror="this.style.display='none'" />
@@ -222,13 +332,16 @@ const ModalBackdrop = {
             <p class="text-lg font-black text-[#1b5e3f] uppercase tracking-widest" style="font-family:Georgia,serif;">University</p>
           </div>
         </div>
-        <div v-if="role" class="flex items-center gap-2">
-          <button @click="showManagement = true"
+        <div class="flex items-center gap-2">
+          <button v-if="role" @click="showManagement = true"
             class="text-white font-bold text-sm px-10 py-4 rounded-3xl shadow-lg bg-green-950 hover:bg-green-900 transition-colors cursor-pointer">
             Manage Membership
           </button>
         </div>
       </div>
+
+      <div class="w-full overflow-x-auto">
+      <div class="min-w-[2028px] flex flex-col items-center pb-2">
 
       <!-- Top hierarchy (vertical spine) -->
       <OrgCard v-bind="orgData.president" :sz="sz.md" />
@@ -239,64 +352,90 @@ const ModalBackdrop = {
       <VLine />
       <OrgCard v-bind="orgData.director" :sz="sz.md" />
 
-      <!-- Horizontal branch line connecting to 3 columns -->
-      <div class="w-full flex flex-col items-center">
-        <div class="w-px h-4 bg-black"></div>
-        <!-- Full-width horizontal rule -->
-        <div class="relative w-full flex items-center justify-between px-2">
-          <!-- Horizontal line spanning all 3 column centers -->
-          <div class="absolute left-[calc(16.66%)] right-[calc(16.66%)] top-0 h-px bg-black"></div>
-          <!-- Three drop lines, one per column -->
-          <div class="flex-1 flex justify-center"><div class="w-px h-4 bg-black mt-0"></div></div>
-          <div class="flex-1 flex justify-center"><div class="w-px h-4 bg-black mt-0"></div></div>
-          <div class="flex-1 flex justify-center"><div class="w-px h-4 bg-black mt-0"></div></div>
+      <VLine />
+      <div class="w-[2028px]">
+        <div class="relative min-h-[14px]">
+          <div class="absolute top-0 left-0 right-0 h-px bg-black"></div>
+          <div class="grid grid-cols-[660px_660px_660px] gap-6">
+            <div class="flex justify-center"><div class="w-px h-[14px] bg-black"></div></div>
+            <div class="flex justify-center"><div class="w-px h-[14px] bg-black"></div></div>
+            <div class="flex justify-center"><div class="w-px h-[14px] bg-black"></div></div>
+          </div>
         </div>
       </div>
 
       <!-- ── Three-column layout: PDU | Office Staff | PIU ── -->
-      <div class="w-full flex items-start gap-2 px-2">
+      <div class="w-[2028px] grid grid-cols-[660px_660px_660px] gap-6 justify-items-center">
 
         <!-- LEFT: Planning and Design Unit -->
-        <div class="flex-1 flex flex-col items-center min-w-0">
-          <p class="text-[#386327] font-bold uppercase text-center leading-tight mb-1 mt-1"
+        <div class="w-[660px] flex flex-col items-center">
+          <VLine />
+          <p
+            class="text-[#386327] font-bold uppercase text-center leading-tight mb-1 mt-1 cursor-pointer hover:underline"
+            @click="openUnitStructureModal('pdu')"
             style="font-family:'Lilita One',serif;font-size:13px;">
             PLANNING AND DESIGN UNIT
           </p>
           <VLine />
           <OrgCard v-bind="orgData.pdu.head" :sz="sz.md" />
           <VLine />
-          <div class="flex justify-center gap-1 w-full flex-wrap">
+
+          <div class="w-[660px]">
+            <HLine :count="orgData.pdu.members.length" slot-width="80px" />
+          </div>
+
+          <div class="w-[660px] flex justify-between items-start">
             <OrgCard v-for="m in orgData.pdu.members" :key="m.name" v-bind="m" :sz="sz.sm" />
           </div>
+
           <VLine />
           <div class="flex flex-col items-center">
             <OrgCard v-bind="orgData.pdu.subMembers[0]" :sz="sz.sm" />
             <VLine />
-            <div class="flex justify-center gap-1 flex-wrap">
+
+            <div class="w-[360px]">
+              <HLine :count="orgData.pdu.subMembers.slice(1).length" slot-width="80px" />
+            </div>
+
+            <div class="w-[360px] flex justify-between items-start">
               <div v-for="s in orgData.pdu.subMembers.slice(1)" :key="s.name" class="flex flex-col items-center">
-                <VLine />
                 <OrgCard v-bind="s" :sz="sz.sm" />
               </div>
             </div>
           </div>
         </div>
 
-        <!-- CENTER: Office Staff -->
-        <div class="flex-1 flex flex-col items-center min-w-0">
-          <p class="text-[#386327] font-bold uppercase text-center leading-tight mb-1 mt-1"
+        <!-- CENTER: Office Staff (keeps direct branch from Director) -->
+        <div class="w-[660px] flex flex-col items-center">
+          <div class="w-px h-56 bg-black"></div>
+          <p
+            class="text-[#386327] font-bold uppercase text-center leading-tight mb-1 mt-1 cursor-pointer hover:underline"
+            @click="openUnitStructureModal('office')"
             style="font-family:'Lilita One',serif;font-size:13px;">
             OFFICE STAFF
           </p>
           <VLine />
-          <!-- Horizontal row of office staff cards -->
-          <div class="flex flex-row justify-center gap-1 w-full flex-wrap">
-            <OrgCard v-for="s in orgData.officeStaff" :key="s.name" v-bind="s" :sz="sz.sm" />
+
+          <!-- Drop this section lower while preserving the direct top connection -->
+          <div class="w-px h-20 bg-black"></div>
+
+          <div class="w-[440px]">
+            <HLine :count="orgData.officeStaff.length" slot-width="80px" />
+          </div>
+
+          <div class="w-[440px] flex justify-between items-start">
+            <div v-for="s in orgData.officeStaff" :key="s.name" class="flex flex-col items-center">
+              <OrgCard v-bind="s" :sz="sz.sm" />
+            </div>
           </div>
         </div>
 
         <!-- RIGHT: Project Implementation Unit -->
-        <div class="flex-1 flex flex-col items-center min-w-0">
-          <p class="text-[#386327] font-bold uppercase text-center leading-tight mb-1 mt-1"
+        <div class="w-[660px] flex flex-col items-center">
+          <VLine />
+          <p
+            class="text-[#386327] font-bold uppercase text-center leading-tight mb-1 mt-1 cursor-pointer hover:underline"
+            @click="openUnitStructureModal('piu')"
             style="font-family:'Lilita One',serif;font-size:13px;">
             PROJECT IMPLEMENTATION UNIT
           </p>
@@ -304,15 +443,22 @@ const ModalBackdrop = {
           <OrgCard v-bind="orgData.piu.head" :sz="sz.md" />
           <VLine />
           <OrgCard v-bind="orgData.piu.manager" :sz="sz.sm" />
+
           <VLine />
-          <div class="flex gap-1 flex-wrap justify-center">
+
+          <div class="w-[260px]">
+            <HLine :count="orgData.piu.siteEngineers.length" slot-width="80px" />
+          </div>
+
+          <div class="w-[260px] flex justify-between items-start">
             <div v-for="e in orgData.piu.siteEngineers" :key="e.name" class="flex flex-col items-center">
-              <VLine />
               <OrgCard v-bind="e" :sz="sz.sm" />
             </div>
           </div>
         </div>
 
+      </div>
+      </div>
       </div>
     </div>
 
@@ -323,6 +469,37 @@ const ModalBackdrop = {
         Go back
       </button>
       <ManageMembership />
+    </div>
+
+    <div v-if="showUnitStructureModal" class="fixed inset-0 z-[1200] flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/50" @click="closeUnitStructureModal"></div>
+      <div class="relative z-10 w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-xl bg-white p-6 shadow-2xl">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-lg font-extrabold text-[#1b5e3f]">{{ unitStructureModalData.title }}</h2>
+          <button
+            @click="closeUnitStructureModal"
+            class="rounded-full border border-gray-300 px-3 py-1 text-sm font-bold text-gray-700 hover:bg-gray-100"
+          >
+            Close
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <div
+            v-for="section in unitStructureModalData.sections"
+            :key="section.heading"
+            class="rounded-lg border border-gray-200 p-4"
+          >
+            <p class="mb-2 text-sm font-bold uppercase tracking-wide text-[#386327]">{{ section.heading }}</p>
+            <div class="space-y-1">
+              <div v-for="person in section.items" :key="person.name" class="text-sm text-gray-800">
+                <span class="font-semibold">{{ person.name }}</span>
+                <span class="text-gray-600"> - {{ person.title }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
