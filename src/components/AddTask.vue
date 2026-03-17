@@ -8,8 +8,8 @@ import Icons from './Icons.vue'
 
 const emit  = defineEmits(['close'])
 const props = defineProps({
-  design:    { type: Boolean, default: false },
-  preFill:   { type: Object,  default: null  },
+  design:  { type: Boolean, default: false },
+  preFill: { type: Object,  default: null  },
 })
 
 const memberStore = useMemberStore()
@@ -17,8 +17,8 @@ const posStore    = usePosStore()
 const store       = taskStore()
 const auth        = useAuthStore()
 
-const loading  = ref(false)
-const subTasks = ref([{ text: '' }])
+const loading   = ref(false)
+const subTasks  = ref([{ text: '' }])
 const outputUrl = ref('')
 const errorMsg  = ref('')
 
@@ -34,13 +34,12 @@ const newTask = ref({
 })
 
 onMounted(async () => {
-  // Always fetch members + positions first so the assignee <select> has options
   await Promise.all([
     memberStore.fetchMembers(),
     posStore.fetchMemberPos(),
     posStore.fetchPos(),
   ])
-  // Now apply preFill AFTER options are loaded so the <select> can match the value
+  // Apply preFill AFTER members are loaded so the <select> can match the value
   if (props.preFill) applyPreFill(props.preFill)
 })
 
@@ -58,99 +57,83 @@ const applyPreFill = (fill) => {
   }
 }
 
-// Also watch in case preFill changes after mount (edge case)
+// Watch in case preFill arrives after mount
 watch(() => props.preFill, (fill) => {
   if (!fill) return
-  // Only apply immediately if members are already loaded
   if (memberStore.members.length > 0) applyPreFill(fill)
 })
 
-// ── Assign-subtask mode ───────────────────────────────────────────────────────
-// preFill is set when UH assigns a subtask — form is pre-populated but
-// the UH creates a brand-new task for the member (same flow as normal add).
-const isAssignMode = computed(() => !!props.preFill)
-
 // ── Assignable members ────────────────────────────────────────────────────────
-// Director  → all members from memberStore + positions from posStore
-// Unit Head → unit peers from posStore.memberPos filtered by unit_id
-//             + themselves for self-assign in normal mode
-// Member    → only themselves
 const assignableMembers = computed(() => {
-  const allMembers   = memberStore.members   || []
-  const allPositions = posStore.memberPos    || []
+  const allMembers   = memberStore.members || []
+  const allPositions = posStore.memberPos  || []
   const POS_UNIT_HEAD = 4
   const POS_DIRECTOR  = 1
   const POS_ADMIN     = 11
 
   // ── Director ──────────────────────────────────────────────────────────────
   if (auth.isDirector) {
-    // Regular task → only assign to Unit Heads
     if (Number(newTask.value.type) === 1) {
       const uhIds = new Set(
         allPositions.filter(p => Number(p.pos_id) === POS_UNIT_HEAD).map(p => p.user_id)
       )
-      return allMembers.filter(m => uhIds.has(m.id))
+      return allMembers
+        .filter(m => uhIds.has(m.id))
+        .map(m => ({ ...m, pos_name: _resolvePosName(m.id, allPositions) }))
     }
-    // Insertion → anyone except admins and directors
     const excludedIds = new Set(
       allPositions
         .filter(p => [POS_DIRECTOR, POS_ADMIN].includes(Number(p.pos_id)))
         .map(p => p.user_id)
     )
-    return allMembers.filter(m => !excludedIds.has(m.id))
+    return allMembers
+      .filter(m => !excludedIds.has(m.id))
+      .map(m => ({ ...m, pos_name: _resolvePosName(m.id, allPositions) }))
   }
 
   // ── Unit Head ─────────────────────────────────────────────────────────────
   if (auth.isUnitHead) {
-    // Get UH's unit_id from their auth positions (pos_id 4 = Unit Head)
     const uhPos  = auth.positions.find(p => p.pos_id === 4)
     const unitId = uhPos?.unit_id ?? null
 
-    // Build peers from posStore.memberPos filtered to same unit, deduped by user_id
-    const seen = new Set()
+    // Self entry — always first
+    const selfMember = allMembers.find(m => String(m.id) === String(auth.userID))
+    const uhPosName  = posStore.position.find(p => p.id === 4)?.name || 'Unit Head'
+    const selfEntry  = selfMember
+      ? { ...selfMember, pos_name: uhPosName, isSelf: true }
+      : null
+
+    // Unit peers (excluding self), deduped
+    const seen = new Set([String(auth.userID)])
     const peers = (allPositions || [])
-      .filter(p => p.unit_id === unitId)
-      .filter(p => {
-        if (seen.has(p.user_id)) return false
-        seen.add(p.user_id)
-        return true
-      })
+      .filter(p => p.unit_id === unitId && !seen.has(String(p.user_id)))
+      .filter(p => { seen.add(String(p.user_id)); return true })
       .map(p => {
         const m = allMembers.find(mb => String(mb.id) === String(p.user_id))
         if (!m) return null
         return {
-          id:             m.id,
-          fname:          m.fname          || '',
-          lname:          m.lname          || '',
-          middle_initial: m.middle_initial || '',
+          ...m,
+          pos_name: posStore.position.find(pos => pos.id === p.pos_id)?.name || '',
+          isSelf:   false,
         }
       })
       .filter(Boolean)
 
-    // In assign-subtask mode: exclude the UH themselves
-    if (isAssignMode.value) {
-      return peers.filter(u => String(u.id) !== String(auth.userID))
-    }
-
-    // Normal mode: include the UH themselves at the top for self-assign
-    const hasSelf = peers.some(u => String(u.id) === String(auth.userID))
-    if (!hasSelf) {
-      const selfMember = allMembers.find(m => String(m.id) === String(auth.userID))
-      if (selfMember) {
-        return [
-          { id: selfMember.id, fname: selfMember.fname, lname: selfMember.lname, middle_initial: selfMember.middle_initial },
-          ...peers.filter(u => String(u.id) !== String(auth.userID)),
-        ]
-      }
-    }
-    return peers
+    return selfEntry ? [selfEntry, ...peers] : peers
   }
 
   // ── Member → only themselves ──────────────────────────────────────────────
-  return allMembers.filter(m => m.id === auth.userID)
+  return allMembers
+    .filter(m => String(m.id) === String(auth.userID))
+    .map(m => ({ ...m, pos_name: '' }))
 })
 
-// ── Type options ──────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const _resolvePosName = (userId, allPositions) => {
+  const posRow = allPositions.find(p => p.user_id === userId)
+  return posStore.position.find(p => p.id === posRow?.pos_id)?.name || ''
+}
+
 const typeOptions = computed(() => {
   if (auth.isMember) return [{ id: 2, label: 'Insertion Task' }]
   return [
@@ -161,26 +144,24 @@ const typeOptions = computed(() => {
 
 const showOutput = computed(() => auth.isMember && newTask.value.type === 2)
 
-// ── Display label for a member option ────────────────────────────────────────
-// Shows: "First M. Last — Position Title"
-// Position is resolved from posStore.memberPos + posStore.position
 const memberLabel = (u) => {
   const name = [u.fname, u.middle_initial ? u.middle_initial + '.' : '', u.lname]
     .filter(Boolean).join(' ')
-  // pos_name comes from posStore.position lookup
-  if (u.pos_name) return `${name} — ${u.pos_name}`
-  // For Director view: look up via posStore
-  const posRow  = posStore.memberPos.find(p => p.user_id === u.id)
-  const posName = posStore.position.find(p => p.id === posRow?.pos_id)?.name
-  return posName ? `${name} — ${posName}` : name
+  return u.pos_name ? `${name} — ${u.pos_name}` : name
 }
+
+const selectedAssigneeUnit = computed(() => {
+  if (!newTask.value.assignee) return null
+  const pos = posStore.memberPos.find(p => p.user_id === newTask.value.assignee)
+  if (!pos?.unit_id) return null
+  return auth.positions.find(ap => ap.unit_id === pos.unit_id)?.unit_name || 'Unit ' + pos.unit_id
+})
 
 // ── Submit ────────────────────────────────────────────────────────────────────
 const submitForm = async () => {
   errorMsg.value = ''
   loading.value  = true
   try {
-    // Validate
     if (!newTask.value.name.trim())        throw new Error('Title is required.')
     if (!newTask.value.description.trim()) throw new Error('Description is required.')
     if (!newTask.value.type)               throw new Error('Task type is required.')
@@ -191,7 +172,6 @@ const submitForm = async () => {
     const validSubs  = subTasks.value.filter(s => s.text.trim()).map(s => ({ description: s.text }))
     const assigneeId = auth.isMember ? auth.userID : newTask.value.assignee
 
-    // Always use taskStore.addTasks — handles both normal and subtask-assign flow
     await store.addTasks({
       mainTask: {
         name:        newTask.value.name,
@@ -222,11 +202,10 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
 <template>
   <div class="bg-white w-full max-w-lg max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
 
-    <!-- ── Header ── -->
+    <!-- Header -->
     <div class="flex items-center justify-between px-7 py-5 border-b border-gray-100">
       <h2 class="text-xl font-bold text-gray-900">
-        <template v-if="isAssignMode">Assign Sub-task</template>
-        <template v-else-if="auth.isDirector">Assign a Task</template>
+        <template v-if="auth.isDirector">Assign a Task</template>
         <template v-else-if="auth.isUnitHead">Assign to Unit</template>
         <template v-else>Submit Insertion Task</template>
       </h2>
@@ -234,11 +213,11 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
         class="text-gray-400 hover:text-gray-700 text-2xl leading-none">×</button>
     </div>
 
-    <!-- ── Body ── -->
+    <!-- Body -->
     <div class="overflow-y-auto flex-1 px-7 py-5 space-y-4">
 
-      <!-- Assign-mode info banner -->
-      <div v-if="isAssignMode"
+      <!-- Pre-fill info banner -->
+      <div v-if="preFill"
         class="flex items-start gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
         <svg class="w-4 h-4 text-green-700 mt-0.5 flex-shrink-0" fill="none"
           viewBox="0 0 24 24" stroke="currentColor">
@@ -246,11 +225,11 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
             d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
         <p class="text-xs text-green-800">
-          Pre-filled from the Director's original task — you can edit any field before assigning.
+          Pre-filled from the Director's original sub-task — you can edit any field before assigning.
         </p>
       </div>
 
-      <!-- Title — always editable -->
+      <!-- Title -->
       <div>
         <label class="block text-sm font-semibold text-gray-700 mb-1">
           Title <span class="text-red-500">*</span>
@@ -264,7 +243,7 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
                  focus:outline-none focus:border-green-800 transition-colors" />
       </div>
 
-      <!-- Description — always editable -->
+      <!-- Description -->
       <div>
         <label class="block text-sm font-semibold text-gray-700 mb-1">
           Description <span class="text-red-500">*</span>
@@ -279,9 +258,9 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
         <p class="text-xs text-gray-400 mt-0.5">{{ newTask.description.length }}/500</p>
       </div>
 
-      <!-- Type + Deadline — both always editable -->
+      <!-- Type + Deadline -->
       <div class="flex gap-3">
-        <div v-if="!isAssignMode" class="flex-1">
+        <div class="flex-1">
           <label class="block text-sm font-semibold text-gray-700 mb-1">
             Type <span class="text-red-500">*</span>
           </label>
@@ -305,14 +284,12 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
         </div>
       </div>
 
-      <!-- Assignee (hidden for regular members — auto-assigned to self) -->
+      <!-- Assignee -->
       <div v-if="!auth.isMember">
         <label class="block text-sm font-semibold text-gray-700 mb-1">
-          {{ isAssignMode ? 'Assign to Member' : 'Assign To' }}
-          <span class="text-red-500">*</span>
+          Assign To <span class="text-red-500">*</span>
         </label>
 
-        <!-- Loading state -->
         <div v-if="memberStore.members.length === 0"
           class="w-full border-2 border-gray-200 rounded-xl h-11 px-3 flex items-center
                  text-sm text-gray-400 bg-gray-50 animate-pulse">
@@ -324,49 +301,28 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
             v-model="newTask.assignee"
             class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
                    focus:outline-none focus:border-green-800 bg-white">
-            <option value="" disabled hidden>
-              {{ isAssignMode ? 'Select unit member…' : 'Select member' }}
+            <option value="" disabled hidden>Select member</option>
+            <option
+              v-for="m in assignableMembers"
+              :key="m.id"
+              :value="m.id">
+              {{ memberLabel(m) }}{{ m.isSelf ? ' (You)' : '' }}
             </option>
-
-            <!-- Director: flat list (already filtered by type in assignableMembers) -->
-            <template v-if="auth.isDirector && !isAssignMode">
-              <option
-                v-for="m in assignableMembers"
-                :key="m.id"
-                :value="m.id">
-                {{ memberLabel(m) }}
-              </option>
-            </template>
-
-            <!-- Unit Head or assign-mode: flat list of own unit's members -->
-            <template v-else>
-              <option v-for="m in assignableMembers" :key="m.id" :value="m.id">
-                {{ memberLabel(m) }}
-              </option>
-            </template>
           </select>
 
-          <!-- Selected user's unit name preview -->
-          <p
-            v-if="newTask.assignee"
+          <!-- Selected assignee's unit preview -->
+          <p v-if="selectedAssigneeUnit"
             class="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
             <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
             </svg>
-            {{
-              (() => {
-                const pos = posStore.memberPos.find(p => p.user_id === newTask.assignee)
-                return pos?.unit_id
-                  ? (auth.positions.find(ap => ap.unit_id === pos.unit_id)?.unit_name || 'Unit ' + pos.unit_id)
-                  : '—'
-              })()
-            }}
+            {{ selectedAssigneeUnit }}
           </p>
         </template>
       </div>
 
-      <!-- Output link (members submitting insertion task) -->
-      <div v-if="auth.isMember && !isAssignMode">
+      <!-- Output link (members only) -->
+      <div v-if="showOutput">
         <label class="block text-sm font-semibold text-gray-700 mb-1">
           Output Link
           <span class="text-gray-400 font-normal">(Google Drive / URL)</span>
@@ -379,8 +335,8 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
                  focus:outline-none focus:border-green-800 transition-colors" />
       </div>
 
-      <!-- Sub-tasks (Director only, not in assign mode) -->
-      <div v-if="auth.isDirector && !isAssignMode">
+      <!-- Sub-tasks (Director only, not when pre-filling a subtask) -->
+      <div v-if="auth.isDirector && !preFill">
         <div class="flex items-center justify-between mb-2">
           <label class="text-sm font-semibold text-gray-700">Sub-tasks</label>
           <button type="button" @click="addSubTask"
@@ -404,15 +360,14 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
         </div>
       </div>
 
-      <!-- Urgent (not in assign mode) -->
-      <div v-if="!isAssignMode" class="flex items-center gap-3">
+      <!-- Urgent -->
+      <div class="flex items-center gap-3">
         <input v-model="newTask.urgent" type="checkbox" id="urgent" class="w-4 h-4 accent-red-700" />
         <label for="urgent" class="text-sm font-semibold text-red-700">Mark as Urgent</label>
       </div>
 
-      <!-- Approval flow note (not Director, not assign mode) -->
-      <div
-        v-if="!auth.isDirector && !isAssignMode"
+      <!-- Approval flow note -->
+      <div v-if="!auth.isDirector"
         class="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
         <svg class="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" fill="none"
           viewBox="0 0 24 24" stroke="currentColor">
@@ -443,7 +398,7 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
 
     </div>
 
-    <!-- ── Footer ── -->
+    <!-- Footer -->
     <div class="flex gap-3 px-7 py-4 border-t border-gray-100">
       <button type="button" @click="emit('close')"
         class="flex-1 h-11 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm
@@ -459,8 +414,9 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
           <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
           <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round"/>
         </svg>
-        {{ loading ? 'Saving…' : isAssignMode ? 'Assign Sub-task' : 'Submit' }}
+        {{ loading ? 'Saving…' : 'Submit' }}
       </button>
     </div>
+
   </div>
 </template>
