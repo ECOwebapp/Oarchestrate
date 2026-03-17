@@ -1,30 +1,56 @@
 <script setup>
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, computed } from 'vue'
 import Icons from '@/components/Icons.vue'
+import { usePosStore } from '@/stores/positions'
+import { useUnitStore } from '@/stores/unit'
+import { storeToRefs } from 'pinia'
+import PersonalInformation from '@/components/Profile/PersonalInformation.vue'
+import ContactInformation from '@/components/Profile/ContactInformation.vue'
+import WorkInformation from '@/components/Profile/WorkInformation.vue'
 
 const auth = useAuthStore()
 
 // ── State ──
-const loading        = ref(true)
-const saving         = ref(false)
-const saveSuccess    = ref(false)
-const saveError      = ref('')
-const uploadError    = ref('')   // separate error just for avatar
-const imagePreview   = ref(null)
-const imageFile      = ref(null)  // holds the actual File object
-const fileInput      = ref(null)
-const genders        = ref([])
+const loading = ref(true)
+const saving = ref(false)
+const saveSuccess = ref(false)
+const saveError = ref('')
+const uploadError = ref('')   // separate error just for avatar
+const imagePreview = ref(null)
+const imageFile = ref(null)  // holds the actual File object
+const fileInput = ref(null)
+const genders = ref([])
+const loadingDropdowns = ref(true)
+const positions = usePosStore()
+const units = useUnitStore()
+
+const infoSection = ref('personal')
 
 const form = reactive({
-  fname:          '',
+  fname: '',
   middle_initial: '',
-  lname:          '',
-  birthdate:      '',
-  genderId:       '',
-  phone:          '',
-  address:        '',
+  lname: '',
+  birthdate: '',
+  genderId: '',
+  phone: '',
+  address: '',
+})
+
+onMounted(async () => {
+  loading.value = true
+  try {
+    // Run everything at once and wait for all to finish
+    await Promise.all([
+      loadGenders(),
+      units.fetchUnit(),
+      loadProfileData()
+    ])
+  } finally {
+    loadingDropdowns.value = false
+    loading.value = false
+  }
 })
 
 // ── Load dropdowns ──
@@ -32,12 +58,6 @@ const loadGenders = async () => {
   const { data, error } = await supabase.from('gender_type').select('id, gender').order('id')
   if (!error) genders.value = data
 }
-
-// ── Load user data ──
-onMounted(async () => {
-  await loadGenders()
-  await loadProfileData()
-})
 
 const loadProfileData = async () => {
   loading.value = true
@@ -62,18 +82,18 @@ const loadProfileData = async () => {
   if (profRes.error) console.error('[profile] user_profile:', profRes.error.message)
 
   if (profRes.data) {
-    form.fname          = profRes.data.fname          || ''
+    form.fname = profRes.data.fname || ''
     form.middle_initial = profRes.data.middle_initial || ''
-    form.lname          = profRes.data.lname          || ''
-    form.birthdate      = profRes.data.birthdate      || ''
-    form.genderId       = profRes.data.gender_id      || ''
+    form.lname = profRes.data.lname || ''
+    form.birthdate = profRes.data.birthdate || ''
+    form.genderId = profRes.data.gender_id || ''
     if (profRes.data.avatar_url) {
       const base = profRes.data.avatar_url.split('?')[0]
       imagePreview.value = `${base}?t=${Date.now()}`
     }
   }
 
-  if (contactRes.data) form.phone   = contactRes.data.phone   || ''
+  if (contactRes.data) form.phone = contactRes.data.phone || ''
   if (addressRes.data) form.address = addressRes.data.address || ''
 
   loading.value = false
@@ -103,7 +123,7 @@ const handleImageUpload = (e) => {
   reader.readAsDataURL(file)
 }
 
-const triggerUpload = () => fileInput.value?.click()
+const triggerUpload = () => fileInput.value?.fileInput.click()
 
 // ── Upload avatar to Supabase Storage ──
 const uploadAvatar = async (userId) => {
@@ -114,7 +134,7 @@ const uploadAvatar = async (userId) => {
 
   console.log('[avatar] Starting upload for user:', userId)
 
-  const ext      = imageFile.value.name.split('.').pop().toLowerCase()
+  const ext = imageFile.value.name.split('.').pop().toLowerCase()
   const filePath = `${userId}/avatar.${ext}`
 
   console.log('[avatar] Uploading to path:', filePath)
@@ -122,8 +142,8 @@ const uploadAvatar = async (userId) => {
   const { data, error } = await supabase.storage
     .from('avatars')
     .upload(filePath, imageFile.value, {
-      upsert:       true,
-      contentType:  imageFile.value.type,
+      upsert: true,
+      contentType: imageFile.value.type,
     })
 
   if (error) {
@@ -145,9 +165,9 @@ const uploadAvatar = async (userId) => {
 
 // ── Save ──
 const handleSave = async () => {
-  saving.value      = true
+  saving.value = true
   saveSuccess.value = false
-  saveError.value   = ''
+  saveError.value = ''
   uploadError.value = ''
 
   const userId = auth.user?.id
@@ -160,11 +180,11 @@ const handleSave = async () => {
     const avatarUrl = await uploadAvatar(userId)
 
     const profilePayload = {
-      fname:          form.fname.trim(),
-      lname:          form.lname.trim(),
+      fname: form.fname.trim(),
+      lname: form.lname.trim(),
       middle_initial: form.middle_initial.trim() || null,
-      birthdate:      form.birthdate || null,
-      gender_id:      form.genderId ? parseInt(form.genderId) : null,
+      birthdate: form.birthdate || null,
+      gender_id: form.genderId ? parseInt(form.genderId) : null,
     }
 
     if (avatarUrl) {
@@ -178,13 +198,13 @@ const handleSave = async () => {
       supabase.from('address').upsert({ user_id: userId, address: form.address.trim() }),
     ])
 
-    if (profRes.error)    throw profRes.error
+    if (profRes.error) throw profRes.error
     if (contactRes.error) throw contactRes.error
     if (addressRes.error) throw addressRes.error
 
     await auth.fetchUserData(auth.user)
 
-    imageFile.value   = null  // clear staged file after successful save
+    imageFile.value = null  // clear staged file after successful save
     saveSuccess.value = true
     setTimeout(() => saveSuccess.value = false, 3000)
   } catch (err) {
@@ -197,14 +217,14 @@ const handleSave = async () => {
 </script>
 
 <template>
-  <div class="h-full overflow-y-auto bg-gray-100 px-10 py-8">
+  <div class="flex justify-center h-full overflow-y-auto bg-gray-100 px-10 py-8">
 
     <!-- Loading skeleton -->
     <div v-if="loading" class="flex gap-8 items-start animate-pulse">
-      <div class="w-52 flex flex-col items-center gap-4 pt-4">
+      <!-- <div class="w-52 flex flex-col items-center gap-4 pt-4">
         <div class="w-44 h-44 rounded-full bg-gray-300"></div>
         <div class="w-32 h-8 rounded-full bg-gray-300"></div>
-      </div>
+      </div> -->
       <div class="flex-1 bg-white rounded-2xl shadow-sm p-8 space-y-5">
         <div class="flex gap-4">
           <div class="flex-1 h-10 rounded-lg bg-gray-200"></div>
@@ -225,146 +245,91 @@ const handleSave = async () => {
     </div>
 
     <!-- Main content -->
-    <div v-else class="flex gap-8 items-start">
 
-      <!-- Left: Avatar + Upload -->
-      <div class="flex flex-col items-center gap-4 w-52 flex-shrink-0 pt-4">
-        <div class="w-44 h-44 rounded-full overflow-hidden border-4 border-gray-300 bg-gray-200 relative">
-          <img v-if="imagePreview" :src="imagePreview" alt="Profile" class="w-full h-full object-cover" />
-          <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
-            <Icons icon="profile" class="w-20 h-20 text-gray-400" />
-          </div>
-          <!-- Badge shown when a new image is staged but not yet saved -->
-          <div v-if="imageFile"
-            class="absolute bottom-2 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
-            Unsaved
-          </div>
-        </div>
+    <div v-else class="flex flex-row h-full w-[80%] gap-5 items-start bg-white rounded-2xl shadow-sm p-8">
 
-        <input ref="fileInput" type="file" accept=".jpg,.jpeg,.png,.webp" class="hidden" @change="handleImageUpload" />
-        <button
-          class="px-5 py-1.5 rounded-full border-2 border-gray-800 text-gray-800 text-sm font-semibold hover:bg-gray-200 transition-colors cursor-pointer"
-          @click="triggerUpload">
-          Upload Image
-        </button>
-
-        <!-- Upload validation error -->
-        <p v-if="uploadError" class="text-red-500 text-xs text-center">{{ uploadError }}</p>
-
-        <ul class="text-red-500 text-xs space-y-1 list-disc list-inside leading-snug">
-          <li>Max file size is 2 MB</li>
-          <li>Only JPG, PNG, and WEBP files are accepted</li>
-          <li>Image must not violate the rules of the institution</li>
+      <!-- Navbar -->
+      <div class="border-r border-gray-300 h-full">
+        <ul class="flex flex-col pr-5">
+          <li class="flex items-center p-4 block text-sm font-semibold text-black rounded-2xl hover:cursor-pointer"
+            :class="infoSection === list.toLowerCase() ? 'bg-green-950 text-white' : 'hover:bg-gray-300/80'" 
+            v-for="list in ['Personal', 'Contact', 'Work']" @click="infoSection = list.toLowerCase()">
+            <Icons :icon="list.toLocaleLowerCase()" />
+            <span class="flex-1 px-2">{{list}} Information</span>
+            <Icons :icon="'chevronRight'" />
+          </li>
         </ul>
       </div>
 
-      <!-- Right: Form Card -->
-      <div class="flex-1 bg-white rounded-2xl shadow-sm p-8">
-
+      <div class="flex-1">
         <!-- Feedback banners -->
         <Transition name="fade">
           <div v-if="saveSuccess"
             class="mb-5 flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 flex-shrink-0">
-              <path d="M4 10l4 4 8-8" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M4 10l4 4 8-8" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
             Profile saved successfully!
           </div>
         </Transition>
         <Transition name="fade">
-          <div v-if="saveError"
-            class="mb-5 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">
+          <div v-if="saveError" class="mb-5 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">
             {{ saveError }}
           </div>
         </Transition>
 
-        <!-- Last Name, First Name, M.I. -->
-        <div class="flex gap-4 mb-5">
-          <div class="flex-1">
-            <label class="block text-sm font-semibold text-gray-700 mb-1">Last name</label>
-            <input v-model="form.lname" type="text" placeholder="Last name"
-              class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700" />
-          </div>
-          <div class="flex-1">
-            <label class="block text-sm font-semibold text-gray-700 mb-1">First name</label>
-            <input v-model="form.fname" type="text" placeholder="First name"
-              class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700" />
-          </div>
-          <div class="w-20">
-            <label class="block text-sm font-semibold text-gray-700 mb-1">M.I.</label>
-            <input v-model="form.middle_initial" type="text" maxlength="3" placeholder="M.I."
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700" />
-          </div>
-        </div>
-
-        <!-- Address + Birthdate -->
-        <div class="flex gap-4 mb-5 items-end">
-          <div class="flex-1">
-            <label class="block text-sm font-semibold text-gray-700 mb-1">Address</label>
-            <input v-model="form.address" type="text" placeholder="Full address"
-              class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700" />
-          </div>
-          <div class="w-52">
-            <label class="block text-sm font-semibold text-gray-700 mb-1">Birthdate</label>
-            <input v-model="form.birthdate" type="date"
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700" />
-          </div>
-        </div>
+        <!-- Left: Avatar + Upload -->
+        <PersonalInformation 
+          v-if="infoSection === 'personal'"
+          :image-preview="imagePreview" 
+          :image-file="imageFile" 
+          :handle-image-upload="handleImageUpload" 
+          :trigger-upload="triggerUpload" 
+          :file-input="fileInput"
+          :upload-error="uploadError"
+          :form="form"
+          :genders="genders"
+          ref="fileInput"
+          />
 
         <!-- Contact Number, Email, Gender -->
-        <div class="flex gap-4 mb-5">
-          <div class="w-44">
-            <label class="block text-sm font-semibold text-gray-700 mb-1">Contact Number</label>
-            <input v-model="form.phone" type="text" placeholder="09 123 45678"
-              class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700" />
-          </div>
-          <div class="flex-1">
-            <label class="block text-sm font-semibold text-gray-700 mb-1">
-              Email <span class="text-gray-400 font-normal text-xs">(read-only)</span>
-            </label>
-            <input :value="auth.email" type="email" disabled
-              class="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm bg-gray-50 text-gray-400 cursor-not-allowed" />
-          </div>
-          <div class="w-44">
-            <label class="block text-sm font-semibold text-gray-700 mb-1">Gender</label>
-            <select v-model="form.genderId"
-              class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-green-700 bg-white cursor-pointer">
-              <option value="">Choose</option>
-              <option v-for="g in genders" :key="g.id" :value="g.id">{{ g.gender }}</option>
-            </select>
-          </div>
-        </div>
+        <ContactInformation v-else-if="infoSection === 'contact'" :form="form" :email="auth.email" />
 
-        <!-- Bio -->
-        <!-- <div class="mb-6">
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Bio</label>
-          <textarea v-model="form.bio" placeholder="Type something..."
-            class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-green-700"
-            rows="6" />
-        </div> -->
+        <!-- Unit -->
+        <WorkInformation 
+          v-else-if="infoSection === 'work'" 
+          :loading-dropdowns="loadingDropdowns"
+          />
 
         <!-- Action Buttons -->
-        <div class="flex justify-end gap-3">
+        <div class="flex justify-end gap-3" v-if="infoSection !== 'work'">
           <button @click="loadProfileData" :disabled="saving"
-            class="px-6 py-2 rounded-full border-2 border-gray-800 text-gray-800 font-semibold text-sm hover:bg-gray-100 transition-colors cursor-pointer disabled:opacity-50">
+            class="px-6 py-2 rounded-full border-2 border-red-800 text-red-800 font-semibold text-sm hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50">
             Reset
           </button>
           <button @click="handleSave" :disabled="saving"
             class="px-6 py-2 rounded-full bg-green-900 text-white font-semibold text-sm hover:bg-green-800 transition-colors cursor-pointer disabled:opacity-60 flex items-center gap-2">
             <svg v-if="saving" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
-              <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
+              <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
             </svg>
             {{ saving ? 'Saving…' : 'Save' }}
           </button>
         </div>
-
       </div>
+
     </div>
   </div>
 </template>
 
 <style scoped>
-.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 </style>

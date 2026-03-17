@@ -1,11 +1,13 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { supabase } from '@/lib/supabaseClient'
+import { useAuthStore } from "./useAuthStore";
 
 export const usePosStore = defineStore('pos', () => {
     const position = ref([])
     const roles = ref([])
     const memberPos = ref([])
+    const auth = useAuthStore()
 
     const fetchPos = async () => {
 
@@ -83,5 +85,63 @@ export const usePosStore = defineStore('pos', () => {
         }
     }
 
-    return { position, roles, fetchPos, fetchRoles, memberPos, fetchMemberPos, changeMemberRoles }
+    const addUserPos = async(user) => {
+        try {
+            const { data, error, status } = await supabase
+                .from('position')
+                .insert({user_id: auth.userID, pos_id: user.position, unit_id: user.unit})
+
+            if (error) throw error
+            await auth.fetchUserData(auth.user)
+            return status
+        } catch(e) {
+            console.log('Error adding position: ', e)
+        }
+    }
+
+    const updateUserPos = async(user, old_pos) => {
+        try {
+            const { data, error, status } = await supabase
+                .from('position')
+                .update({ pos_id: user.position, unit_id: user.unit })
+                .eq('user_id', auth.userID)
+                .eq('pos_id', old_pos)
+
+                if(error) throw error
+                await auth.fetchUserData(auth.user)
+
+                return status
+        } catch(e) {
+            console.log('Error updating position: ', e)
+        }
+    }
+
+    const deleteUserPos = async(user) => {
+        try {
+            const { data, error, status } = await supabase
+                .from('position')
+                .delete()
+                .eq('pos_id', user.position)
+                
+                if(error) throw error
+                await auth.fetchUserData(auth.user)
+
+                return status
+        } catch (e) {
+            console.log('Error deleting position: ', e)
+        }
+    }
+
+    return { 
+        position, 
+        roles, 
+        fetchPos, 
+        fetchRoles, 
+        memberPos, 
+        fetchMemberPos, 
+        changeMemberRoles, 
+        addUserPos,
+        updateUserPos,
+        deleteUserPos
+    }
 })
