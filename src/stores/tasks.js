@@ -253,7 +253,6 @@ export const taskStore = defineStore('tasks', () => {
         ]).filter(Boolean))]
         const assigneeIds = [...new Set((rows || []).map(t => t.assignee).filter(Boolean))]
 
-        // Fetch spawned tasks explicitly so reassigned ones are always found
         const allSubtaskIds    = (rows || []).flatMap(t => (t.subtasks || []).map(s => s.id))
         const extraSpawnedRows = await fetchSpawnedForSubtasks(allSubtaskIds)
         const extraAssigneeIds = extraSpawnedRows.map(r => r.assignee).filter(Boolean)
@@ -306,6 +305,9 @@ export const taskStore = defineStore('tasks', () => {
   }
 
   // ── NOTIFICATION HELPER ─────────────────────────────────────────────────────
+  // Uses position_of_members directly (not the position table) to find Unit
+  // Heads, deduplicates by user_id, and checks for existing unread notifications
+  // before inserting to prevent duplicate "awaiting your review" messages.
   const _notifySubmission = async (taskId, assigneeId, fromUserId, message = null, isSelfAssigned = false) => {
     await resolveUnitIds([assigneeId])
     const assigneeIsOffice = isOfficeUser(assigneeId)
@@ -314,38 +316,62 @@ export const taskStore = defineStore('tasks', () => {
     if (assigneeIsOffice || isSelfAssigned) {
       const directorId = await getDirectorId()
       if (directorId) {
-        await supabase.from('task_revision').insert({
-          task_id:   taskId,
-          from_user: fromUserId,
-          to_user:   directorId,
-          role:      'director',
-          comment:   message || '📎 Output submitted — awaiting your approval.',
-          is_read:   false,
-        })
+        // Only insert if no unread notification already exists
+        const { data: existing } = await supabase
+          .from('task_revision')
+          .select('id')
+          .eq('task_id', taskId)
+          .eq('to_user', directorId)
+          .eq('is_read', false)
+          .maybeSingle()
+
+        if (!existing) {
+          await supabase.from('task_revision').insert({
+            task_id:   taskId,
+            from_user: fromUserId,
+            to_user:   directorId,
+            role:      'director',
+            comment:   message || 'Output submitted — awaiting your approval.',
+            is_read:   false,
+          })
+        }
       }
       await supabase.from('task_notif').upsert(
         { task_id: taskId, read_by_director: false, read_by_assignee: true, read_by_unit_head: true },
         { onConflict: 'task_id' }
       )
     } else {
-      const { data: unitUsers } = await supabase
-        .from('position').select('user_id').eq('unit_id', assigneeUnitId)
-      if (unitUsers?.length) {
-        const unitUserIds = unitUsers.map(u => u.user_id)
-        const { data: uhMembers } = await supabase
-          .from('position').select('user_id')
-          .eq('pos_id', 4).in('user_id', unitUserIds)
-        for (const uh of (uhMembers || [])) {
+      // Query position_of_members directly with pos_id=4 filter, deduplicated
+      const { data: uhRows } = await supabase
+        .from('position_of_members')
+        .select('user_id')
+        .eq('unit_id', assigneeUnitId)
+        .eq('pos_id', 4)
+
+      const uhIds = [...new Set((uhRows || []).map(r => r.user_id))]
+
+      for (const uhId of uhIds) {
+        // Only insert if no unread notification already exists for this UH
+        const { data: existing } = await supabase
+          .from('task_revision')
+          .select('id')
+          .eq('task_id', taskId)
+          .eq('to_user', uhId)
+          .eq('is_read', false)
+          .maybeSingle()
+
+        if (!existing) {
           await supabase.from('task_revision').insert({
             task_id:   taskId,
             from_user: fromUserId,
-            to_user:   uh.user_id,
+            to_user:   uhId,
             role:      'unit_head',
-            comment:   message || '📎 Output submitted — awaiting your review.',
+            comment:   message || 'Output submitted — awaiting your review.',
             is_read:   false,
           })
         }
       }
+
       await supabase.from('task_notif').upsert(
         { task_id: taskId, read_by_unit_head: false, read_by_assignee: true, read_by_director: false },
         { onConflict: 'task_id' }
@@ -646,11 +672,6 @@ export const taskStore = defineStore('tasks', () => {
   }
 
   // ── ASSIGN SUBTASK ──────────────────────────────────────────────────────────
-  // spawnedTaskId is passed directly from the subtask object in the modal
-  // (sub.spawnedTaskId). If it exists we do a direct update on that row —
-  // no DB lookup needed, no filter ambiguity.
-  // If it doesn't exist this is the first assignment so we create a new task.
-  // ──────────────────────────────────────────────────────────────────────────
   const assignSubtask = async ({ subtaskId, spawnedTaskId, assigneeId, parentTask }) => {
     const auth = useAuthStore()
     const uid  = auth.user?.id
@@ -705,7 +726,6 @@ export const taskStore = defineStore('tasks', () => {
         }),
         supabase.from('task_approval').insert({
           id,
-          // Self-assign: fully approved immediately, no further steps
           unit_head: isSelfAssign,
           director:  isSelfAssign,
         }),
@@ -717,7 +737,6 @@ export const taskStore = defineStore('tasks', () => {
         supabase.from('task_output').insert({ id, link: '' }),
       ])
 
-      // Notify member on first assign only
       if (!isSelfAssign) {
         await supabase.from('task_notif').upsert(
           { task_id: id, read_by_assignee: false, read_by_unit_head: true, read_by_director: false },
@@ -726,7 +745,6 @@ export const taskStore = defineStore('tasks', () => {
       }
     }
 
-    // Log every assignment and reassignment
     await supabase.from('subtask_assignment_log').insert({
       subtask_id:  subtaskId,
       assigned_by: uid,

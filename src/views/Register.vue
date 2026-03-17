@@ -83,7 +83,7 @@ watch(() => form.unitId, async (newUnitId) => {
   await unit.fetchUnitPeers(newUnitId);
   
   // Assign the results to your local ref
-  filteredPositions.value = unit.unit; 
+  filteredPositions.value = unit.posOnUnit; 
 }, { immediate: true }); // 'immediate' runs it once on startup too
 
 // ── Reset positionId when unit changes ──
