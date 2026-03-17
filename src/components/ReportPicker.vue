@@ -45,7 +45,7 @@ function generate() {
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
     @click.self="emit('cancel')">
-    <div class="bg-white rounded-xl shadow-2xl p-6 w-80">
+    <div class="w-[calc(100vw-1.5rem)] max-w-sm rounded-xl bg-white p-4 shadow-2xl sm:p-6">
       <h2 class="text-sm font-bold text-gray-800 mb-1">{{ title }}</h2>
       <p class="text-[11px] text-gray-400 mb-4">{{ subtitle }}</p>
 
@@ -68,7 +68,7 @@ function generate() {
         <!-- Payroll period selector -->
         <div v-if="payroll && month !== 0">
           <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1">Payroll Period</label>
-          <div class="flex gap-2">
+          <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
               :class="['flex-1 py-2 text-xs font-semibold rounded-md border transition-colors cursor-pointer',
                 payrollPeriod === 1 ? 'bg-green-900 text-white border-green-900' : 'border-gray-200 text-gray-500 hover:bg-gray-50']"
@@ -85,7 +85,7 @@ function generate() {
         </div>
       </div>
 
-      <div class="flex gap-2 mt-5">
+      <div class="mt-5 flex flex-col gap-2 sm:flex-row">
         <button @click="emit('cancel')"
           class="flex-1 py-2 text-xs font-semibold rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 cursor-pointer transition-colors">
           Cancel

@@ -290,8 +290,7 @@ const periodLabel = computed(() => {
   <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
     @click.self="emit('close')">
 
-    <div id="unit-report-printable" class="relative bg-white shadow-2xl rounded-xl flex flex-col overflow-hidden"
-      style="width: 1360px; max-width: 98vw; max-height: 92vh;">
+    <div id="unit-report-printable" class="relative flex max-h-[92vh] w-[calc(100vw-0.75rem)] max-w-[1420px] flex-col overflow-hidden rounded-xl bg-white shadow-2xl sm:w-[99vw]">
 
       <!-- Close -->
       <button
@@ -300,21 +299,21 @@ const periodLabel = computed(() => {
 
       <!-- Print -->
       <button @click="printReport"
-        class="absolute top-3 right-12 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-900 text-white text-[11px] font-semibold hover:bg-green-700 transition-colors cursor-pointer print:hidden">
+        class="absolute right-12 top-3 z-30 hidden items-center gap-1.5 rounded-full bg-green-900 px-3 py-1.5 text-[11px] font-semibold text-white transition-colors cursor-pointer hover:bg-green-700 print:hidden sm:flex">
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Print
       </button>
 
       <!-- ── Header ── -->
-      <div class="relative flex-shrink-0 px-8 pt-6 pb-5 border-b border-gray-100">
+      <div class="relative flex-shrink-0 border-b border-gray-100 px-4 pb-4 pt-5 sm:px-8 sm:pb-5 sm:pt-6">
         <img src="/images/csu.png" alt=""
-          class="absolute right-8 top-1/2 -translate-y-1/2 h-20 opacity-[0.06] pointer-events-none select-none" />
+          class="pointer-events-none absolute right-4 top-1/2 hidden h-16 -translate-y-1/2 select-none opacity-[0.06] sm:right-8 sm:block sm:h-20" />
         <div class="flex flex-col items-center">
           <img src="/images/csu_seal.png" alt="" class="w-12 h-12 object-contain mb-2"
             onerror="this.style.display='none'" />
           <p class="text-[10px] font-bold tracking-[0.15em] text-green-700 uppercase">Caraga State University</p>
-          <h1 class="text-xl font-bold text-gray-900">Unit Accomplishment Report</h1>
-          <p class="text-[13px] text-gray-500 tracking-wide mt-0.5">Engineering and Construction Office</p>
+          <h1 class="text-center text-lg font-bold text-gray-900 sm:text-xl">Unit Accomplishment Report</h1>
+          <p class="mt-0.5 text-center text-[12px] tracking-wide text-gray-500 sm:text-[13px]">Engineering and Construction Office</p>
           <p class="text-[11px] text-green-800 font-semibold mt-1">{{ periodLabel }}</p>
         </div>
       </div>
@@ -324,14 +323,14 @@ const periodLabel = computed(() => {
         <table class="w-full text-xs border-collapse">
           <thead class="sticky top-0 z-10">
             <tr class="bg-green-900 text-white text-[9px] uppercase tracking-normal">
-              <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:10%">Unit</th>
-              <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:18%">Tasks</th>
-              <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:20%">Subtasks</th>
+              <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:9%">Unit</th>
+              <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:17%">Tasks</th>
+              <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:18%">Subtasks</th>
               <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:14%">Assigned Personnel</th>
               <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:8%">Start Date</th>
               <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:8%">Due Date</th>
               <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:14%">MOVs</th>
-              <th class="px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:8%">Remarks</th>
+              <th class="px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:12%">Remarks</th>
             </tr>
           </thead>
           <tbody>
@@ -358,9 +357,9 @@ const periodLabel = computed(() => {
 
               <!-- Assigned Personnel -->
               <td class="px-3 py-2 text-center border-r border-gray-200 align-top">
-                <div class="flex flex-col gap-0.5 items-center">
+                <div class="flex flex-col gap-0.5 items-center w-full">
                   <span v-for="person in row.assignedTo" :key="person"
-                    class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-900 text-white leading-tight whitespace-nowrap">
+                    class="inline-block max-w-full px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-900 text-white leading-tight text-center whitespace-normal break-words">
                     {{ person }}
                   </span>
                 </div>
@@ -390,7 +389,7 @@ const periodLabel = computed(() => {
 
               <!-- Remarks (spans task rows) -->
               <td v-if="row.showTask" :rowspan="row.taskRowspan"
-                class="px-3 py-2 text-center text-[10px] text-gray-600 font-medium align-middle">
+                class="px-2 py-2 text-center text-[10px] text-gray-600 font-medium align-middle whitespace-nowrap">
                 {{ row.remarks }}
               </td>
             </tr>
@@ -401,8 +400,8 @@ const periodLabel = computed(() => {
       <!-- ── Generated Notice ── -->
 
       <!-- ── Footer ── -->
-      <div class="flex-shrink-0 border-t border-gray-100 px-10 pt-5 pb-3 bg-white">
-        <div class="flex justify-between items-end mb-3">
+      <div class="flex-shrink-0 border-t border-gray-100 bg-white px-4 pb-3 pt-5 sm:px-10">
+        <div class="mb-3 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div class="text-center w-48">
             <div class="h-8 border-b border-gray-400 mb-1"></div>
             <p class="text-[11px] text-gray-500 font-medium">Prepared by</p>
@@ -522,6 +521,13 @@ const periodLabel = computed(() => {
   #unit-report-printable td a {
     text-decoration: underline !important;
     color: #1a4731 !important;
+  }
+
+  #unit-report-printable th:last-child,
+  #unit-report-printable td:last-child {
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
   }
 
   /* Even rows: light stripe */

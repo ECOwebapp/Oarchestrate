@@ -1,29 +1,18 @@
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 
-// ── Org constants ─────────────────────────────────────────────────────────────
-// unit_name:  1 = Planning and Design Unit
-//             2 = Project Implementation Unit
-//             3 = Office
-// role_type:  1 = Director  |  2 = Unit Head  |  3 = Unit Member  |  4 = Admin
-//
-// Approval flow:
-//   Office (unit_id=3)           → output goes DIRECTLY to Director  (no Unit Head step)
-//   Self-assigned tasks          → output goes DIRECTLY to Director  (no Unit Head step)
-//   Planning / Implementation    → output goes to Unit Head → then Director
-// ─────────────────────────────────────────────────────────────────────────────
 const OFFICE_UNIT_ID = 3
 
 export const taskStore = defineStore('tasks', () => {
   const tasks       = ref([])
   const loading     = ref(false)
-  const nameMap     = ref({})   // userId → full name  (cached)
-  const unitIdMap   = ref({})   // userId → unit_id    (cached)
+  const nameMap     = ref({})
+  const unitIdMap   = ref({})
   const unitMembers = ref([])
 
-  // ── Name resolver (batch, cached) ──────────────────────────────────────────
+  // ── Name resolver ───────────────────────────────────────────────────────────
   const resolveNames = async (uids) => {
     const missing = uids.filter(id => id && !nameMap.value[id])
     if (!missing.length) return
@@ -36,7 +25,7 @@ export const taskStore = defineStore('tasks', () => {
     })
   }
 
-  // ── Unit-ID resolver (batch, cached) ───────────────────────────────────────
+  // ── Unit-ID resolver ────────────────────────────────────────────────────────
   const resolveUnitIds = async (uids) => {
     const missing = uids.filter(id => id && !(id in unitIdMap.value))
     if (!missing.length) return
@@ -45,11 +34,9 @@ export const taskStore = defineStore('tasks', () => {
       .select('user_id, unit_id')
       .in('user_id', missing)
     ;(data || []).forEach(u => { unitIdMap.value[u.user_id] = u.unit_id })
-    // Users with no unit row are stored as null so we don't re-query them
     missing.forEach(id => { if (!(id in unitIdMap.value)) unitIdMap.value[id] = null })
   }
 
-  // ── Small helpers ───────────────────────────────────────────────────────────
   const getAssigneeUnitId = (userId) => unitIdMap.value[userId] ?? null
   const isOfficeUser      = (userId) => getAssigneeUnitId(userId) === OFFICE_UNIT_ID
 
@@ -61,14 +48,14 @@ export const taskStore = defineStore('tasks', () => {
 
   // ── Supabase select fragment ────────────────────────────────────────────────
   const TASK_SELECT = `
-    id, parent_id, assigner, assignee, design,
+    id, parent_id, assigner, assignee, design, source_subtask_id,
     task_profile ( title, description, urgent, revision, task_type,
       task_type_ref:task_type(task_type) ),
     task_approval ( unit_head, director, revision_comment, revised_at ),
     task_duration ( created, deadline ),
     task_output   ( link ),
     subtasks:task!parent_id (
-      id, assignee, assigner,
+      id, assignee, assigner, source_subtask_id,
       task_profile ( title, description, urgent ),
       task_approval ( unit_head, director ),
       task_duration ( deadline ),
@@ -76,7 +63,43 @@ export const taskStore = defineStore('tasks', () => {
     )
   `
 
-  const mapRow = (t) => ({
+  const SPAWNED_SELECT = `
+    id, parent_id, assigner, assignee, design, source_subtask_id,
+    task_profile ( title, description, urgent, revision, task_type,
+      task_type_ref:task_type(task_type) ),
+    task_approval ( unit_head, director, revision_comment, revised_at ),
+    task_duration ( created, deadline ),
+    task_output   ( link )
+  `
+
+  // ── buildSpawnedMap ─────────────────────────────────────────────────────────
+  const buildSpawnedMap = (allRows) => {
+    const map = {}
+    for (const row of (allRows || [])) {
+      if (!row.parent_id && row.source_subtask_id) {
+        map[row.source_subtask_id] = row
+      }
+    }
+    return map
+  }
+
+  // ── fetchSpawnedForSubtasks ─────────────────────────────────────────────────
+  const fetchSpawnedForSubtasks = async (subtaskIds) => {
+    if (!subtaskIds.length) return []
+    const { data, error } = await supabase
+      .from('task')
+      .select(SPAWNED_SELECT)
+      .in('source_subtask_id', subtaskIds)
+      .is('parent_id', null)
+    if (error) {
+      console.error('[fetchSpawnedForSubtasks]', error.message)
+      return []
+    }
+    return data || []
+  }
+
+  // ── mapRow ──────────────────────────────────────────────────────────────────
+  const mapRow = (t, spawnedMap = {}) => ({
     id:              t.id,
     parentId:        t.parent_id,
     assigner:        t.assigner,
@@ -100,35 +123,41 @@ export const taskStore = defineStore('tasks', () => {
     revisedAt:       t.task_approval?.revised_at  || null,
     design:          !!t.design,
     isSelfAssigned:  t.assigner === t.assignee,
-    subtasks: (t.subtasks || []).map(s => ({
-      id:           s.id,
-      name:         s.task_profile?.title       || '',
-      description:  s.task_profile?.description || '',
-      urgent:       !!s.task_profile?.urgent,
-      unitHead:     !!s.task_approval?.unit_head,
-      director:     !!s.task_approval?.director,
-      outputLink:   s.task_output?.link ?? '',
-      assignee:     s.assignee,
-      assigner:     s.assigner,
-      assigneeName: nameMap.value[s.assignee] || '',
-      assignerName: nameMap.value[s.assigner] || '',
-      endDate:      t.task_duration?.deadline  || null,
-    })),
+    sourceSubtaskId: t.source_subtask_id || null,
+    subtasks: (t.subtasks || []).map(s => {
+      const spawned = spawnedMap[s.id] || null
+      return {
+        id:                  s.id,
+        name:                s.task_profile?.title       || '',
+        description:         s.task_profile?.description || '',
+        urgent:              !!s.task_profile?.urgent,
+        unitHead:            spawned ? !!spawned.task_approval?.unit_head : !!s.task_approval?.unit_head,
+        director:            spawned ? !!spawned.task_approval?.director  : !!s.task_approval?.director,
+        outputLink:          spawned ? (spawned.task_output?.link ?? '')  : (s.task_output?.link ?? ''),
+        assignee:            s.assignee,
+        assigner:            s.assigner,
+        assigneeName:        nameMap.value[s.assignee] || '',
+        assignerName:        nameMap.value[s.assigner] || '',
+        endDate:             s.task_duration?.deadline || null,
+        spawnedTaskId:       spawned?.id            || null,
+        spawnedAssignee:     spawned?.assignee       || null,
+        spawnedAssigneeName: spawned ? (nameMap.value[spawned.assignee] || '') : '',
+        isAssigned:          !!spawned,
+      }
+    }),
   })
 
-  // ── FETCH UNIT MEMBERS (AddTask dropdown) ──────────────────────────────────
+  // ── FETCH UNIT MEMBERS ──────────────────────────────────────────────────────
   const fetchUnitMembers = async () => {
     const auth = useAuthStore()
     const activeUnitId = computed(() => {
       const headRole = auth.positions?.find(p => p.pos_id === 4)
       return headRole?.unit_id ?? null
     })
-
     if (!auth.isUnitHead || !activeUnitId.value) return
     try {
       const { data: unitUsers, error } = await supabase
         .from('position_of_members').select('user_id').eq('unit_id', activeUnitId.value)
-
       if (error) { console.error('[taskStore] fetchUnitMembers:', error); return }
 
       const userIds = (unitUsers || []).map(u => u.user_id)
@@ -143,8 +172,8 @@ export const taskStore = defineStore('tasks', () => {
         name:          nameMap.value[userId] || 'Unknown',
         posId:         roleMap[userId] || null,
         posType:       roleMap[userId] === 1 ? 'Director'
-                      : roleMap[userId] === 4 ? 'Unit Head'
-                      : ![1, 4, 11].includes(roleMap[userId]) ? 'Exempted' : 'Unknown',
+                     : roleMap[userId] === 4 ? 'Unit Head'
+                     : ![1, 4, 11].includes(roleMap[userId]) ? 'Exempted' : 'Unknown',
         isCurrentUser: userId === auth.userID,
       }))
     } catch (e) {
@@ -161,7 +190,6 @@ export const taskStore = defineStore('tasks', () => {
 
     try {
       if (auth.isDirector) {
-        // ── Director: ALL root tasks from every user ──────────────────────────
         const { data: rows, error } = await supabase
           .from('task')
           .select(TASK_SELECT)
@@ -169,30 +197,40 @@ export const taskStore = defineStore('tasks', () => {
           .order('id', { ascending: false })
         if (error) throw error
 
-        const allUserIds  = [...new Set((rows || []).flatMap(t => [t.assigner, t.assignee]).filter(Boolean))]
+        const allUserIds  = [...new Set((rows || []).flatMap(t => [
+          t.assigner, t.assignee,
+          ...(t.subtasks || []).map(s => s.assignee),
+          ...(t.subtasks || []).map(s => s.assigner),
+        ]).filter(Boolean))]
         const assigneeIds = [...new Set((rows || []).map(t => t.assignee).filter(Boolean))]
 
+        const allSubtaskIds    = (rows || []).flatMap(t => (t.subtasks || []).map(s => s.id))
+        const extraSpawnedRows = await fetchSpawnedForSubtasks(allSubtaskIds)
+        const extraAssigneeIds = extraSpawnedRows.map(r => r.assignee).filter(Boolean)
+        const allIdsToResolve  = [...new Set([...allUserIds, ...extraAssigneeIds])]
+
         const [, , roleRes] = await Promise.all([
-          resolveNames(allUserIds),
+          resolveNames(allIdsToResolve),
           resolveUnitIds(assigneeIds),
           supabase.from('position_of_members').select('user_id, pos_id').in('user_id', assigneeIds),
         ])
         const roleMap = Object.fromEntries((roleRes.data || []).map(r => [r.user_id, r.pos_id]))
 
-        tasks.value = (rows || []).map(t => ({
-          ...mapRow(t),
+        const spawnedMap = buildSpawnedMap([...(rows || []), ...extraSpawnedRows])
+        const parentRows = (rows || []).filter(r => !r.source_subtask_id)
+
+        tasks.value = parentRows.map(t => ({
+          ...mapRow(t, spawnedMap),
           assigneeRole:     roleMap[t.assignee]          || null,
           assigneeUnitId:   getAssigneeUnitId(t.assignee),
           assigneeIsOffice: isOfficeUser(t.assignee),
         }))
 
       } else if (auth.isUnitHead) {
-        // ── Unit Head: all tasks in their own unit (unit_id 1 or 2 only) ─────
         const activeUnitId = computed(() => {
           const headRole = auth.positions?.find(p => p.pos_id === 4)
           return headRole?.unit_id ?? null
         })
-
         if (!activeUnitId.value) { tasks.value = []; return }
 
         const { data: unitUsers } = await supabase
@@ -208,18 +246,31 @@ export const taskStore = defineStore('tasks', () => {
           .order('id', { ascending: false })
         if (error) throw error
 
-        const allUserIds  = [...new Set((rows || []).flatMap(t => [t.assigner, t.assignee]).filter(Boolean))]
+        const allUserIds  = [...new Set((rows || []).flatMap(t => [
+          t.assigner, t.assignee,
+          ...(t.subtasks || []).map(s => s.assignee),
+          ...(t.subtasks || []).map(s => s.assigner),
+        ]).filter(Boolean))]
         const assigneeIds = [...new Set((rows || []).map(t => t.assignee).filter(Boolean))]
 
+        // Fetch spawned tasks explicitly so reassigned ones are always found
+        const allSubtaskIds    = (rows || []).flatMap(t => (t.subtasks || []).map(s => s.id))
+        const extraSpawnedRows = await fetchSpawnedForSubtasks(allSubtaskIds)
+        const extraAssigneeIds = extraSpawnedRows.map(r => r.assignee).filter(Boolean)
+        const allIdsToResolve  = [...new Set([...allUserIds, ...extraAssigneeIds])]
+
         const [, , roleRes] = await Promise.all([
-          resolveNames(allUserIds),
+          resolveNames(allIdsToResolve),
           resolveUnitIds(assigneeIds),
           supabase.from('position_of_members').select('user_id, pos_id').in('user_id', assigneeIds),
         ])
         const roleMap = Object.fromEntries((roleRes.data || []).map(r => [r.user_id, r.pos_id]))
 
-        tasks.value = (rows || []).map(t => ({
-          ...mapRow(t),
+        const spawnedMap = buildSpawnedMap([...(rows || []), ...extraSpawnedRows])
+        const parentRows = (rows || []).filter(r => !r.source_subtask_id)
+
+        tasks.value = parentRows.map(t => ({
+          ...mapRow(t, spawnedMap),
           assigneeRole:     roleMap[t.assignee]          || null,
           assigneeUnitId:   getAssigneeUnitId(t.assignee),
           assigneeIsOffice: isOfficeUser(t.assignee),
@@ -229,7 +280,6 @@ export const taskStore = defineStore('tasks', () => {
         await fetchUnitMembers()
 
       } else {
-        // ── Unit Member: only their own tasks ────────────────────────────────
         const { data: rows, error } = await supabase
           .from('task')
           .select(TASK_SELECT)
@@ -242,7 +292,7 @@ export const taskStore = defineStore('tasks', () => {
         await Promise.all([resolveNames(allUserIds), resolveUnitIds([uid])])
 
         tasks.value = (rows || []).map(t => ({
-          ...mapRow(t),
+          ...mapRow(t, {}),
           assigneeUnitId:   getAssigneeUnitId(uid),
           assigneeIsOffice: isOfficeUser(uid),
         }))
@@ -357,9 +407,14 @@ export const taskStore = defineStore('tasks', () => {
         .select('id').single()
       if (!subRow) continue
       await Promise.all([
-        supabase.from('task_profile').insert({ id: subRow.id, title: sub.description, description: sub.description, task_type: mainTask.type, urgent: false }),
+        supabase.from('task_profile').insert({
+          id: subRow.id, title: sub.description, description: sub.description,
+          task_type: mainTask.type, urgent: false,
+        }),
         supabase.from('task_approval').insert({ id: subRow.id, unit_head: false, director: false }),
-        supabase.from('task_duration').insert({ id: subRow.id, created: new Date().toISOString().split('T')[0], deadline: mainTask.endDate }),
+        supabase.from('task_duration').insert({
+          id: subRow.id, created: new Date().toISOString().split('T')[0], deadline: mainTask.endDate,
+        }),
         supabase.from('task_output').insert({ id: subRow.id, link: '' }),
       ])
     }
@@ -381,12 +436,11 @@ export const taskStore = defineStore('tasks', () => {
 
     const { data: taskRow } = await supabase
       .from('task').select('assignee, assigner').eq('id', taskId).maybeSingle()
-    const assigneeId = taskRow?.assignee || auth.user.id
-    const assignerId = taskRow?.assigner || auth.user.id
+    const assigneeId     = taskRow?.assignee || auth.user.id
+    const assignerId     = taskRow?.assigner || auth.user.id
     const isSelfAssigned = assigneeId === assignerId
 
     await resolveUnitIds([assigneeId])
-
     if (isSelfAssigned || isOfficeUser(assigneeId)) {
       await supabase.from('task_approval').update({ unit_head: true }).eq('id', taskId)
     }
@@ -439,11 +493,10 @@ export const taskStore = defineStore('tasks', () => {
       comment,
       is_read:   false,
     })
-
     await fetchTasks()
   }
 
-  // ── RESUBMIT after revision ─────────────────────────────────────────────────
+  // ── RESUBMIT ────────────────────────────────────────────────────────────────
   const resubmitTask = async (taskId, newOutputLink) => {
     const auth = useAuthStore()
     const task = tasks.value.find(t => t.id === taskId)
@@ -491,12 +544,11 @@ export const taskStore = defineStore('tasks', () => {
         { task_id: taskId, read_by_director: false, read_by_assignee: true, read_by_unit_head: true },
         { onConflict: 'task_id' }
       )
-
     } else {
       await resolveUnitIds([assigneeId])
       const assigneeIsOffice = isOfficeUser(assigneeId)
-      const assignerData = await supabase.from('task').select('assigner').eq('id', taskId).maybeSingle()
-      const isSelfAssigned = assignerData?.data?.assigner === assigneeId
+      const assignerData     = await supabase.from('task').select('assigner').eq('id', taskId).maybeSingle()
+      const isSelfAssigned   = assignerData?.data?.assigner === assigneeId
 
       if (assigneeIsOffice || isSelfAssigned) {
         await supabase.from('task_approval')
@@ -514,11 +566,10 @@ export const taskStore = defineStore('tasks', () => {
         isSelfAssigned
       )
     }
-
     await fetchTasks()
   }
 
-  // ── FETCH REVISIONS for a task ──────────────────────────────────────────────
+  // ── FETCH REVISIONS ─────────────────────────────────────────────────────────
   const fetchRevisions = async (taskId) => {
     const auth = useAuthStore()
     const { data } = await supabase
@@ -539,17 +590,6 @@ export const taskStore = defineStore('tasks', () => {
   }
 
   // ── DELETE TASKS ────────────────────────────────────────────────────────────
-  // Permission rules:
-  //   Director  → can delete any task
-  //   Unit Head → can only delete tasks they created (assigner === their uid)
-  //
-  // DELETE TASKS
-  // Permission rules:
-  //   Director  - can delete any task
-  //   Unit Head - can only delete tasks they created (assigner === their uid)
-  //
-  // Each child table is deleted sequentially (not in parallel) so FK errors
-  // surface immediately with a clear message instead of being swallowed.
   const deleteTasks = async (taskIds) => {
     const auth = useAuthStore()
     const uid  = auth.user?.id
@@ -558,111 +598,144 @@ export const taskStore = defineStore('tasks', () => {
       throw new Error('You do not have permission to delete tasks.')
     }
 
-    // Authorization filter
-    // Unit Heads may only delete tasks where they are the assigner
     let allowedIds = [...taskIds]
     if (auth.isUnitHead && !auth.isDirector) {
       allowedIds = tasks.value
         .filter(t => taskIds.includes(t.id) && t.assigner === uid)
         .map(t => t.id)
-      if (!allowedIds.length) {
-        throw new Error('You can only delete tasks that you assigned.')
-      }
+      if (!allowedIds.length) throw new Error('You can only delete tasks that you assigned.')
     }
 
-    // Collect subtask IDs so they are cleaned up too
-    const { data: subtaskRows, error: subFetchErr } = await supabase
-      .from('task')
-      .select('id')
-      .in('parent_id', allowedIds)
-    if (subFetchErr) throw new Error('Failed to fetch subtasks: ' + subFetchErr.message)
-
+    const { data: subtaskRows } = await supabase
+      .from('task').select('id').in('parent_id', allowedIds)
     const subtaskIds = (subtaskRows || []).map(r => r.id)
-    const allIds     = [...allowedIds, ...subtaskIds]
 
-    console.log('[deleteTasks] allIds:', allIds)
+    const { data: spawnedRows } = subtaskIds.length
+      ? await supabase.from('task').select('id').in('source_subtask_id', subtaskIds)
+      : { data: [] }
+    const spawnedIds = (spawnedRows || []).map(r => r.id)
 
-    // Helper: delete rows and log result without throwing on empty-result
+    const allIds = [...allowedIds, ...subtaskIds, ...spawnedIds]
+
     const del = async (table, column, ids) => {
       if (!ids.length) return
       const { error } = await supabase.from(table).delete().in(column, ids)
-      if (error) {
-        console.warn('[deleteTasks] ' + table + '.' + column + ':', error.message)
-        // Do not throw here - missing rows are fine, we just log and continue
-      } else {
-        console.log('[deleteTasks] deleted from ' + table)
-      }
+      if (error) console.warn('[deleteTasks]', table, error.message)
     }
 
-    // Delete in strict dependency order to avoid FK violations
-
-    // Step 1: tables referencing task via task_id column
     await del('task_revision',   'task_id', allIds)
     await del('task_poke',       'task_id', allIds)
     await del('comment_section', 'task_id', allIds)
     await del('task_notif',      'task_id', allIds)
+    await del('design_approval', 'id',      allIds)
+    await del('task_output',     'id',      allIds)
+    await del('task_approval',   'id',      allIds)
+    await del('task_duration',   'id',      allIds)
+    await del('task_profile',    'id',      allIds)
 
-    // Step 2: tables referencing task via id column
-    await del('design_approval', 'id', allIds)
-    await del('task_output',     'id', allIds)
-    await del('task_approval',   'id', allIds)
-    await del('task_duration',   'id', allIds)
-    await del('task_profile',    'id', allIds)
-
-    // Step 3: delete subtasks before parents (FK: task.parent_id -> task.id)
-    if (subtaskIds.length) {
-      const { error } = await supabase.from('task').delete().in('id', subtaskIds)
-      if (error) throw new Error('Failed to delete subtasks: ' + error.message)
-      console.log('[deleteTasks] deleted subtasks')
+    if (spawnedIds.length) {
+      await supabase.from('task').delete().in('id', spawnedIds)
     }
+    if (subtaskIds.length) {
+      await supabase.from('task').delete().in('id', subtaskIds)
+    }
+    await supabase.from('task').delete().in('id', allowedIds)
 
-    // Step 4: delete parent tasks
-    const { error: delErr } = await supabase.from('task').delete().in('id', allowedIds)
-    if (delErr) throw new Error('Failed to delete tasks: ' + delErr.message)
-    console.log('[deleteTasks] deleted parent tasks')
-
-    // Step 5: remove from local store so UI updates immediately
     tasks.value = tasks.value.filter(t => !allIds.includes(t.id))
-
     return allowedIds.length
   }
 
-  // -- ASSIGN SUBTASK ----------------------------------------------------------
-  // Unit Head assigns an existing unassigned subtask to a unit member.
-  // Creates a brand-new child task row linked to the parent, pre-filled with
-  // the subtask's title/description, then optionally marks the old placeholder
-  // subtask row as taken (or we simply re-assign the existing row).
-  //
-  // Strategy: update the existing subtask row's assignee + re-insert related
-  // rows so the member sees it as their own task.
-  const assignSubtask = async ({ subtaskId, assigneeId, parentTask }) => {
+  // ── ASSIGN SUBTASK ──────────────────────────────────────────────────────────
+  // spawnedTaskId is passed directly from the subtask object in the modal
+  // (sub.spawnedTaskId). If it exists we do a direct update on that row —
+  // no DB lookup needed, no filter ambiguity.
+  // If it doesn't exist this is the first assignment so we create a new task.
+  // ──────────────────────────────────────────────────────────────────────────
+  const assignSubtask = async ({ subtaskId, spawnedTaskId, assigneeId, parentTask }) => {
     const auth = useAuthStore()
     const uid  = auth.user?.id
 
-    // Re-assign the subtask to the chosen member
-    const { error: taskErr } = await supabase
-      .from('task')
-      .update({ assignee: assigneeId, assigner: uid })
-      .eq('id', subtaskId)
-    if (taskErr) throw new Error('Failed to assign subtask: ' + taskErr.message)
+    const isSelfAssign = String(assigneeId) === String(uid)
 
-    // Ensure task_approval row exists and is reset to pending
-    await supabase.from('task_approval')
-      .upsert({ id: subtaskId, unit_head: false, director: false, revision_comment: null, revised_at: null },
-               { onConflict: 'id' })
+    if (spawnedTaskId) {
+      // ── REASSIGN: direct update on the known spawned task id ─────────────
+      const { error } = await supabase
+        .from('task')
+        .update({ assignee: assigneeId })
+        .eq('id', spawnedTaskId)
+      if (error) throw new Error('Failed to reassign: ' + error.message)
 
-    // Ensure task_output row exists
-    await supabase.from('task_output')
-      .upsert({ id: subtaskId, link: '' }, { onConflict: 'id' })
+    } else {
+      // ── FIRST ASSIGN: fetch subtask details then create spawned task ──────
+      const { data: subtaskRow } = await supabase
+        .from('task')
+        .select(`
+          id,
+          task_profile ( title, description, task_type ),
+          task_duration ( deadline )
+        `)
+        .eq('id', subtaskId)
+        .maybeSingle()
 
-    // Notify the assigned member via task_notif
-    await supabase.from('task_notif')
-      .upsert({ task_id: subtaskId, read_by_assignee: false, read_by_unit_head: true, read_by_director: false },
-               { onConflict: 'task_id' })
+      const { data: newTask, error: newTaskErr } = await supabase
+        .from('task')
+        .insert({
+          assigner:          uid,
+          assignee:          assigneeId,
+          parent_id:         null,
+          source_subtask_id: subtaskId,
+          design:            false,
+        })
+        .select('id')
+        .single()
+      if (newTaskErr) throw new Error('Failed to create task: ' + newTaskErr.message)
 
+      const id       = newTask.id
+      const deadline = subtaskRow?.task_duration?.deadline || parentTask?.endDate || null
+      const type     = subtaskRow?.task_profile?.task_type || parentTask?.typeId  || null
+
+      await Promise.all([
+        supabase.from('task_profile').insert({
+          id,
+          title:       subtaskRow?.task_profile?.title       || '',
+          description: subtaskRow?.task_profile?.description || '',
+          task_type:   type,
+          urgent:      false,
+          revision:    false,
+        }),
+        supabase.from('task_approval').insert({
+          id,
+          // Self-assign: fully approved immediately, no further steps
+          unit_head: isSelfAssign,
+          director:  isSelfAssign,
+        }),
+        supabase.from('task_duration').insert({
+          id,
+          created:  new Date().toISOString().split('T')[0],
+          deadline,
+        }),
+        supabase.from('task_output').insert({ id, link: '' }),
+      ])
+
+      // Notify member on first assign only
+      if (!isSelfAssign) {
+        await supabase.from('task_notif').upsert(
+          { task_id: id, read_by_assignee: false, read_by_unit_head: true, read_by_director: false },
+          { onConflict: 'task_id' }
+        )
+      }
+    }
+
+    // Log every assignment and reassignment
+    await supabase.from('subtask_assignment_log').insert({
+      subtask_id:  subtaskId,
+      assigned_by: uid,
+      assigned_to: assigneeId,
+    })
+
+    await resolveNames([assigneeId])
     await fetchTasks()
   }
-
 
   return {
     tasks, loading, nameMap, unitMembers,

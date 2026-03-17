@@ -204,11 +204,11 @@
     </script>
 
     <template>
-    <div class="flex w-full h-full bg-gray-50 p-4 gap-4 overflow-auto">
+    <div class="flex h-full w-full flex-col gap-4 overflow-auto bg-gray-50 p-3 sm:p-4 lg:flex-row">
 
         <!-- ── Left: Accomplishment Report Generator ── -->
-        <div class="w-52 flex-shrink-0 bg-white rounded-xl shadow-sm p-5 flex flex-col gap-4">
-        <div>
+      <div class="w-full rounded-xl bg-white p-4 shadow-sm sm:p-5 lg:h-full lg:w-64 lg:flex lg:flex-col lg:overflow-hidden">
+        <div class="flex-shrink-0">
             <h2 class="text-base font-extrabold text-gray-900 leading-snug mb-3">
             Accomplishment<br />Report Generator
             </h2>
@@ -218,7 +218,7 @@
             </p>
         </div>
 
-        <div>
+        <div class="flex-1 overflow-y-auto lg:overflow-hidden">
             <p class="text-xs font-semibold text-gray-700 mb-1">Note:</p>
             <ul class="text-xs text-gray-600 space-y-2 list-disc list-outside pl-4">
           <li>Approved = approved by Director, Submitted = waiting Director approval, Pending = not yet submitted, Revision = returned for changes.</li>
@@ -227,9 +227,9 @@
             </ul>
         </div>
 
-        <div class="mt-auto flex flex-col gap-2">
+        <div class="mt-4 flex flex-col gap-2 lg:mt-auto lg:flex-shrink-0">
             <button
-            class="w-full py-2.5 px-3 bg-green-950 text-white text-xs font-semibold rounded-lg hover:bg-green-800 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+          class="flex w-full items-center justify-center gap-2 rounded-lg bg-green-950 px-3 py-3 text-xs font-semibold text-white shadow-sm transition-all cursor-pointer hover:bg-green-800 active:scale-95"
             @click="showUnitPicker = true">
             <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
@@ -237,7 +237,7 @@
             Unit Report
             </button>
             <button
-            class="w-full py-2.5 px-3 bg-white text-green-950 text-xs font-semibold rounded-lg border-2 border-green-950 hover:bg-green-50 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+            class="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-green-950 bg-white px-3 py-3 text-xs font-semibold text-green-950 shadow-sm transition-all cursor-pointer hover:bg-green-50 active:scale-95"
             @click="showIndividualPicker = true">
             <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
@@ -248,17 +248,17 @@
         </div>
 
         <!-- ── Right: 2×2 Chart Grid ── -->
-        <div class="flex-1 grid grid-cols-2 grid-rows-2 gap-4 min-h-0">
+        <div class="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
 
         <!-- Bar Chart: Completion Rate -->
-        <div class="bg-white rounded-xl shadow-sm p-4 flex flex-col relative">
-            <div class="flex items-center justify-between mb-1">
-              <h3 class="text-xs font-semibold text-gray-700">Completion Rate</h3>
+        <div class="relative flex min-h-[280px] flex-col rounded-xl bg-white p-4 shadow-sm sm:min-h-[320px]">
+            <div class="mb-2 flex items-start justify-between gap-3">
+              <h3 class="text-xs font-semibold text-gray-700 sm:text-sm">Completion Rate</h3>
               <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer" @click="openModal('bar')">
                 <Icons icon="fullscreen" class="w-4 h-4" />
               </button>
             </div>
-            <div class="flex-1 min-h-0">
+            <div class="min-h-0 flex-1 overflow-hidden">
             <svg viewBox="0 0 500 245" class="w-full h-full">
                 <!-- Axes -->
                 <line x1="40" y1="10" x2="40"  y2="200" stroke="#d1d5db" stroke-width="1" />
@@ -283,15 +283,15 @@
         </div>
 
         <!-- Pie Chart: Task Distribution -->
-        <div class="bg-white rounded-xl shadow-sm p-4 flex flex-col relative">
-            <div class="flex items-center justify-between mb-1">
-              <h3 class="text-xs font-semibold text-gray-700">Task Distribution</h3>
+        <div class="relative flex min-h-[280px] flex-col rounded-xl bg-white p-4 shadow-sm sm:min-h-[320px]">
+            <div class="mb-2 flex items-start justify-between gap-3">
+              <h3 class="text-xs font-semibold text-gray-700 sm:text-sm">Task Distribution</h3>
               <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer" @click="openModal('pie')">
                 <Icons icon="fullscreen" class="w-4 h-4" />
               </button>
             </div>
-            <div class="flex-1 flex items-center justify-center gap-6 min-h-0">
-            <svg viewBox="0 0 200 200" class="h-full max-h-52 flex-shrink-0">
+            <div class="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
+            <svg viewBox="0 0 200 200" class="h-full max-h-44 w-full max-w-[220px] flex-shrink-0 sm:max-h-52">
                 <!-- Empty state: gray circle with 0% -->
                 <circle v-if="!pieHasData" cx="100" cy="100" r="80" fill="#e5e7eb" />
                 <text v-if="!pieHasData" x="100" y="107" text-anchor="middle" font-size="14" fill="#9ca3af">0%</text>
@@ -313,8 +313,8 @@
                   </text>
                 </template>
             </svg>
-            <div class="flex flex-col gap-2.5">
-                <div v-for="d in pieData" :key="d.label" class="flex items-center gap-2 text-xs text-gray-700">
+            <div class="flex w-full flex-col gap-2 sm:w-auto sm:gap-2.5">
+              <div v-for="d in pieData" :key="d.label" class="flex items-center gap-2 text-xs text-gray-700 sm:text-sm">
                 <span class="w-3 h-3 rounded-sm flex-shrink-0" :style="{ background: d.color }"></span>
                 {{ d.label }}
                 </div>
@@ -323,14 +323,14 @@
         </div>
 
         <!-- Line Chart: Completed tasks trend monthly -->
-        <div class="bg-white rounded-xl shadow-sm p-4 flex flex-col relative">
-            <div class="flex items-center justify-between mb-1">
-              <h3 class="text-xs font-semibold text-gray-700">Approved tasks trend monthly</h3>
+        <div class="relative flex min-h-[280px] flex-col rounded-xl bg-white p-4 shadow-sm sm:min-h-[320px]">
+            <div class="mb-2 flex items-start justify-between gap-3">
+              <h3 class="text-xs font-semibold text-gray-700 sm:text-sm">Approved tasks trend monthly</h3>
               <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer" @click="openModal('line')">
                 <Icons icon="fullscreen" class="w-4 h-4" />
               </button>
             </div>
-            <div class="flex-1 min-h-0">
+            <div class="min-h-0 flex-1 overflow-hidden">
             <svg viewBox="0 0 500 215" class="w-full h-full">
                 <!-- Axes -->
                 <line x1="35" y1="10"  x2="35"  y2="185" stroke="#d1d5db" stroke-width="1" />
@@ -352,14 +352,14 @@
         </div>
 
             <!-- Area Chart: Submitted, Pending & Revision Monthly Trend -->
-        <div class="bg-white rounded-xl shadow-sm p-4 flex flex-col relative">
-            <div class="flex items-center justify-between mb-1">
-              <h3 class="text-xs font-semibold text-gray-700">Submitted, Pending & Revision Monthly Trend</h3>
+        <div class="relative flex min-h-[280px] flex-col rounded-xl bg-white p-4 shadow-sm sm:min-h-[320px]">
+            <div class="mb-2 flex items-start justify-between gap-3">
+              <h3 class="text-xs font-semibold text-gray-700 sm:text-sm">Submitted, Pending & Revision Monthly Trend</h3>
               <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer" @click="openModal('area')">
                 <Icons icon="fullscreen" class="w-4 h-4" />
               </button>
             </div>
-            <div class="flex-1 min-h-0">
+            <div class="min-h-0 flex-1 overflow-hidden">
             <svg viewBox="0 0 500 200" class="w-full h-full">
                 <!-- Axes -->
                 <line x1="35" y1="10"  x2="35"  y2="175" stroke="#d1d5db" stroke-width="1" />
@@ -385,7 +385,7 @@
             </svg>
             </div>
             <!-- Legend -->
-            <div class="flex gap-4 justify-center flex-wrap text-xs text-gray-700 flex-shrink-0 mt-1 pb-1">
+            <div class="mt-1 flex flex-wrap justify-center gap-3 pb-1 text-xs text-gray-700 sm:gap-4">
             <div v-for="s in areaSeriesData" :key="s.key" class="flex items-center gap-1.5">
                 <span class="w-5 h-2.5 rounded-sm flex-shrink-0" :style="{ background: s.color }"></span>
                 {{ s.key }}

@@ -173,8 +173,7 @@ const reportRows = computed(() => {
   <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
     @click.self="emit('close')">
 
-    <div id="indiv-report-printable" class="relative bg-white shadow-2xl rounded-xl flex flex-col overflow-hidden"
-      style="width: 1100px; max-width: 98vw; max-height: 92vh;">
+    <div id="indiv-report-printable" class="relative flex max-h-[92vh] w-[calc(100vw-0.75rem)] max-w-[1100px] flex-col overflow-hidden rounded-xl bg-white shadow-2xl sm:w-[98vw]">
 
       <!-- Close -->
       <button
@@ -183,27 +182,27 @@ const reportRows = computed(() => {
 
       <!-- Print -->
       <button @click="printReport"
-        class="absolute top-3 right-12 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-900 text-white text-[11px] font-semibold hover:bg-green-700 transition-colors cursor-pointer print:hidden">
+        class="absolute right-12 top-3 z-30 hidden items-center gap-1.5 rounded-full bg-green-900 px-3 py-1.5 text-[11px] font-semibold text-white transition-colors cursor-pointer hover:bg-green-700 print:hidden sm:flex">
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Print
       </button>
 
       <!-- ── Header ── -->
-      <div class="relative flex-shrink-0 px-8 pt-6 pb-5 border-b border-gray-100">
+      <div class="relative flex-shrink-0 border-b border-gray-100 px-4 pb-4 pt-5 sm:px-8 sm:pb-5 sm:pt-6">
         <img src="/images/csu.png" alt=""
-          class="absolute right-8 top-1/2 -translate-y-1/2 h-20 opacity-[0.06] pointer-events-none select-none" />
+          class="pointer-events-none absolute right-4 top-1/2 hidden h-16 -translate-y-1/2 select-none opacity-[0.06] sm:right-8 sm:block sm:h-20" />
         <div class="flex flex-col items-center">
           <img src="/images/csu_seal.png" alt="" class="w-12 h-12 object-contain mb-2"
             onerror="this.style.display='none'" />
           <p class="text-[10px] font-bold tracking-[0.15em] text-green-700 uppercase">Caraga State University</p>
-          <h1 class="text-xl font-bold text-gray-900">ACCOMPLISHMENT REPORT</h1>
-          <p class="text-[13px] text-gray-500 tracking-wide mt-0.5">Engineering and Construction Office</p>
+          <h1 class="text-center text-lg font-bold text-gray-900 sm:text-xl">ACCOMPLISHMENT REPORT</h1>
+          <p class="mt-0.5 text-center text-[12px] tracking-wide text-gray-500 sm:text-[13px]">Engineering and Construction Office</p>
           <p class="text-[11px] text-green-800 font-semibold mt-1">{{ periodLabel }}</p>
         </div>
       </div>
 
       <!-- ── Content ── -->
-      <div class="overflow-auto flex-1 px-8 py-6">
+      <div class="flex-1 overflow-auto px-4 py-5 sm:px-8 sm:py-6">
         <p v-if="emptyMessage" class="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
           {{ emptyMessage }}
         </p>
@@ -233,7 +232,7 @@ const reportRows = computed(() => {
         </table>
 
         <!-- Footer -->
-        <div class="mt-8 grid grid-cols-3 gap-4 text-xs text-gray-600">
+        <div class="mt-8 grid grid-cols-1 gap-6 text-xs text-gray-600 sm:grid-cols-3 sm:gap-4">
           <!-- Prepared by -->
           <div>
             <p class="mb-6 text-gray-400 font-semibold uppercase tracking-wide text-[10px]">Prepared by:</p>

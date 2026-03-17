@@ -29,6 +29,13 @@ const orgData = ref({
     ]
   },
 
+  officeStaff: [
+    { name: 'JOKO J. SACO', title: 'PTO I (Technical Writer)' },
+    { name: 'GERLIE MAE O. CABAL', title: 'Technical Assistant (Technical Writer)' },
+    { name: 'JAY CRIZ M. DELO', title: 'Technical Assistant (Liaison Officer)' },
+    { name: 'CORAZON D. CEPEDA', title: 'Office Staff' },
+  ],
+
   piu: {
     head: { name: 'ENGR. MARK CRYSLER F. VALEROS', title: 'Head, Project Implementation Unit' },
     manager: { name: 'AR. KRESIA H. SALES', title: 'Construction Manager' },
@@ -36,12 +43,6 @@ const orgData = ref({
       { name: 'ENGR. NEIL R. GALUSO', title: 'Site Engineer I' },
       { name: 'ENGR. JON BRIAN O. FELICILDA', title: 'Site Engineer I' },
     ],
-    subMembers: [
-      { name: 'JOKO J. SACO', title: 'PTO I (Technical Writer)' },
-      { name: 'GERLIE MAE O. CABAL', title: 'Technical Assistant (Technical Writer)' },
-      { name: 'JAY CRIZ M. DELO', title: 'Technical Assistant (Liaison Officer)' },
-      { name: 'CORAZON D. CEPEDA', title: 'Office Staff' },
-    ]
   }
 })
 
@@ -65,7 +66,6 @@ const OrgCard = {
   props: { name: String, title: String, sz: Object },
   setup(props) {
     const showProfile = ref(false)
-
     return () => [
       h('div', {
         style: {
@@ -104,9 +104,7 @@ const OrgCard = {
             viewBox: '0 0 24 24',
             style: { width: '55%', height: '55%' }
           }, [
-            h('path', {
-              d: 'M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z'
-            })
+            h('path', { d: 'M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z' })
           ])
         ]),
         h('p', {
@@ -145,12 +143,7 @@ const OrgCard = {
 const VLine = {
   setup() {
     return () => h('div', {
-      style: {
-        width: '1px',
-        height: '15px',
-        background: '#000',
-        flexShrink: 0
-      }
+      style: { width: '1px', height: '15px', background: '#000', flexShrink: 0 }
     })
   }
 }
@@ -162,88 +155,37 @@ const ProfileModal = {
   setup(props, { emit }) {
     return () => props.show ? h('div', {
       style: {
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        zIndex: 1000,
-        background: 'white',
-        borderRadius: '12px',
-        padding: '24px',
-        boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
-        minWidth: '280px',
-        textAlign: 'center'
+        position: 'fixed', top: '50%', left: '50%',
+        transform: 'translate(-50%, -50%)', zIndex: 1000,
+        background: 'white', borderRadius: '12px', padding: '24px',
+        boxShadow: '0 10px 40px rgba(0,0,0,0.3)', minWidth: '280px', textAlign: 'center'
       }
     }, [
+      h('div', { style: { fontSize: '12px', color: '#999', marginBottom: '12px' } }, 'Profile (click to view)'),
       h('div', {
         style: {
-          fontSize: '12px',
-          color: '#999',
-          marginBottom: '12px'
-        }
-      }, 'Profile (click to view)'),
-      h('div', {
-        style: {
-          width: '80px',
-          height: '80px',
-          borderRadius: '50%',
-          background: '#D9D9D9',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto 16px',
-          flexShrink: 0
+          width: '80px', height: '80px', borderRadius: '50%', background: '#D9D9D9',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 16px', flexShrink: 0
         }
       }, [
-        h('svg', {
-          fill: '#9ca3af',
-          viewBox: '0 0 24 24',
-          style: { width: '50%', height: '50%' }
-        }, [
-          h('path', {
-            d: 'M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z'
-          })
+        h('svg', { fill: '#9ca3af', viewBox: '0 0 24 24', style: { width: '50%', height: '50%' } }, [
+          h('path', { d: 'M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z' })
         ])
       ]),
-      h('p', {
-        style: {
-          fontSize: '15px',
-          fontWeight: '700',
-          color: '#000',
-          margin: '0 0 4px 0',
-          fontFamily: 'Hammersmith One,sans-serif'
-        }
-      }, props.name),
-      h('p', {
-        style: {
-          fontSize: '13px',
-          color: '#666',
-          margin: '0 0 16px 0',
-          fontFamily: 'Hammersmith One,sans-serif'
-        }
-      }, props.title),
+      h('p', { style: { fontSize: '15px', fontWeight: '700', color: '#000', margin: '0 0 4px 0', fontFamily: 'Hammersmith One,sans-serif' } }, props.name),
+      h('p', { style: { fontSize: '13px', color: '#666', margin: '0 0 16px 0', fontFamily: 'Hammersmith One,sans-serif' } }, props.title),
       h('div', {
         style: {
-          background: '#f0f0f0',
-          borderRadius: '8px',
-          minHeight: '100px',
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#999'
+          background: '#f0f0f0', borderRadius: '8px', minHeight: '100px',
+          marginBottom: '16px', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', color: '#999'
         }
       }, 'Additional information'),
       h('button', {
         style: {
-          background: '#003300',
-          color: 'white',
-          border: 'none',
-          borderRadius: '20px',
-          padding: '10px 24px',
-          fontSize: '14px',
-          fontWeight: 'bold',
-          cursor: 'pointer'
+          background: '#003300', color: 'white', border: 'none', borderRadius: '20px',
+          padding: '10px 24px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer'
         },
         onClick: () => emit('close')
       }, 'Close')
@@ -257,12 +199,7 @@ const ModalBackdrop = {
   emits: ['close'],
   setup(props, { emit }) {
     return () => props.show ? h('div', {
-      style: {
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.5)',
-        zIndex: 999
-      },
+      style: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 999 },
       onClick: () => emit('close')
     }) : null
   }
@@ -272,20 +209,17 @@ const ModalBackdrop = {
 <template>
   <div class="flex-1 min-h-0 overflow-auto relative bg-white">
 
-    <div
-      class="absolute inset-0 pointer-events-none opacity-80 bg-[url('/images/csu-background.png')] bg-cover bg-center">
-    </div>
+    <div class="absolute inset-0 pointer-events-none opacity-80 bg-[url('/images/csu-background.png')] bg-cover bg-center" />
 
     <div v-if="!showManagement" class="relative z-10 flex flex-col items-center py-2 px-2 w-full">
 
+      <!-- Header -->
       <div class="w-full flex justify-between items-center mb-1 px-2">
         <div class="flex items-center gap-3">
-          <img src="../../public/images/csu_seal.png" alt="CSU" class="w-20 h-20 object-contain"
-            onerror="this.style.display='none'" />
+          <img src="../../public/images/csu_seal.png" alt="CSU" class="w-20 h-20 object-contain" onerror="this.style.display='none'" />
           <div class="leading-tight">
             <p class="text-sm font-semibold text-[#1b5e3f] uppercase tracking-widest">Caraga State</p>
-            <p class="text-lg font-black text-[#1b5e3f] uppercase tracking-widest" style="font-family:Georgia,serif;">
-              University</p>
+            <p class="text-lg font-black text-[#1b5e3f] uppercase tracking-widest" style="font-family:Georgia,serif;">University</p>
           </div>
         </div>
         <div v-if="role" class="flex items-center gap-2">
@@ -296,38 +230,46 @@ const ModalBackdrop = {
         </div>
       </div>
 
+      <!-- Top hierarchy (vertical spine) -->
       <OrgCard v-bind="orgData.president" :sz="sz.md" />
       <VLine />
-
       <OrgCard v-bind="orgData.vp" :sz="sz.lg" />
       <VLine />
-
       <OrgCard v-bind="orgData.divChief" :sz="sz.md" />
       <VLine />
-
       <OrgCard v-bind="orgData.director" :sz="sz.md" />
-      <VLine />
 
+      <!-- Horizontal branch line connecting to 3 columns -->
+      <div class="w-full flex flex-col items-center">
+        <div class="w-px h-4 bg-black"></div>
+        <!-- Full-width horizontal rule -->
+        <div class="relative w-full flex items-center justify-between px-2">
+          <!-- Horizontal line spanning all 3 column centers -->
+          <div class="absolute left-[calc(16.66%)] right-[calc(16.66%)] top-0 h-px bg-black"></div>
+          <!-- Three drop lines, one per column -->
+          <div class="flex-1 flex justify-center"><div class="w-px h-4 bg-black mt-0"></div></div>
+          <div class="flex-1 flex justify-center"><div class="w-px h-4 bg-black mt-0"></div></div>
+          <div class="flex-1 flex justify-center"><div class="w-px h-4 bg-black mt-0"></div></div>
+        </div>
+      </div>
+
+      <!-- ── Three-column layout: PDU | Office Staff | PIU ── -->
       <div class="w-full flex items-start gap-2 px-2">
 
+        <!-- LEFT: Planning and Design Unit -->
         <div class="flex-1 flex flex-col items-center min-w-0">
-          <div class="w-full border-t-2 border-black"></div>
-          <VLine />
-
-          <p class="text-[#386327] font-bold uppercase text-center leading-tight mb-2"
+          <p class="text-[#386327] font-bold uppercase text-center leading-tight mb-1 mt-1"
             style="font-family:'Lilita One',serif;font-size:13px;">
             PLANNING AND DESIGN UNIT
           </p>
           <VLine />
           <OrgCard v-bind="orgData.pdu.head" :sz="sz.md" />
           <VLine />
-
           <div class="flex justify-center gap-1 w-full flex-wrap">
             <OrgCard v-for="m in orgData.pdu.members" :key="m.name" v-bind="m" :sz="sz.sm" />
           </div>
           <VLine />
-
-          <div class="flex flex-col items-center gap-0">
+          <div class="flex flex-col items-center">
             <OrgCard v-bind="orgData.pdu.subMembers[0]" :sz="sz.sm" />
             <VLine />
             <div class="flex justify-center gap-1 flex-wrap">
@@ -339,35 +281,41 @@ const ModalBackdrop = {
           </div>
         </div>
 
+        <!-- CENTER: Office Staff -->
         <div class="flex-1 flex flex-col items-center min-w-0">
-          <div class="w-full border-t-2 border-black"></div>
+          <p class="text-[#386327] font-bold uppercase text-center leading-tight mb-1 mt-1"
+            style="font-family:'Lilita One',serif;font-size:13px;">
+            OFFICE STAFF
+          </p>
           <VLine />
+          <!-- Horizontal row of office staff cards -->
+          <div class="flex flex-row justify-center gap-1 w-full flex-wrap">
+            <OrgCard v-for="s in orgData.officeStaff" :key="s.name" v-bind="s" :sz="sz.sm" />
+          </div>
+        </div>
 
-          <p class="text-[#386327] font-bold uppercase text-center leading-tight mb-2"
+        <!-- RIGHT: Project Implementation Unit -->
+        <div class="flex-1 flex flex-col items-center min-w-0">
+          <p class="text-[#386327] font-bold uppercase text-center leading-tight mb-1 mt-1"
             style="font-family:'Lilita One',serif;font-size:13px;">
             PROJECT IMPLEMENTATION UNIT
           </p>
           <VLine />
           <OrgCard v-bind="orgData.piu.head" :sz="sz.md" />
           <VLine />
-
           <OrgCard v-bind="orgData.piu.manager" :sz="sz.sm" />
           <VLine />
-
-          <div class="flex gap-1 flex-wrap">
+          <div class="flex gap-1 flex-wrap justify-center">
             <div v-for="e in orgData.piu.siteEngineers" :key="e.name" class="flex flex-col items-center">
               <VLine />
               <OrgCard v-bind="e" :sz="sz.sm" />
             </div>
           </div>
-          <VLine />
-
-          <div class="flex justify-center gap-1 w-full flex-wrap">
-            <OrgCard v-for="s in orgData.piu.subMembers" :key="s.name" v-bind="s" :sz="sz.sm" />
-          </div>
         </div>
+
       </div>
     </div>
+
     <div v-else class="relative z-10 flex flex-col p-8">
       <button @click="showManagement = false"
         class="mb-6 px-6 py-3 text-lg font-bold text-gray-700 hover:text-gray-900 flex items-center gap-3">
@@ -375,7 +323,6 @@ const ModalBackdrop = {
         Go back
       </button>
       <ManageMembership />
-
     </div>
   </div>
 </template>

@@ -21,12 +21,18 @@ import {
     mdiPaperclip,
     mdiPlus,
     mdiPoll,
-    mdiRefresh
+    mdiRefresh,
+    mdiChevronRight,
+    mdiAccountEdit,
+    mdiContacts,
+    mdiBriefcase,
+    mdiDeleteOutline,
+    mdiPencil
 } from '@mdi/js';
 import { computed } from 'vue';
 
 const props = defineProps(['icon'])
-const nav = {
+const icons = {
     dashboard: mdiMonitorDashboard,
     tasks: mdiFormatListBulleted,
     design: mdiDraw,
@@ -50,11 +56,17 @@ const nav = {
     refresh: mdiRefresh,
     resubmit: mdiRefresh,
     down: mdiMenuDown,
-    spin: mdiLoading
+    spin: mdiLoading,
+    chevronRight: mdiChevronRight,
+    personal: mdiAccountEdit,
+    contact: mdiContacts,
+    work: mdiBriefcase,
+    deleteOutline: mdiDeleteOutline,
+    edit: mdiPencil
 }
 
 // Computed property that maps the nav array based on icon prop input
-const path = computed(() => nav[props.icon] || null);
+const path = computed(() => icons[props.icon] || null);
 </script>
 
 <template>

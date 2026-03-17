@@ -1,9 +1,9 @@
 <script setup>
 import { uploadOutputFile } from '@/lib/uploadOutput'
-import { taskStore } from '@/stores/tasks'
-import { useAuthStore } from '@/stores/useAuthStore'
 import { useMemberStore } from '@/stores/member'
 import { usePosStore } from '@/stores/positions'
+import { taskStore } from '@/stores/tasks'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
 const props = defineProps(['task'])
@@ -13,22 +13,20 @@ const store       = taskStore()
 const memberStore = useMemberStore()
 const posStore    = usePosStore()
 
-// ── State ──────────────────────────────────────────────────
 const outputUrl       = ref(props.task?.outputLink || '')
 const newOutputUrl    = ref('')
 const revisionComment = ref('')
 const submitting      = ref(false)
 const submitError     = ref('')
-const acting          = ref('')        // 'approve' | 'revise' | 'resubmit'
-const tab             = ref('detail')  // 'detail' | 'comments'
+const acting          = ref('')
+const tab             = ref('detail')
 const revisions       = ref([])
 const loadingRevs     = ref(false)
 const chatBottom      = ref(null)
 
-// ── Subtask assignment state (Unit Head only) ─────────────
-const openDropdownId = ref(null)   // subtask id whose member dropdown is open
+const openDropdownId = ref(null)
+const assigningId    = ref(null)
 
-// ── Upload state ──────────────────────────────────────────
 const uploadFile      = ref(null)
 const resubmitFile    = ref(null)
 const uploadProgress  = ref(0)
@@ -63,7 +61,6 @@ const onFilePickResub = (e) => {
   if (f) { resubmitFile.value = f; submitError.value = '' }
 }
 
-// ── Load revision thread ────────────────────────────────────
 const loadRevisions = async () => {
   loadingRevs.value = true
   revisions.value   = await store.fetchRevisions(props.task.id)
@@ -78,7 +75,7 @@ watch(() => props.task?.id, () => {
   revisionComment.value = ''
   submitError.value     = ''
   tab.value             = 'detail'
-  openDropdownId.value = null
+  openDropdownId.value  = null
   loadRevisions()
 })
 
@@ -93,37 +90,39 @@ const unreadCount = computed(() =>
   revisions.value.filter(r => r.to_user === auth.user?.id && !r.is_read).length
 )
 
-// ── Subtask helpers (Unit Head) ─────────────────────────────
-// A subtask is "unassigned" when its assignee is the Unit Head themselves
-// (Director assigned it to the UH as a placeholder) or assignee is null.
-const isSubtaskUnassigned = (sub) => {
-  if (!sub.assignee) return true
-  // If the subtask assignee is the unit head viewing this, it's still unassigned
-  return sub.assignee === auth.userID
-}
+// ── Subtask display helpers ──────────────────────────────────────────────────
+const isSubtaskUnassigned  = (sub) => !sub.isAssigned
+const subtaskDisplayName   = (sub) => sub.spawnedAssigneeName || ''
+const subtaskAssigneeId    = (sub) => sub.spawnedAssignee || null
 
-// ── Unit members for subtask dropdown ────────────────────────
-// Built from posStore.memberPos (position_of_members view) + memberStore.members.
-// Finds the UH's unit_id from auth.positions, then returns all members in that unit
-// excluding the UH themselves. No RPC call needed.
+// ── Unit members for dropdown ────────────────────────────────────────────────
 const unitMembersForAssign = computed(() => {
   if (!auth.isUnitHead) return []
 
-  // Get the UH's unit_id — pos_id 4 = Unit Head (integer in DB)
   const uhPos  = auth.positions.find(p => p.pos_id === 4)
   const unitId = uhPos?.unit_id ?? null
   if (!unitId) return []
 
-  // All position rows for this unit, excluding the UH themselves
+  const uhProfile = memberStore.members.find(mb => String(mb.id) === String(auth.userID))
+  const uhPosName = (posStore.position || []).find(p => p.id === 4)?.name || 'Unit Head'
+  const selfEntry = uhProfile
+    ? {
+        id:             auth.userID,
+        fname:          uhProfile.fname          || '',
+        lname:          uhProfile.lname          || '',
+        middle_initial: uhProfile.middle_initial || '',
+        pos_name:       uhPosName,
+        isSelf:         true,
+      }
+    : null
+
   const unitRows = (posStore.memberPos || []).filter(p =>
     p.unit_id === unitId &&
     String(p.user_id) !== String(auth.userID)
   )
 
-  // Map to member details, then deduplicate by user_id.
-  // A member can have multiple position rows — we keep only their first entry.
   const seen = new Set()
-  return unitRows
+  const members = unitRows
     .map(p => {
       const m = (memberStore.members || []).find(mb => String(mb.id) === String(p.user_id))
       if (!m) return null
@@ -134,6 +133,7 @@ const unitMembersForAssign = computed(() => {
         lname:          m.lname          || '',
         middle_initial: m.middle_initial || '',
         pos_name:       posName,
+        isSelf:         false,
       }
     })
     .filter(Boolean)
@@ -144,16 +144,26 @@ const unitMembersForAssign = computed(() => {
       seen.add(key)
       return true
     })
+
+  return selfEntry ? [selfEntry, ...members] : members
 })
 
-// Toggle the member-picker dropdown for a subtask row
 const toggleDropdown = (sub) => {
   openDropdownId.value = openDropdownId.value === sub.id ? null : sub.id
 }
 
-// Member selected from dropdown -> emit up to Tasks.vue to open AddTask modal
-const pickMemberAndAssign = (sub, member) => {
+const pickMemberAndAssign = async (sub, member) => {
   openDropdownId.value = null
+  assigningId.value    = sub.id
+  try {
+    await store.assignSubtask({
+      subtaskId:  sub.id,
+      assigneeId: member.id,
+      parentTask: props.task,
+    })
+  } finally {
+    assigningId.value = null
+  }
   emit('assignSubtask', {
     subtask:            sub,
     assignedMemberId:   member.id,
@@ -162,7 +172,6 @@ const pickMemberAndAssign = (sub, member) => {
   })
 }
 
-// Close dropdown on outside click
 const handleOutsideClick = (e) => {
   if (!e.target.closest('[data-dropdown]')) openDropdownId.value = null
 }
@@ -170,7 +179,6 @@ const handleOutsideClick = (e) => {
 onMounted(async () => {
   loadRevisions()
   if (auth.isUnitHead) {
-    // Fetch member names and position rows for the unit member dropdown
     await Promise.all([
       memberStore.fetchMembers(),
       posStore.fetchMemberPos(),
@@ -181,7 +189,7 @@ onMounted(async () => {
 })
 onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 
-// ── Capabilities ────────────────────────────────────────────
+// ── Capabilities ─────────────────────────────────────────────────────────────
 const canApproveAsUnitHead = computed(() => {
   if (!auth.isUnitHead)             return false
   if (props.task?.isOwnTask)        return false
@@ -191,7 +199,6 @@ const canApproveAsUnitHead = computed(() => {
   if (props.task?.assigneeIsOffice) return false
   return true
 })
-
 const canApproveAsDirector = computed(() =>
   auth.isDirector && !props.task?.director && !!props.task?.outputLink
 )
@@ -209,9 +216,6 @@ const canRequestRevision = computed(() =>
 const isOverdue = computed(() =>
   props.task?.to && new Date(props.task.to) < new Date() && !props.task?.director
 )
-
-// Unit Head can assign subtasks on tasks assigned TO them by the Director.
-// String-coerce both sides — Supabase UUID vs auth store ID can differ in type.
 const canAssignSubtasks = computed(() =>
   auth.isUnitHead &&
   String(props.task?.assignee) === String(auth.userID) &&
@@ -241,7 +245,7 @@ const fmt = (d) => d
   ? new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
   : '—'
 
-// ── Actions ─────────────────────────────────────────────────
+// ── Actions ───────────────────────────────────────────────────────────────────
 const approve = async () => {
   acting.value = 'approve'
   try {
@@ -319,7 +323,6 @@ const resubmit = async () => {
     <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl
                 max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden">
 
-      <!-- Close -->
       <button
         class="absolute top-3.5 right-4 w-8 h-8 flex items-center justify-center rounded-full
                text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors z-10 text-xl leading-none"
@@ -374,7 +377,6 @@ const resubmit = async () => {
         <!-- DETAILS TAB -->
         <div v-if="tab === 'detail'" class="flex-1 overflow-y-auto px-6 sm:px-8 py-5 space-y-5">
 
-          <!-- Description -->
           <div>
             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Description</p>
             <div class="border border-gray-200 rounded-xl p-4 text-sm text-gray-700 leading-relaxed bg-gray-50">
@@ -382,7 +384,6 @@ const resubmit = async () => {
             </div>
           </div>
 
-          <!-- Meta grid -->
           <div class="grid grid-cols-2 gap-3 text-sm">
             <div>
               <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Assigned by</p>
@@ -416,11 +417,9 @@ const resubmit = async () => {
             </div>
           </div>
 
-          <!-- OUTPUT SECTION -->
+          <!-- OUTPUT -->
           <div>
             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Output</p>
-
-            <!-- Has output link -->
             <div v-if="task.outputLink"
               class="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3 bg-green-50">
               <svg class="w-5 h-5 text-green-700 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -435,7 +434,6 @@ const resubmit = async () => {
               </a>
             </div>
 
-            <!-- Member: first-time submit -->
             <div v-else-if="canSubmitOutput" class="space-y-2.5">
               <input ref="fileInputRef" type="file" class="hidden" @change="onFilePickSubmit" />
               <div v-if="!uploadFile"
@@ -504,7 +502,6 @@ const resubmit = async () => {
               </button>
             </div>
 
-            <!-- Member: resubmit after revision -->
             <div v-else-if="canResubmit" class="space-y-2.5">
               <input ref="resubInputRef" type="file" class="hidden" @change="onFilePickResub" />
               <div v-if="task.revisionComment"
@@ -583,7 +580,6 @@ const resubmit = async () => {
               </button>
             </div>
 
-            <!-- No output yet (viewer, not member) -->
             <div v-else
               class="border border-dashed border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-400 text-center">
               No output submitted yet
@@ -597,147 +593,160 @@ const resubmit = async () => {
                 Sub-tasks
                 <span class="normal-case font-normal">({{ task.subtasks.length }})</span>
               </p>
-              <!-- Unit Head hint -->
               <span v-if="canAssignSubtasks"
                 class="text-[10px] text-green-700 font-semibold bg-green-50 px-2 py-0.5 rounded-full">
-                Click Assign to delegate
+                Click to assign or reassign
               </span>
             </div>
             <div class="space-y-2">
               <div v-for="(sub, i) in task.subtasks" :key="sub.id ?? i"
                 class="flex items-center gap-3 border rounded-xl px-4 py-2.5 bg-white transition-colors"
-                :class="sub.director ? 'border-green-200 bg-green-50/40'
-                  : isSubtaskUnassigned(sub) && canAssignSubtasks ? 'border-amber-200 bg-amber-50/40'
+                :class="isSubtaskUnassigned(sub) && canAssignSubtasks
+                  ? 'border-amber-200 bg-amber-50/40'
                   : 'border-gray-200'">
 
                 <!-- Step number -->
                 <span class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center
                              text-white text-[10px] font-bold"
-                  :class="sub.director ? 'bg-green-700'
-                    : sub.outputLink ? 'bg-amber-500'
-                    : isSubtaskUnassigned(sub) ? 'bg-gray-300'
-                    : 'bg-green-900'">
+                  :class="isSubtaskUnassigned(sub) ? 'bg-gray-300' : 'bg-green-900'">
                   {{ i + 1 }}
                 </span>
 
                 <!-- Subtask info -->
                 <div class="flex-1 min-w-0">
                   <p class="text-sm text-gray-700 leading-snug truncate">{{ sub.name }}</p>
-                  <!-- Assignee pill -->
                   <div class="flex items-center gap-1.5 mt-0.5">
-                    <span v-if="sub.assigneeName && !isSubtaskUnassigned(sub)"
-                      class="text-[10px] text-gray-500 flex items-center gap-1">
-                      <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor">
+                    <span v-if="!isSubtaskUnassigned(sub)"
+                      class="text-[10px] text-green-700 font-semibold bg-green-50 border border-green-200
+                             px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                      <svg class="w-2.5 h-2.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
                       </svg>
-                      {{ sub.assigneeName }}
+                      {{ subtaskDisplayName(sub) }}
                     </span>
-                    <span v-else-if="isSubtaskUnassigned(sub)"
-                      class="text-[10px] text-amber-600 font-semibold">
+                    <span v-else
+                      class="text-[10px] text-amber-600 font-semibold bg-amber-50 border border-amber-200
+                             px-1.5 py-0.5 rounded-full">
                       Unassigned
                     </span>
-                    <!-- Status micro-badge -->
-                    <span v-if="sub.director"
-                      class="text-[10px] text-green-700 font-bold">✓ Approved</span>
-                    <span v-else-if="sub.unitHead"
-                      class="text-[10px] text-amber-600 font-semibold">Pending Director</span>
-                    <span v-else-if="sub.outputLink"
-                      class="text-[10px] text-blue-600 font-semibold">Output submitted</span>
                   </div>
                 </div>
 
                 <!-- Actions -->
                 <div class="flex items-center gap-2 flex-shrink-0">
-                  <!-- View output -->
                   <a v-if="sub.outputLink" :href="sub.outputLink" target="_blank"
                     class="text-xs text-green-800 font-semibold hover:underline flex-shrink-0">
                     ↗ View
                   </a>
 
-                  <!-- Approved check -->
-                  <span v-if="sub.director" class="text-xs text-green-700 font-bold flex-shrink-0">✓</span>
-
-                  <!-- Assign / Reassign dropdown (Unit Head only) -->
+                  <!-- Assign / Reassign dropdown — Unit Head only -->
                   <div
-                    v-if="canAssignSubtasks && !sub.director"
+                    v-if="canAssignSubtasks"
                     class="relative"
                     data-dropdown>
 
-                    <!-- Trigger button -->
-                    <button
-                      @click.stop="toggleDropdown(sub)"
-                      class="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg
-                             transition-all active:scale-95"
-                      :class="isSubtaskUnassigned(sub)
-                        ? 'bg-green-950 text-white hover:bg-green-800'
-                        : 'border-2 border-gray-300 text-gray-500 hover:border-green-800 hover:text-green-800'">
-                      {{ isSubtaskUnassigned(sub) ? 'Assign' : 'Reassign' }}
-                      <svg class="w-3 h-3 transition-transform duration-150"
-                        :class="openDropdownId === sub.id ? 'rotate-180' : ''"
-                        viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M7 10l5 5 5-5z"/>
+                    <!-- Saving spinner -->
+                    <div v-if="assigningId === sub.id"
+                      class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg
+                             border-2 border-gray-200 bg-gray-50 text-gray-400 text-xs font-bold
+                             cursor-not-allowed select-none">
+                      <svg class="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="#d1d5db" stroke-width="3"/>
+                        <path d="M12 2a10 10 0 0 1 10 10" stroke="#6b7280" stroke-width="3" stroke-linecap="round"/>
                       </svg>
-                    </button>
+                      Saving…
+                    </div>
 
-                    <!-- Member dropdown list -->
-                    <Transition
-                      enter-active-class="transition duration-100 ease-out"
-                      enter-from-class="opacity-0 scale-95 -translate-y-1"
-                      enter-to-class="opacity-100 scale-100 translate-y-0"
-                      leave-active-class="transition duration-75 ease-in"
-                      leave-from-class="opacity-100 scale-100 translate-y-0"
-                      leave-to-class="opacity-0 scale-95 -translate-y-1">
-                      <div
-                        v-if="openDropdownId === sub.id"
-                        class="absolute right-0 top-full mt-1 z-30 min-w-[160px] max-w-[220px]
-                               bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-
-                        <!-- Header -->
-                        <div class="px-3 py-2 border-b border-gray-100 bg-gray-50">
-                          <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                            Assign to
-                          </p>
-                        </div>
-
-                        <!-- Empty state -->
-                        <div v-if="!unitMembersForAssign.length"
-                          class="px-3 py-3 text-xs text-gray-400 text-center">
-                          No members found
-                        </div>
-
-                        <!-- Member list -->
-                        <button
-                          v-for="member in unitMembersForAssign"
-                          :key="member.id"
-                          @click.stop="pickMemberAndAssign(sub, member)"
-                          class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left
-                                 hover:bg-green-50 transition-colors group">
-                          <!-- Avatar initial -->
-                          <div class="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center
-                                      text-[11px] font-bold text-white bg-green-900 uppercase">
-                            {{ (member.fname || '?')[0] }}{{ (member.lname || '')[0] }}
+                    <template v-else>
+                      <button
+                        @click.stop="toggleDropdown(sub)"
+                        class="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg
+                               transition-all active:scale-95"
+                        :class="isSubtaskUnassigned(sub)
+                          ? 'bg-green-950 text-white hover:bg-green-800'
+                          : 'border-2 border-green-200 bg-green-50 text-green-800 hover:border-green-400 hover:bg-green-100'">
+                        <template v-if="!isSubtaskUnassigned(sub)">
+                          <div class="w-4 h-4 rounded-full bg-green-900 text-white text-[9px] font-bold
+                                      flex items-center justify-center uppercase flex-shrink-0">
+                            {{ (subtaskDisplayName(sub) || '?')[0] }}
                           </div>
-                          <!-- Full name only -->
-                          <p class="flex-1 min-w-0 text-xs font-semibold text-gray-800 truncate group-hover:text-green-900">
-                            {{ member.fname }}{{ member.middle_initial ? ' ' + member.middle_initial + '.' : '' }} {{ member.lname }}
-                          </p>
-                          <!-- Currently assigned checkmark -->
-                          <svg v-if="sub.assignee === member.id"
-                            class="w-3.5 h-3.5 text-green-700 flex-shrink-0"
-                            viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                          </svg>
-                        </button>
+                          <span class="truncate max-w-[90px]">{{ subtaskDisplayName(sub) }}</span>
+                        </template>
+                        <template v-else>Assign</template>
+                        <svg class="w-3 h-3 flex-shrink-0 transition-transform duration-150"
+                          :class="openDropdownId === sub.id ? 'rotate-180' : ''"
+                          viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M7 10l5 5 5-5z"/>
+                        </svg>
+                      </button>
 
-                      </div>
-                    </Transition>
+                      <!-- Member picker -->
+                      <Transition
+                        enter-active-class="transition duration-100 ease-out"
+                        enter-from-class="opacity-0 scale-95 -translate-y-1"
+                        enter-to-class="opacity-100 scale-100 translate-y-0"
+                        leave-active-class="transition duration-75 ease-in"
+                        leave-from-class="opacity-100 scale-100 translate-y-0"
+                        leave-to-class="opacity-0 scale-95 -translate-y-1">
+                        <div
+                          v-if="openDropdownId === sub.id"
+                          class="absolute right-0 top-full mt-1 z-30 min-w-[180px] max-w-[240px]
+                                 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                          <div class="px-3 py-2 border-b border-gray-100 bg-gray-50">
+                            <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                              {{ isSubtaskUnassigned(sub) ? 'Assign to' : 'Reassign to' }}
+                            </p>
+                            <p v-if="!isSubtaskUnassigned(sub)"
+                              class="text-[10px] text-gray-400 mt-0.5">
+                              Currently: <span class="font-semibold text-gray-600">{{ subtaskDisplayName(sub) }}</span>
+                            </p>
+                          </div>
+                          <div v-if="!unitMembersForAssign.length"
+                            class="px-3 py-3 text-xs text-gray-400 text-center">
+                            No members found
+                          </div>
+                          <button
+                            v-for="member in unitMembersForAssign"
+                            :key="member.id"
+                            @click.stop="pickMemberAndAssign(sub, member)"
+                            class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left
+                                   hover:bg-green-50 transition-colors group">
+                            <div class="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center
+                                        text-[11px] font-bold text-white uppercase"
+                              :class="member.isSelf ? 'bg-green-700' : 'bg-green-900'">
+                              {{ (member.fname || '?')[0] }}{{ (member.lname || '')[0] }}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                              <div class="flex items-center gap-1.5">
+                                <p class="text-xs font-semibold text-gray-800 truncate group-hover:text-green-900">
+                                  {{ member.fname }}{{ member.middle_initial ? ' ' + member.middle_initial + '.' : '' }} {{ member.lname }}
+                                </p>
+                                <span v-if="member.isSelf"
+                                  class="text-[9px] font-bold px-1 py-0.5 rounded bg-green-100 text-green-700 flex-shrink-0">
+                                  You
+                                </span>
+                              </div>
+                              <p v-if="member.pos_name" class="text-[10px] text-gray-400 truncate">
+                                {{ member.pos_name }}
+                              </p>
+                            </div>
+                            <svg
+                              v-if="String(member.id) === String(subtaskAssigneeId(sub))"
+                              class="w-3.5 h-3.5 text-green-600 flex-shrink-0"
+                              viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                            </svg>
+                          </button>
+                        </div>
+                      </Transition>
+                    </template>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- REVISION NOTES (unit head / director) -->
+          <!-- REVISION NOTES -->
           <div v-if="canApproveAsUnitHead || canApproveAsDirector">
             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Revision Notes
@@ -813,7 +822,7 @@ const resubmit = async () => {
             </template>
           </div>
 
-          <!-- Member resubmit bar (sticky at bottom of comments) -->
+          <!-- Resubmit bar -->
           <div v-if="canResubmit"
             class="flex-shrink-0 px-6 sm:px-8 py-3 border-t border-gray-100 bg-orange-50 space-y-2">
             <p class="text-xs font-bold text-orange-700 flex items-center gap-1.5">
@@ -857,7 +866,7 @@ const resubmit = async () => {
         </div>
       </div>
 
-      <!-- FOOTER ACTIONS -->
+      <!-- FOOTER -->
       <div class="flex gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 flex-shrink-0 bg-white">
         <template v-if="canApproveAsUnitHead">
           <button @click="requestRevision"
@@ -915,7 +924,6 @@ const resubmit = async () => {
       </div>
     </div>
   </div>
-
 </template>
 
 <style scoped>
