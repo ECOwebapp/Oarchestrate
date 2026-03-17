@@ -202,7 +202,8 @@ const handleSave = async () => {
     if (contactRes.error) throw contactRes.error
     if (addressRes.error) throw addressRes.error
 
-    await auth.fetchUserData(auth.user)
+    // ── force=true so the navbar avatar refreshes immediately ──
+    await auth.fetchUserData(auth.user, true)
 
     imageFile.value = null  // clear staged file after successful save
     saveSuccess.value = true
@@ -221,10 +222,6 @@ const handleSave = async () => {
 
     <!-- Loading skeleton -->
     <div v-if="loading" class="flex gap-8 items-start animate-pulse">
-      <!-- <div class="w-52 flex flex-col items-center gap-4 pt-4">
-        <div class="w-44 h-44 rounded-full bg-gray-300"></div>
-        <div class="w-32 h-8 rounded-full bg-gray-300"></div>
-      </div> -->
       <div class="flex-1 bg-white rounded-2xl shadow-sm p-8 space-y-5">
         <div class="flex gap-4">
           <div class="flex-1 h-10 rounded-lg bg-gray-200"></div>
@@ -245,14 +242,13 @@ const handleSave = async () => {
     </div>
 
     <!-- Main content -->
-
     <div v-else class="flex flex-row h-full w-[80%] gap-5 items-start bg-white rounded-2xl shadow-sm p-8">
 
       <!-- Navbar -->
       <div class="border-r border-gray-300 h-full">
         <ul class="flex flex-col pr-5">
           <li class="flex items-center p-4 block text-sm font-semibold text-black rounded-2xl hover:cursor-pointer"
-            :class="infoSection === list.toLowerCase() ? 'bg-green-950 text-white' : 'hover:bg-gray-300/80'" 
+            :class="infoSection === list.toLowerCase() ? 'bg-green-950 text-white' : 'hover:bg-gray-300/80'"
             v-for="list in ['Personal', 'Contact', 'Work']" @click="infoSection = list.toLowerCase()">
             <Icons :icon="list.toLocaleLowerCase()" />
             <span class="flex-1 px-2">{{list}} Information</span>
@@ -279,12 +275,12 @@ const handleSave = async () => {
         </Transition>
 
         <!-- Left: Avatar + Upload -->
-        <PersonalInformation 
+        <PersonalInformation
           v-if="infoSection === 'personal'"
-          :image-preview="imagePreview" 
-          :image-file="imageFile" 
-          :handle-image-upload="handleImageUpload" 
-          :trigger-upload="triggerUpload" 
+          :image-preview="imagePreview"
+          :image-file="imageFile"
+          :handle-image-upload="handleImageUpload"
+          :trigger-upload="triggerUpload"
           :file-input="fileInput"
           :upload-error="uploadError"
           :form="form"
@@ -296,8 +292,8 @@ const handleSave = async () => {
         <ContactInformation v-else-if="infoSection === 'contact'" :form="form" :email="auth.email" />
 
         <!-- Unit -->
-        <WorkInformation 
-          v-else-if="infoSection === 'work'" 
+        <WorkInformation
+          v-else-if="infoSection === 'work'"
           :loading-dropdowns="loadingDropdowns"
           />
 

@@ -12,6 +12,7 @@ export const useAuthStore = defineStore('auth', () => {
   const accountStatus = ref(null)
   const loading = ref(false)
   const initialized = ref(false)
+  const avatarUrl = ref(null) // ── NEW ──
 
   // ── Derived ──
   const isLoggedIn = computed(() => !!user.value)
@@ -73,13 +74,14 @@ export const useAuthStore = defineStore('auth', () => {
   })
 
   // ── Fetch user data ──
-  async function fetchUserData(authUser) {
-    if (initialized.value && user.value) return;
+  // force=true bypasses the early-return guard (used after profile save)
+  async function fetchUserData(authUser, force = false) {
+    if (!force && initialized.value && user.value) return
     if (!authUser) return
     loading.value = true
     userID.value = authUser.id
 
-    const [profRes, posRes, statusRes] = await Promise.all([
+    const [profRes, posRes, statusRes, avatarRes] = await Promise.all([
       supabase
         .from('members')
         .select('fname, lname, middle_initial')
@@ -96,15 +98,29 @@ export const useAuthStore = defineStore('auth', () => {
         .select('status_id')
         .eq('user_id', authUser.id)
         .maybeSingle(),
+
+      // ── NEW: fetch avatar_url from user_profile ──
+      supabase
+        .from('user_profile')
+        .select('avatar_url')
+        .eq('user_id', authUser.id)
+        .maybeSingle(),
     ])
 
-    if (profRes.error) console.error('[auth] user_profile:', profRes.error.message)
+    if (profRes.error) console.error('[auth] members:', profRes.error.message)
     if (posRes.error) console.error('[auth] position:', posRes.error.message)
     if (statusRes.error) console.error('[auth] account_status:', statusRes.error.message)
+    if (avatarRes.error) console.error('[auth] avatar:', avatarRes.error.message)
 
     profile.value = profRes.data ?? null
     positions.value = posRes.data || []
     accountStatus.value = statusRes.data?.status_id ?? 1
+
+    // ── NEW: set avatarUrl with cache-buster ──
+    const raw = avatarRes.data?.avatar_url
+    avatarUrl.value = raw
+      ? `${raw.split('?')[0]}?t=${Date.now()}`
+      : null
 
     console.log('isDirector ->', isDirector.value)
     console.log('isUnitHead ->', isUnitHead.value)
@@ -152,12 +168,13 @@ export const useAuthStore = defineStore('auth', () => {
     positions.value = []
     profile.value = null
     accountStatus.value = null
+    avatarUrl.value = null // ── NEW ──
     initialized.value = false
   }
 
   return {
     user, userID, profile, positions, accountStatus, loading, initialized,
-    isLoggedIn, fullName, initials, avatarColor,
+    isLoggedIn, fullName, initials, avatarColor, avatarUrl, // ← avatarUrl added
     isDirector, isUnitHead, isMember, isAdmin, isOffice,
     init, listenToAuthChanges, fetchUserData, logout, $reset,
   }

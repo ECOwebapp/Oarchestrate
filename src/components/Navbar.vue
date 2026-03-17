@@ -119,7 +119,7 @@ const NavInner = defineComponent({
 
           h('div', { class: 'relative z-10 flex flex-col items-center w-full pb-4 px-3' }, [
 
-            // ── Initials avatar ──
+            // ── Avatar: image if available, else initials ──
             h('div', {
               style: `
                 width: ${avatarSize};
@@ -129,6 +129,7 @@ const NavInner = defineComponent({
                 background: ${props.authStore.avatarColor ?? '#14532d'};
                 box-shadow: 0 0 0 3px rgba(255,255,255,0.3), 0 4px 16px rgba(0,0,0,0.4);
                 flex-shrink: 0;
+                overflow: hidden;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -136,19 +137,26 @@ const NavInner = defineComponent({
                             height 0.3s cubic-bezier(.16,1,.3,1),
                             margin-bottom 0.3s ease;
               `,
-            }, [
-              h('span', {
-                style: `
-                  color: white;
-                  font-weight: 700;
-                  font-size: ${avatarFont};
-                  letter-spacing: 0.05em;
-                  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
-                  user-select: none;
-                  transition: font-size 0.3s ease;
-                `,
-              }, props.authStore.initials ?? '?'),
-            ]),
+            },
+              // ── If avatarUrl exists show the image, otherwise show initials ──
+              props.authStore.avatarUrl
+                ? [h('img', {
+                    src: props.authStore.avatarUrl,
+                    alt: 'User avatar',
+                    style: 'width: 100%; height: 100%; object-fit: cover; display: block;',
+                  })]
+                : [h('span', {
+                    style: `
+                      color: white;
+                      font-weight: 700;
+                      font-size: ${avatarFont};
+                      letter-spacing: 0.05em;
+                      text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+                      user-select: none;
+                      transition: font-size 0.3s ease;
+                    `,
+                  }, props.authStore.initials ?? '?')]
+            ),
 
             // Loading skeletons
             props.authStore.loading
