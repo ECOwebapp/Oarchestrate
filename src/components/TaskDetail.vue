@@ -6,6 +6,22 @@ import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
+// MDI icon paths
+const mdiLink         = 'M3.9,12C3.9,10.29 5.29,8.9 7,8.9H11V7H7A5,5 0 0,0 2,12A5,5 0 0,0 7,17H11V15.1H7C5.29,15.1 3.9,13.71 3.9,12M8,13H16V11H8V13M17,7H13V8.9H17C18.71,8.9 20.1,10.29 20.1,12C20.1,13.71 18.71,15.1 17,15.1H13V17H17A5,5 0 0,0 22,12A5,5 0 0,0 17,7Z'
+const mdiCloudUpload  = 'M11 20H6.5Q4.22 20 2.61 18.43 1 16.85 1 14.58 1 12.63 2.17 11.1 3.35 9.57 5.25 9.15 5.88 6.85 7.75 5.43 9.63 4 12 4 14.93 4 16.96 6.04 19 8.07 19 11 20.73 11.2 21.86 12.5 23 13.78 23 15.5 23 17.38 21.69 18.69 20.38 20 18.5 20H13V12.85L14.6 14.4L16 13L12 9L8 13L9.4 14.4L11 12.85Z'
+const mdiFileDocument = 'M13,9H18.5L13,3.5V9M6,2H14L20,8V20A2,2 0 0,1 18,22H6C4.89,22 4,21.1 4,20V4C4,2.89 4.89,2 6,2M15,18V16H6V18H15M18,14V12H6V14H18Z'
+const mdiAlertCircle  = 'M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'
+const mdiAlert        = 'M13 14H11V9H13M13 18H11V16H13M1 21H23L12 2L1 21Z'
+const mdiCheck        = 'M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z'
+const mdiAccount      = 'M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z'
+const mdiCommentOutline = 'M9,22A1,1 0 0,1 8,21V18H4A2,2 0 0,1 2,16V4C2,2.89 2.9,2 4,2H20A2,2 0 0,1 22,4V16A2,2 0 0,1 20,18H13.9L10.2,21.71C10,21.9 9.75,22 9.5,22V22H9M10,16V19.08L13.08,16H20V4H4V16H10Z'
+const mdiPaperclip    = 'M16.5,6V17.5A4,4 0 0,1 12.5,21.5A4,4 0 0,1 8.5,17.5V5A2.5,2.5 0 0,1 11,2.5A2.5,2.5 0 0,1 13.5,5V15.5A1,1 0 0,1 12.5,16.5A1,1 0 0,1 11.5,15.5V6H10V15.5A2.5,2.5 0 0,0 12.5,18A2.5,2.5 0 0,0 15,15.5V5A4,4 0 0,0 11,1A4,4 0 0,0 7,5V17.5A5.5,5.5 0 0,0 12.5,23A5.5,5.5 0 0,0 18,17.5V6H16.5Z'
+const mdiChevronDown  = 'M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z'
+const mdiClose        = 'M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z'
+const mdiCheckCircle  = 'M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z'
+const mdiClockOutline = 'M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z'
+const mdiRefresh      = 'M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z'
+
 const props = defineProps(['task'])
 const emit  = defineEmits(['close', 'refresh', 'assignSubtask'])
 const auth        = useAuthStore()
@@ -224,12 +240,12 @@ const canAssignSubtasks = computed(() =>
 )
 
 const statusLabel = computed(() => {
-  if (props.task?.director)  return { label: 'Approved by Director',    cls: 'bg-green-100 text-green-800',   icon: '✓' }
-  if (props.task?.unitHead)  return { label: 'Pending Director Review', cls: 'bg-amber-100 text-amber-800',   icon: '⏳' }
-  if (props.task?.revision)  return { label: 'Revision Requested',      cls: 'bg-orange-100 text-orange-700', icon: '↩' }
+  if (props.task?.director)  return { label: 'Approved by Director',    cls: 'bg-green-100 text-green-800',   icon: mdiCheckCircle  }
+  if (props.task?.unitHead)  return { label: 'Pending Director Review', cls: 'bg-amber-100 text-amber-800',   icon: mdiClockOutline }
+  if (props.task?.revision)  return { label: 'Revision Requested',      cls: 'bg-orange-100 text-orange-700', icon: mdiRefresh      }
   if (props.task?.assigneeIsOffice && props.task?.outputLink)
-                             return { label: 'Pending Director Review', cls: 'bg-amber-100 text-amber-800',   icon: '⏳' }
-  return                            { label: 'Pending Approval',        cls: 'bg-gray-100 text-gray-600',     icon: '⏳' }
+                             return { label: 'Pending Director Review', cls: 'bg-amber-100 text-amber-800',   icon: mdiClockOutline }
+  return                            { label: 'Pending Approval',        cls: 'bg-gray-100 text-gray-600',     icon: mdiClockOutline }
 })
 
 const badgeClass = (val) => ({
@@ -323,10 +339,15 @@ const resubmit = async () => {
     <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl
                 max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden">
 
+      <!-- Close button -->
       <button
         class="absolute top-3.5 right-4 w-8 h-8 flex items-center justify-center rounded-full
-               text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors z-10 text-xl leading-none"
-        @click="emit('close')">×</button>
+               text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors z-10"
+        @click="emit('close')">
+        <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor">
+          <path :d="mdiClose" />
+        </svg>
+      </button>
 
       <!-- Title bar -->
       <div class="px-6 sm:px-8 pt-7 pb-4 flex-shrink-0">
@@ -343,8 +364,11 @@ const resubmit = async () => {
             class="px-3 py-1 text-xs font-bold rounded-full bg-purple-600 text-white">
             Revision
           </span>
-          <span class="px-3 py-1 text-xs font-bold rounded-full" :class="statusLabel.cls">
-            {{ statusLabel.icon }} {{ statusLabel.label }}
+          <span class="px-3 py-1 text-xs font-bold rounded-full flex items-center gap-1" :class="statusLabel.cls">
+            <svg viewBox="0 0 24 24" class="w-3 h-3 flex-shrink-0" fill="currentColor">
+              <path :d="statusLabel.icon" />
+            </svg>
+            {{ statusLabel.label }}
           </span>
           <span v-if="isOverdue"
             class="px-3 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700">
@@ -388,9 +412,11 @@ const resubmit = async () => {
             <div>
               <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Assigned by</p>
               <div class="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 bg-white">
-                <div class="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center
-                            text-xs font-bold text-green-800 flex-shrink-0">
-                  {{ (task.assignerName || '?').charAt(0).toUpperCase() }}
+                <div class="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                  <!-- MDI Account icon -->
+                  <svg viewBox="0 0 24 24" class="w-4 h-4 text-green-800" fill="currentColor">
+                    <path :d="mdiAccount" />
+                  </svg>
                 </div>
                 <span class="text-xs text-gray-700 truncate">{{ task.assignerName || '—' }}</span>
               </div>
@@ -398,9 +424,11 @@ const resubmit = async () => {
             <div>
               <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Assigned to</p>
               <div class="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 bg-white">
-                <div class="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center
-                            text-xs font-bold text-green-800 flex-shrink-0">
-                  {{ (task.assigneeName || '?').charAt(0).toUpperCase() }}
+                <div class="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                  <!-- MDI Account icon -->
+                  <svg viewBox="0 0 24 24" class="w-4 h-4 text-green-800" fill="currentColor">
+                    <path :d="mdiAccount" />
+                  </svg>
                 </div>
                 <span class="text-xs text-gray-700 truncate">{{ task.assigneeName || '—' }}</span>
               </div>
@@ -422,11 +450,9 @@ const resubmit = async () => {
             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Output</p>
             <div v-if="task.outputLink"
               class="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3 bg-green-50">
-              <svg class="w-5 h-5 text-green-700 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101"/>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M14.828 14.828a4 4 0 015.656 0l4-4a4 4 0 01-5.656-5.656l-1.1 1.1"/>
+              <!-- MDI Link icon -->
+              <svg viewBox="0 0 24 24" class="w-5 h-5 text-green-700 flex-shrink-0" fill="currentColor">
+                <path :d="mdiLink" />
               </svg>
               <a :href="task.outputLink" target="_blank"
                 class="text-sm text-green-800 font-semibold hover:underline truncate flex-1">
@@ -448,10 +474,9 @@ const resubmit = async () => {
                   : 'border-gray-300 bg-gray-50 hover:border-green-700 hover:bg-green-50'">
                 <div class="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
                   :class="dragOverSubmit ? 'bg-green-100' : 'bg-white border border-gray-200'">
-                  <svg class="w-5 h-5" :class="dragOverSubmit ? 'text-green-700' : 'text-gray-400'"
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                  <!-- MDI Cloud Upload icon -->
+                  <svg viewBox="0 0 24 24" class="w-5 h-5" :class="dragOverSubmit ? 'text-green-700' : 'text-gray-400'" fill="currentColor">
+                    <path :d="mdiCloudUpload" />
                   </svg>
                 </div>
                 <p class="text-sm font-semibold text-gray-700">
@@ -461,9 +486,9 @@ const resubmit = async () => {
               </div>
               <div v-else class="flex items-center gap-3 border-2 border-green-200 bg-green-50 rounded-2xl px-4 py-3">
                 <div class="w-9 h-9 rounded-xl bg-white border border-green-200 flex items-center justify-center flex-shrink-0">
-                  <svg class="w-4 h-4 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  <!-- MDI File Document icon -->
+                  <svg viewBox="0 0 24 24" class="w-4 h-4 text-green-700" fill="currentColor">
+                    <path :d="mdiFileDocument" />
                   </svg>
                 </div>
                 <div class="flex-1 min-w-0">
@@ -471,7 +496,12 @@ const resubmit = async () => {
                   <p class="text-xs text-gray-400">{{ formatBytes(uploadFile.size) }}</p>
                 </div>
                 <button @click="uploadFile = null; fileInputRef && (fileInputRef.value = '')"
-                  class="text-gray-300 hover:text-red-400 transition-colors text-xl leading-none flex-shrink-0">×</button>
+                  class="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0">
+                  <!-- MDI Close icon -->
+                  <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor">
+                    <path :d="mdiClose" />
+                  </svg>
+                </button>
               </div>
               <div v-if="submitting" class="space-y-1">
                 <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -483,10 +513,9 @@ const resubmit = async () => {
                 </p>
               </div>
               <p v-if="submitError" class="text-xs text-red-600 font-medium flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd"
-                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                    clip-rule="evenodd"/>
+                <!-- MDI Alert Circle icon -->
+                <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor">
+                  <path :d="mdiAlertCircle" />
                 </svg>
                 {{ submitError }}
               </p>
@@ -506,9 +535,9 @@ const resubmit = async () => {
               <input ref="resubInputRef" type="file" class="hidden" @change="onFilePickResub" />
               <div v-if="task.revisionComment"
                 class="flex items-start gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
-                <svg class="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                <!-- MDI Alert icon -->
+                <svg viewBox="0 0 24 24" class="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" fill="currentColor">
+                  <path :d="mdiAlert" />
                 </svg>
                 <div class="min-w-0">
                   <p class="text-xs font-bold text-orange-700 mb-0.5">What needs to be revised:</p>
@@ -525,9 +554,9 @@ const resubmit = async () => {
                 :class="dragOverResub ? 'border-orange-500 bg-orange-50'
                   : 'border-orange-200 bg-orange-50/50 hover:border-orange-400 hover:bg-orange-50'">
                 <div class="w-10 h-10 rounded-xl bg-white border border-orange-200 flex items-center justify-center">
-                  <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                  <!-- MDI Cloud Upload icon -->
+                  <svg viewBox="0 0 24 24" class="w-5 h-5 text-orange-400" fill="currentColor">
+                    <path :d="mdiCloudUpload" />
                   </svg>
                 </div>
                 <p class="text-sm font-semibold text-orange-700">
@@ -537,9 +566,9 @@ const resubmit = async () => {
               </div>
               <div v-else class="flex items-center gap-3 border-2 border-orange-200 bg-orange-50 rounded-2xl px-4 py-3">
                 <div class="w-9 h-9 rounded-xl bg-white border border-orange-200 flex items-center justify-center flex-shrink-0">
-                  <svg class="w-4 h-4 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  <!-- MDI File Document icon -->
+                  <svg viewBox="0 0 24 24" class="w-4 h-4 text-orange-600" fill="currentColor">
+                    <path :d="mdiFileDocument" />
                   </svg>
                 </div>
                 <div class="flex-1 min-w-0">
@@ -547,7 +576,12 @@ const resubmit = async () => {
                   <p class="text-xs text-gray-400">{{ formatBytes(resubmitFile.size) }}</p>
                 </div>
                 <button @click="resubmitFile = null; resubInputRef && (resubInputRef.value = '')"
-                  class="text-gray-300 hover:text-red-400 transition-colors text-xl leading-none flex-shrink-0">×</button>
+                  class="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0">
+                  <!-- MDI Close icon -->
+                  <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor">
+                    <path :d="mdiClose" />
+                  </svg>
+                </button>
               </div>
               <div v-if="acting === 'resubmit'" class="space-y-1">
                 <div class="h-2 bg-orange-100 rounded-full overflow-hidden">
@@ -559,10 +593,9 @@ const resubmit = async () => {
                 </p>
               </div>
               <p v-if="submitError" class="text-xs text-red-600 font-medium flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd"
-                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                    clip-rule="evenodd"/>
+                <!-- MDI Alert Circle icon -->
+                <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor">
+                  <path :d="mdiAlertCircle" />
                 </svg>
                 {{ submitError }}
               </p>
@@ -619,8 +652,9 @@ const resubmit = async () => {
                     <span v-if="!isSubtaskUnassigned(sub)"
                       class="text-[10px] text-green-700 font-semibold bg-green-50 border border-green-200
                              px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                      <svg class="w-2.5 h-2.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+                      <!-- MDI Account icon -->
+                      <svg viewBox="0 0 24 24" class="w-2.5 h-2.5 flex-shrink-0" fill="currentColor">
+                        <path :d="mdiAccount" />
                       </svg>
                       {{ subtaskDisplayName(sub) }}
                     </span>
@@ -673,10 +707,11 @@ const resubmit = async () => {
                           <span class="truncate max-w-[90px]">{{ subtaskDisplayName(sub) }}</span>
                         </template>
                         <template v-else>Assign</template>
-                        <svg class="w-3 h-3 flex-shrink-0 transition-transform duration-150"
+                        <!-- MDI Chevron Down icon -->
+                        <svg viewBox="0 0 24 24" class="w-3 h-3 flex-shrink-0 transition-transform duration-150"
                           :class="openDropdownId === sub.id ? 'rotate-180' : ''"
-                          viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M7 10l5 5 5-5z"/>
+                          fill="currentColor">
+                          <path :d="mdiChevronDown" />
                         </svg>
                       </button>
 
@@ -730,11 +765,13 @@ const resubmit = async () => {
                                 {{ member.pos_name }}
                               </p>
                             </div>
+                            <!-- MDI Check icon for selected member -->
                             <svg
                               v-if="String(member.id) === String(subtaskAssigneeId(sub))"
+                              viewBox="0 0 24 24"
                               class="w-3.5 h-3.5 text-green-600 flex-shrink-0"
-                              viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                              fill="currentColor">
+                              <path :d="mdiCheck" />
                             </svg>
                           </button>
                         </div>
@@ -776,9 +813,9 @@ const resubmit = async () => {
             </div>
             <div v-else-if="!revisions.length"
               class="flex flex-col items-center justify-center py-14 text-center text-gray-400">
-              <svg class="w-12 h-12 mb-3 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+              <!-- MDI Comment Outline icon -->
+              <svg viewBox="0 0 24 24" class="w-12 h-12 mb-3 opacity-20" fill="currentColor">
+                <path :d="mdiCommentOutline" />
               </svg>
               <p class="text-sm font-semibold">No comments yet</p>
               <p class="text-xs mt-1 max-w-[200px] leading-relaxed">
@@ -834,9 +871,9 @@ const resubmit = async () => {
               <button @click="resubInputRef?.click()"
                 class="flex items-center gap-2 h-9 px-3 rounded-xl border-2 border-orange-200
                        bg-white text-orange-700 text-xs font-bold hover:border-orange-400 transition-colors flex-shrink-0">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                <!-- MDI Paperclip icon -->
+                <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="currentColor">
+                  <path :d="mdiPaperclip" />
                 </svg>
                 Choose file
               </button>
@@ -844,7 +881,12 @@ const resubmit = async () => {
                 {{ resubmitFile ? resubmitFile.name : 'No file chosen' }}
               </span>
               <button v-if="resubmitFile" @click="resubmitFile = null"
-                class="text-gray-300 hover:text-red-400 text-lg leading-none flex-shrink-0 transition-colors">×</button>
+                class="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0">
+                <!-- MDI Close icon -->
+                <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor">
+                  <path :d="mdiClose" />
+                </svg>
+              </button>
             </div>
             <div v-if="acting === 'resubmit'" class="h-1.5 bg-orange-100 rounded-full overflow-hidden">
               <div class="h-full bg-orange-500 rounded-full transition-all duration-300"
@@ -908,8 +950,9 @@ const resubmit = async () => {
         </template>
         <template v-else-if="task.director">
           <div class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-green-50 border border-green-200">
-            <svg class="w-4 h-4 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+            <!-- MDI Check icon -->
+            <svg viewBox="0 0 24 24" class="w-4 h-4 text-green-700" fill="currentColor">
+              <path :d="mdiCheck" />
             </svg>
             <span class="text-sm font-bold text-green-700">Fully Approved</span>
           </div>
