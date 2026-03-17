@@ -291,7 +291,7 @@ const periodLabel = computed(() => {
     @click.self="emit('close')">
 
     <div id="unit-report-printable" class="relative bg-white shadow-2xl rounded-xl flex flex-col overflow-hidden"
-      style="width: 1360px; max-width: 98vw; max-height: 92vh;">
+      style="width: 1420px; max-width: 99vw; max-height: 92vh;">
 
       <!-- Close -->
       <button
@@ -324,14 +324,14 @@ const periodLabel = computed(() => {
         <table class="w-full text-xs border-collapse">
           <thead class="sticky top-0 z-10">
             <tr class="bg-green-900 text-white text-[9px] uppercase tracking-normal">
-              <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:10%">Unit</th>
-              <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:18%">Tasks</th>
-              <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:20%">Subtasks</th>
+              <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:9%">Unit</th>
+              <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:17%">Tasks</th>
+              <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:18%">Subtasks</th>
               <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:14%">Assigned Personnel</th>
               <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:8%">Start Date</th>
               <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:8%">Due Date</th>
               <th class="px-1 py-1.5 font-semibold text-center border-r border-green-700 whitespace-nowrap" style="width:14%">MOVs</th>
-              <th class="px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:8%">Remarks</th>
+              <th class="px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:12%">Remarks</th>
             </tr>
           </thead>
           <tbody>
@@ -358,9 +358,9 @@ const periodLabel = computed(() => {
 
               <!-- Assigned Personnel -->
               <td class="px-3 py-2 text-center border-r border-gray-200 align-top">
-                <div class="flex flex-col gap-0.5 items-center">
+                <div class="flex flex-col gap-0.5 items-center w-full">
                   <span v-for="person in row.assignedTo" :key="person"
-                    class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-900 text-white leading-tight whitespace-nowrap">
+                    class="inline-block max-w-full px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-900 text-white leading-tight text-center whitespace-normal break-words">
                     {{ person }}
                   </span>
                 </div>
@@ -390,7 +390,7 @@ const periodLabel = computed(() => {
 
               <!-- Remarks (spans task rows) -->
               <td v-if="row.showTask" :rowspan="row.taskRowspan"
-                class="px-3 py-2 text-center text-[10px] text-gray-600 font-medium align-middle">
+                class="px-2 py-2 text-center text-[10px] text-gray-600 font-medium align-middle whitespace-nowrap">
                 {{ row.remarks }}
               </td>
             </tr>
@@ -522,6 +522,13 @@ const periodLabel = computed(() => {
   #unit-report-printable td a {
     text-decoration: underline !important;
     color: #1a4731 !important;
+  }
+
+  #unit-report-printable th:last-child,
+  #unit-report-printable td:last-child {
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
   }
 
   /* Even rows: light stripe */
