@@ -39,7 +39,6 @@ onMounted(async () => {
     posStore.fetchMemberPos(),
     posStore.fetchPos(),
   ])
-  // Apply preFill AFTER members are loaded so the <select> can match the value
   if (props.preFill) applyPreFill(props.preFill)
 })
 
@@ -57,83 +56,78 @@ const applyPreFill = (fill) => {
   }
 }
 
-// Watch in case preFill arrives after mount
 watch(() => props.preFill, (fill) => {
-  if (!fill) return
-  if (memberStore.members.length > 0) applyPreFill(fill)
+  if (fill && memberStore.members.length > 0) applyPreFill(fill)
 })
+
+// ── Position ID constants ─────────────────────────────────────────────────────
+const POS_UNIT_HEAD          = 4
+const DIRECTOR_ASSIGNABLE    = new Set(['2', '3', '4', '12']) // Tech Writer, Office Staff, Unit Head, Liaison Officer
+const DIRECTOR_ASSIGNABLE_NR = [2, 3, 4, 12]                 // numeric list for _resolvePosName prefer
+
+// ── Shared helper ─────────────────────────────────────────────────────────────
+// Prefers showing the most relevant qualifying pos name for multi-position users.
+const _resolvePosName = (userId, allPositions, preferIds = null) => {
+  const rows = allPositions.filter(p => String(p.user_id) === String(userId))
+  const preferred = preferIds
+    ? rows.find(p => preferIds.map(String).includes(String(p.pos_id)))
+    : rows[0]
+  const row = preferred || rows[0]
+  return posStore.position.find(p => String(p.id) === String(row?.pos_id))?.name || ''
+}
 
 // ── Assignable members ────────────────────────────────────────────────────────
 const assignableMembers = computed(() => {
   const allMembers   = memberStore.members || []
   const allPositions = posStore.memberPos  || []
-  const POS_UNIT_HEAD = 4
-  const POS_DIRECTOR  = 1
-  const POS_ADMIN     = 11
 
-  // ── Director ──────────────────────────────────────────────────────────────
+  // ── Director: anyone with AT LEAST ONE pos_id in {2, 3, 4, 12} ──────────
   if (auth.isDirector) {
-    if (Number(newTask.value.type) === 1) {
-      const uhIds = new Set(
-        allPositions.filter(p => Number(p.pos_id) === POS_UNIT_HEAD).map(p => p.user_id)
-      )
-      return allMembers
-        .filter(m => uhIds.has(m.id))
-        .map(m => ({ ...m, pos_name: _resolvePosName(m.id, allPositions) }))
-    }
-    const excludedIds = new Set(
+    const allowedIds = new Set(
       allPositions
-        .filter(p => [POS_DIRECTOR, POS_ADMIN].includes(Number(p.pos_id)))
-        .map(p => p.user_id)
+        .filter(p => DIRECTOR_ASSIGNABLE.has(String(p.pos_id)))
+        .map(p => String(p.user_id))
     )
     return allMembers
-      .filter(m => !excludedIds.has(m.id))
-      .map(m => ({ ...m, pos_name: _resolvePosName(m.id, allPositions) }))
+      .filter(m => allowedIds.has(String(m.id)))
+      .map(m => ({ ...m, pos_name: _resolvePosName(m.id, allPositions, DIRECTOR_ASSIGNABLE_NR) }))
   }
 
-  // ── Unit Head ─────────────────────────────────────────────────────────────
+  // ── Unit Head: self first, then same-unit peers ───────────────────────────
   if (auth.isUnitHead) {
-    const uhPos  = auth.positions.find(p => p.pos_id === 4)
-    const unitId = uhPos?.unit_id ?? null
-
-    // Self entry — always first
+    const unitId     = auth.positions.find(p => p.pos_id === POS_UNIT_HEAD)?.unit_id ?? null
     const selfMember = allMembers.find(m => String(m.id) === String(auth.userID))
-    const uhPosName  = posStore.position.find(p => p.id === 4)?.name || 'Unit Head'
-    const selfEntry  = selfMember
-      ? { ...selfMember, pos_name: uhPosName, isSelf: true }
-      : null
+    const uhPosName  = posStore.position.find(p => p.id === POS_UNIT_HEAD)?.name || 'Unit Head'
+    const selfEntry  = selfMember ? { ...selfMember, pos_name: uhPosName, isSelf: true } : null
 
-    // Unit peers (excluding self), deduped
-    const seen = new Set([String(auth.userID)])
-    const peers = (allPositions || [])
-      .filter(p => p.unit_id === unitId && !seen.has(String(p.user_id)))
-      .filter(p => { seen.add(String(p.user_id)); return true })
-      .map(p => {
-        const m = allMembers.find(mb => String(mb.id) === String(p.user_id))
-        if (!m) return null
-        return {
+    const seen  = new Set([String(auth.userID)])
+    // Collect unique user_ids in this unit (excluding self), then map to member
+    const peerUserIds = [...new Set(
+      allPositions
+        .filter(p => p.unit_id === unitId && !seen.has(String(p.user_id)))
+        .map(p => String(p.user_id))
+    )]
+    const peers = peerUserIds
+      .map(uid => {
+        const m = allMembers.find(mb => String(mb.id) === uid)
+        return m ? {
           ...m,
-          pos_name: posStore.position.find(pos => pos.id === p.pos_id)?.name || '',
+          pos_name: _resolvePosName(uid, allPositions),
           isSelf:   false,
-        }
+        } : null
       })
       .filter(Boolean)
 
     return selfEntry ? [selfEntry, ...peers] : peers
   }
 
-  // ── Member → only themselves ──────────────────────────────────────────────
+  // ── Member: only themselves ───────────────────────────────────────────────
   return allMembers
     .filter(m => String(m.id) === String(auth.userID))
     .map(m => ({ ...m, pos_name: '' }))
 })
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const _resolvePosName = (userId, allPositions) => {
-  const posRow = allPositions.find(p => p.user_id === userId)
-  return posStore.position.find(p => p.id === posRow?.pos_id)?.name || ''
-}
-
 const typeOptions = computed(() => {
   if (auth.isMember) return [{ id: 2, label: 'Insertion Task' }]
   return [
