@@ -29,6 +29,8 @@ export const useMemberStore = defineStore('member', () => {
                             fname: m.fname,
                             middle_initial: m.middle_initial,
                             birthdate: m.birthdate,
+                            contact: m.phone,
+                            email: m.email_address,
                             gender: m.gender,
                             status_id: statusRows.find(s => s.user_id === m.user_id)?.status_id,
                         }))

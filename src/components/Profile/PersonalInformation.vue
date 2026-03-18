@@ -13,11 +13,6 @@ const genders = useGenderStore()
 const { gender } = storeToRefs(genders)
 const { userAddress } = storeToRefs(addressStore)
 
-const props = defineProps([
-    'saving',
-    'saveSuccess',
-    'saveError'
-])
 const fileInput = ref(null)
 const showPassword = ref(false)
 const errors = reactive({})
@@ -26,6 +21,10 @@ const imagePreview = ref(null)
 const uploadError = ref('')   // separate error just for avatar
 const imageFile = ref(null)  // holds the actual File object
 const addressInfo = ref(null)
+
+const saving = ref(false)
+const saveSuccess = ref(false)
+const saveError = ref('')
 
 const form = reactive({
     fname: '',
@@ -88,45 +87,7 @@ const handleImageUpload = (e) => {
     reader.readAsDataURL(file)
 }
 
-const triggerUpload = () => fileInput.value?.fileInput.click()
-
-// ── Upload avatar to Supabase Storage ──
-const uploadAvatar = async (userId) => {
-    if (!imageFile.value) {
-        console.log('[avatar] No new image staged, skipping upload.')
-        return null
-    }
-
-    console.log('[avatar] Starting upload for user:', userId)
-
-    const ext = imageFile.value.name.split('.').pop().toLowerCase()
-    const filePath = `${userId}/avatar.${ext}`
-
-    console.log('[avatar] Uploading to path:', filePath)
-
-    const { data, error } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, imageFile.value, {
-            upsert: true,
-            contentType: imageFile.value.type,
-        })
-
-    if (error) {
-        console.error('[avatar] Upload failed:', error.message, error)
-        throw new Error(`Avatar upload failed: ${error.message}`)
-    }
-
-    console.log('[avatar] Upload success:', data)
-
-    const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath)
-
-    // Add timestamp to bust browser cache (same filename = stale cache)
-    const bustUrl = `${urlData.publicUrl}?t=${Date.now()}`
-    console.log('[avatar] Public URL:', bustUrl)
-    return bustUrl
-}
+const triggerUpload = () => fileInput.value.click()
 
 const passwordStrength = computed(() => {
     const p = form.password
@@ -145,9 +106,9 @@ const passwordStrength = computed(() => {
 const clearError = (field) => { delete errors[field] }
 
 const handleSave = async () => {
-    props.saving = true
-    props.saveSuccess = false
-    props.saveError = ''
+    saving.value = true
+    saveSuccess.value = false
+    saveError.value = ''
     uploadError.value = ''
 
     const userId = auth.user?.id
@@ -157,7 +118,7 @@ const handleSave = async () => {
     console.log('[save] imageFile staged?', !!imageFile.value)
 
     try {
-        const avatarUrl = await uploadAvatar(userId)
+        const avatarUrl = await auth.uploadAvatar(userId, imageFile.value)
 
         const profilePayload = Object.fromEntries(
             Object.entries({
@@ -170,7 +131,12 @@ const handleSave = async () => {
             }).filter(([_, value]) => value !== null && value !== '' && !Number.isNaN(value))
         );
 
-        if (addressInfo.value) {
+        if(profilePayload) {
+            const response = await auth.editProfile(profilePayload)
+            console.log('Profile: ', response)
+        }
+
+        if(addressInfo.value) {
             const addressPayload = {
                 region_code: form.regionCode,
                 province_code: form.provinceCode,
@@ -183,19 +149,16 @@ const handleSave = async () => {
             console.log('Address: ', response)
         }
 
-        const response = await auth.editProfile(profilePayload)
-        console.log('Profile: ', response)
-
         await auth.fetchUserData(auth.user)
 
         imageFile.value = null  // clear staged file after successful save
-        props.saveSuccess = true
-        setTimeout(() => props.saveSuccess = false, 3000)
+        saveSuccess.value = true
+        setTimeout(() => saveSuccess.value = false, 3000)
     } catch (err) {
         console.error('[save] Error:', err)
         saveError.value = err.message || 'Something went wrong.'
     } finally {
-        props.saving = false
+        saving.value = false
     }
 }
 
@@ -348,13 +311,13 @@ const handleSave = async () => {
     </div>
     <!-- Action Buttons -->
     <div class="flex justify-end gap-3">
-        <button @click="auth.fetchUserData(auth.user)" :disabled="props.saving"
+        <button @click="auth.fetchUserData(auth.user)" :disabled="saving"
             class="px-6 py-2 rounded-full border-2 border-red-800 text-red-800 font-semibold text-sm hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50">
             Reset
         </button>
-        <button @click="handleSave" :disabled="props.saving"
+        <button @click="handleSave" :disabled="saving"
             class="px-6 py-2 rounded-full bg-green-900 text-white font-semibold text-sm hover:bg-green-800 transition-colors cursor-pointer disabled:opacity-60 flex items-center gap-2">
-            <svg v-if="props.saving" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+            <svg v-if="saving" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
             </svg>

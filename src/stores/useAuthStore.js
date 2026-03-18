@@ -174,6 +174,44 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // ── Upload avatar to Supabase Storage ──
+const uploadAvatar = async (userId, imageFile) => {
+    if (!imageFile) {
+        console.log('[avatar] No new image staged, skipping upload.')
+        return null
+    }
+
+    console.log('[avatar] Starting upload for user:', userId)
+
+    const ext = imageFile.name.split('.').pop().toLowerCase()
+    const filePath = `${userId}/avatar.${ext}`
+
+    console.log('[avatar] Uploading to path:', filePath)
+
+    const { data, error } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, imageFile, {
+            upsert: true,
+            contentType: imageFile.type,
+        })
+
+    if (error) {
+        console.error('[avatar] Upload failed:', error.message, error)
+        throw new Error(`Avatar upload failed: ${error.message}`)
+    }
+
+    console.log('[avatar] Upload success:', data)
+
+    const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath)
+
+    // Add timestamp to bust browser cache (same filename = stale cache)
+    const bustUrl = `${urlData.publicUrl}?t=${Date.now()}`
+    console.log('[avatar] Public URL:', bustUrl)
+    return bustUrl
+}
+
   async function logout(router) {
     await supabase.auth.signOut()
     $reset()
@@ -194,6 +232,6 @@ export const useAuthStore = defineStore('auth', () => {
     user, userID, profile, positions, accountStatus, loading, initialized,
     isLoggedIn, fullName, initials, avatarColor, avatarUrl, // ← avatarUrl added
     isDirector, isUnitHead, isMember, isAdmin, isOffice,
-    init, listenToAuthChanges, fetchUserData, logout, $reset, editProfile
+    init, listenToAuthChanges, fetchUserData, logout, $reset, editProfile, uploadAvatar
   }
 })

@@ -90,20 +90,27 @@ const handleSave = async () => {
 <template>
     <div class="flex flex-col gap-5">
         <table class="flex-1">
-            <tr class="bg-green-900 text-white">
-                <th v-for="head in ['Position', 'Unit', 'Action']" class="text-xl text-start px-5 py-2">{{ head }}</th>
-            </tr>
-            <tr v-for="(pos, index) in (auth.positions || [])" class="">
-                <td class="py-4 px-5">{{ pos.pos_name }}</td>
-                <td class="px-5">{{ pos.unit_name }}</td>
-                <td v-if="![1, 4].includes(pos.pos_id)" class="flex flex-row items-center gap-3 py-4 px-5">
-                    <Icons :icon="'edit'" class="hover:cursor-pointer" @click="openEditModal(pos)" />
-                    <Icons :icon="'deleteOutline'" class="text-red-700 hover:cursor-pointer"
-                        @click="openDeleteModal(pos)" />
-                </td>
-            </tr>
+            <thead>
+                <tr class="bg-green-900 text-white">
+                    <th v-for="head in ['Position', 'Unit', 'Action']" class="text-xl text-start px-5 py-2">{{ head }}
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="(pos, index) in (auth.positions || [])" class="">
+                    <td class="py-4 px-5">{{ pos.pos_name }}</td>
+                    <td class="px-5">{{ pos.unit_name }}</td>
+                    <td v-if="![1, 4].includes(pos.pos_id)" class="flex flex-row items-center gap-3 py-4 px-5">
+                        <Icons :icon="'edit'" class="hover:cursor-pointer" @click="openEditModal(pos)" />
+                        <Icons :icon="'deleteOutline'" class="text-red-700 hover:cursor-pointer"
+                            @click="openDeleteModal(pos)" />
+                    </td>
+                </tr>
+            </tbody>
+
         </table>
-        <div v-if="!auth.isDirector" class="self-center flex gap-3 bg-green-950 mt-5 px-4 py-3 rounded-full text-white hover:cursor-pointer"
+        <div v-if="!auth.isDirector"
+            class="self-center flex gap-3 bg-green-950 mt-5 px-4 py-3 rounded-full text-white hover:cursor-pointer"
             @click="openAddModal">
             <Icons :icon="'add'" />
             Add Position
@@ -114,7 +121,7 @@ const handleSave = async () => {
 
                 <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden p-6 flex flex-col gap-4">
 
-                    <h2 class="text-xl font-bold border-b pb-2" 
+                    <h2 class="text-xl font-bold border-b pb-2"
                         :class="modalMode === 'delete' ? 'text-red-900' : 'text-green-900'">
                         {{
                             modalMode === 'add' ?

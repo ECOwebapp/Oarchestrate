@@ -15,9 +15,7 @@ const auth = useAuthStore()
 
 // ── State ──
 const loading = ref(true)
-const saving = ref(false)
-const saveSuccess = ref(false)
-const saveError = ref('')
+
 const loadingDropdowns = ref(true)
 const units = useUnitStore()
 const addressStore = useAddressStore()
@@ -52,58 +50,58 @@ onMounted(async () => {
 
 
 
-// ── Save ──
-const handleSave = async () => {
-  saving.value = true
-  saveSuccess.value = false
-  saveError.value = ''
-  uploadError.value = ''
+// // ── Save ──
+// const handleSave = async () => {
+//   saving.value = true
+//   saveSuccess.value = false
+//   saveError.value = ''
+//   uploadError.value = ''
 
-  const userId = auth.user?.id
-  if (!userId) { saving.value = false; return }
+//   const userId = auth.user?.id
+//   if (!userId) { saving.value = false; return }
 
-  console.log('[save] Starting save for user:', userId)
-  console.log('[save] imageFile staged?', !!imageFile.value)
+//   console.log('[save] Starting save for user:', userId)
+//   console.log('[save] imageFile staged?', !!imageFile.value)
 
-  try {
-    const avatarUrl = await uploadAvatar(userId)
+//   try {
+//     const avatarUrl = await uploadAvatar(userId)
 
-    const profilePayload = {
-      fname: form.fname.trim(),
-      lname: form.lname.trim(),
-      middle_initial: form.middle_initial.trim() || null,
-      birthdate: form.birthdate || null,
-      gender_id: form.genderId ? parseInt(form.genderId) : null,
-    }
+//     const profilePayload = {
+//       fname: form.fname.trim(),
+//       lname: form.lname.trim(),
+//       middle_initial: form.middle_initial.trim() || null,
+//       birthdate: form.birthdate || null,
+//       gender_id: form.genderId ? parseInt(form.genderId) : null,
+//     }
 
-    if (avatarUrl) {
-      profilePayload.avatar_url = avatarUrl
-      console.log('[save] avatar_url will be saved:', avatarUrl)
-    }
+//     if (avatarUrl) {
+//       profilePayload.avatar_url = avatarUrl
+//       console.log('[save] avatar_url will be saved:', avatarUrl)
+//     }
 
-    const [profRes, contactRes, addressRes] = await Promise.all([
-      supabase.from('user_profile').update(profilePayload).eq('user_id', userId),
-      supabase.from('contact').upsert({ user_id: userId, phone: form.phone.trim() }),
-      supabase.from('address').upsert({ user_id: userId, address: form.address.trim() }),
-    ])
+//     const [profRes, contactRes, addressRes] = await Promise.all([
+//       supabase.from('user_profile').update(profilePayload).eq('user_id', userId),
+//       supabase.from('contact').upsert({ user_id: userId, phone: form.phone.trim() }),
+//       supabase.from('address').upsert({ user_id: userId, address: form.address.trim() }),
+//     ])
 
-    if (profRes.error) throw profRes.error
-    if (contactRes.error) throw contactRes.error
-    if (addressRes.error) throw addressRes.error
+//     if (profRes.error) throw profRes.error
+//     if (contactRes.error) throw contactRes.error
+//     if (addressRes.error) throw addressRes.error
 
-    // ── force=true so the navbar avatar refreshes immediately ──
-    await auth.fetchUserData(auth.user, true)
+//     // ── force=true so the navbar avatar refreshes immediately ──
+//     await auth.fetchUserData(auth.user, true)
 
-    imageFile.value = null  // clear staged file after successful save
-    saveSuccess.value = true
-    setTimeout(() => saveSuccess.value = false, 3000)
-  } catch (err) {
-    console.error('[save] Error:', err)
-    saveError.value = err.message || 'Something went wrong.'
-  } finally {
-    saving.value = false
-  }
-}
+//     imageFile.value = null  // clear staged file after successful save
+//     saveSuccess.value = true
+//     setTimeout(() => saveSuccess.value = false, 3000)
+//   } catch (err) {
+//     console.error('[save] Error:', err)
+//     saveError.value = err.message || 'Something went wrong.'
+//   } finally {
+//     saving.value = false
+//   }
+// }
 </script>
 
 <template>
@@ -164,10 +162,10 @@ const handleSave = async () => {
         </Transition>
 
         <!-- Left: Avatar + Upload -->
-        <PersonalInformation v-if="infoSection === 'personal'" :saving="saving" :save-error="saveError" :save-success="saveSuccess" />
+        <PersonalInformation v-if="infoSection === 'personal'" />
 
         <!-- Contact Number, Email, Gender -->
-        <ContactInformation v-else-if="infoSection === 'contact'" :form="form" :email="auth.email" />
+        <ContactInformation v-else-if="infoSection === 'contact'" />
 
         <!-- Unit -->
         <WorkInformation v-else-if="infoSection === 'work'" :loading-dropdowns="loadingDropdowns" />
