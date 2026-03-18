@@ -21,8 +21,15 @@ onMounted(async () => {
         contact.fetchPhoneNumbers()
     ])
 
-    const userPhones = contact.phone.filter(p => p.user_id === auth.user.id)
-    const userEmail = contact.emails.filter(e => e.user_id === auth.user.id)
+    const userId = auth.user?.id || auth.userID
+    if (!userId) {
+        form.value.phone = ['']
+        form.value.email_address = ['']
+        return
+    }
+
+    const userPhones = contact.phone.filter(p => p.user_id === userId)
+    const userEmail = contact.emails.filter(e => e.user_id === userId)
     // Extract just the strings into the form array
     form.value.phone = userPhones.map(p => p.phone)
     form.value.email_address = userEmail.map(e => e.email_address)

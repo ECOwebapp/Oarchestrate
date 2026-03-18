@@ -105,11 +105,13 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex justify-center h-full overflow-y-auto bg-gray-100 px-10 py-8">
+  <div class="relative flex h-full min-h-0 justify-center overflow-y-auto bg-slate-100 px-3 py-4 sm:px-6 sm:py-6 lg:px-10 lg:py-8">
+
+    <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(6,95,70,0.1),_transparent_38%),radial-gradient(circle_at_bottom_right,_rgba(20,83,45,0.08),_transparent_45%)]"></div>
 
     <!-- Loading skeleton -->
-    <div v-if="loading" class="flex gap-8 items-start animate-pulse">
-      <div class="flex-1 bg-white rounded-2xl shadow-sm p-8 space-y-5">
+    <div v-if="loading" class="relative z-10 flex w-full max-w-[1200px] gap-6 items-start animate-pulse">
+      <div class="flex-1 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8 space-y-5">
         <div class="flex gap-4">
           <div class="flex-1 h-10 rounded-lg bg-gray-200"></div>
           <div class="flex-1 h-10 rounded-lg bg-gray-200"></div>
@@ -129,13 +131,17 @@ onMounted(async () => {
     </div>
 
     <!-- Main content -->
-    <div v-else class="flex flex-row h-full w-[80%] gap-5 items-start bg-white rounded-2xl shadow-sm p-8">
+    <div v-else class="relative z-10 flex w-full max-w-[1220px] flex-col gap-5 overflow-hidden rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-sm sm:p-6 lg:min-h-0 lg:flex-row lg:p-8">
 
       <!-- Navbar -->
-      <div class="border-r border-gray-300 h-full">
-        <ul class="flex flex-col pr-5">
-          <li class="flex items-center p-4 block text-sm font-semibold text-black rounded-2xl hover:cursor-pointer"
-            :class="infoSection === list.toLowerCase() ? 'bg-green-950 text-white' : 'hover:bg-gray-300/80'"
+      <div class="w-full lg:w-72 lg:flex-shrink-0">
+        <div class="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 text-xs text-emerald-900">
+          <p class="font-bold tracking-wide uppercase">Profile Workspace</p>
+          <p class="mt-1 text-emerald-800">Manage personal, contact, and work details in one place.</p>
+        </div>
+        <ul class="flex w-full flex-col gap-2 border-b border-slate-200 pb-4 lg:border-b-0 lg:border-r lg:pr-5 lg:pb-0">
+          <li class="flex items-center p-4 block text-sm font-semibold rounded-2xl transition-colors hover:cursor-pointer"
+            :class="infoSection === list.toLowerCase() ? 'bg-green-950 text-white shadow-sm' : 'text-slate-800 hover:bg-slate-100'"
             v-for="list in ['Personal', 'Contact', 'Work']" @click="infoSection = list.toLowerCase()">
             <Icons :icon="list.toLocaleLowerCase()" />
             <span class="flex-1 px-2">{{ list }} Information</span>
@@ -144,7 +150,7 @@ onMounted(async () => {
         </ul>
       </div>
 
-      <div class="flex-1">
+      <div class="min-w-0 flex-1 overflow-x-hidden">
         <!-- Feedback banners -->
         <Transition name="fade">
           <div v-if="saveSuccess"
