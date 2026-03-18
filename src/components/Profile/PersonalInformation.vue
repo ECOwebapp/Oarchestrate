@@ -165,12 +165,12 @@ const handleSave = async () => {
 </script>
 
 <template>
-    <div class="flex flex-row gap-5">
-        <div class="flex flex-col items-center gap-5 w-100 flex-shrink-0 pt-4">
-            <div class="w-70 h-70 rounded-full overflow-hidden border-4 border-gray-300 bg-gray-200 relative">
+    <div class="grid min-w-0 grid-cols-1 gap-6 overflow-x-hidden xl:grid-cols-[300px_minmax(0,1fr)]">
+        <div class="flex flex-col items-center gap-4 pt-2">
+            <div class="relative h-44 w-44 overflow-hidden rounded-full border-4 border-gray-300 bg-gray-200 sm:h-56 sm:w-56 lg:h-64 lg:w-64">
                 <img v-if="imagePreview" :src="imagePreview" alt="Profile" class="w-full h-full object-cover" />
                 <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
-                    <Icons icon="profile" class="w-20 h-20 text-gray-400" />
+                    <Icons icon="profile" class="h-16 w-16 text-gray-400 sm:h-20 sm:w-20" />
                 </div>
                 <!-- Badge shown when a new image is staged but not yet saved -->
                 <div v-if="imageFile"
@@ -182,7 +182,7 @@ const handleSave = async () => {
             <input ref="fileInput" type="file" accept=".jpg,.jpeg,.png,.webp" class="hidden"
                 @change="handleImageUpload" />
             <button
-                class="px-5 py-1.5 rounded-full border-2 border-gray-800 text-gray-800 text-sm font-semibold hover:bg-gray-200 transition-colors cursor-pointer"
+                class="w-full max-w-[220px] rounded-full border-2 border-gray-800 px-5 py-2 text-sm font-semibold text-gray-800 transition-colors hover:bg-gray-200 cursor-pointer"
                 @click="triggerUpload">
                 Upload Image
             </button>
@@ -190,27 +190,27 @@ const handleSave = async () => {
             <!-- Upload validation error -->
             <p v-if="uploadError" class="text-red-500 text-xs text-center">{{ uploadError }}</p>
 
-            <ul class="text-red-500 text-xs space-y-1 list-disc list-inside leading-snug">
+            <ul class="w-full max-w-[260px] list-inside list-disc space-y-1 text-xs leading-snug text-red-500">
                 <li>Max file size is 2 MB</li>
                 <li>Only JPG, PNG, and WEBP files are accepted</li>
                 <li>Image must not violate the rules of the institution</li>
             </ul>
         </div>
 
-        <div class="flex-1">
+        <div class="min-w-0 overflow-x-hidden pr-3 sm:pr-5 lg:pr-6">
             <!-- Last Name, First Name, M.I. -->
-            <div class="flex gap-4 mb-5">
-                <div class="flex-1">
+            <div class="mb-5 grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_92px]">
+                <div class="min-w-0">
                     <label class="block text-sm font-semibold text-gray-700 mb-1">Last name</label>
                     <input v-model="form.lname" type="text" placeholder="Last name"
                         class="w-full border border-gray-300 rounded-lg p-4 text-sm focus:outline-none focus:ring-1 focus:ring-green-700" />
                 </div>
-                <div class="flex-1">
+                <div class="min-w-0">
                     <label class="block text-sm font-semibold text-gray-700 mb-1">First name</label>
                     <input v-model="form.fname" type="text" placeholder="First name"
                         class="w-full border border-gray-300 rounded-lg p-4 text-sm focus:outline-none focus:ring-1 focus:ring-green-700" />
                 </div>
-                <div class="w-20">
+                <div class="min-w-0">
                     <label class="block text-sm font-semibold text-gray-700 mb-1">M.I.</label>
                     <input v-model="form.middle_initial" type="text" maxlength="3" placeholder="M.I."
                         class="w-full border border-gray-300 rounded-lg p-4 text-sm focus:outline-none focus:ring-1 focus:ring-green-700" />
@@ -223,13 +223,13 @@ const handleSave = async () => {
                     <AddressEdit :form="form" :errors="errors" :clear-error="clearError" ref="addressInfo" />
                 </div>
 
-                <div class="flex flex-row gap-4">
-                    <div class="flex-1">
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div class="min-w-0">
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Birthdate</label>
                         <input v-model="form.birthdate" type="date"
                             class="w-full border border-gray-300 rounded-lg p-4 text-sm focus:outline-none focus:ring-1 focus:ring-green-700" />
                     </div>
-                    <div class="flex-1">
+                    <div class="min-w-0">
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Gender</label>
                         <select v-model="form.genderId"
                             class="w-full border border-gray-300 rounded-lg p-4 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-700 bg-white cursor-pointer">
@@ -240,10 +240,10 @@ const handleSave = async () => {
                 </div>
             </div>
 
-            <div class="flex gap-4 mb-5">
+            <div class="mb-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
 
                 <!-- Password -->
-                <div class="flex-1">
+                <div class="min-w-0">
                     <p class="block text-sm font-semibold text-gray-700 mb-1">Change Password</p>
                     <div class="relative">
                         <input v-model="form.password" :type="showPassword ? 'text' : 'password'" placeholder="Password"
@@ -280,7 +280,7 @@ const handleSave = async () => {
                 </div>
 
                 <!-- Confirm Password -->
-                <div class="flex-1">
+                <div class="min-w-0">
                     <p class="block text-sm font-semibold text-gray-700 mb-1">Confirm Password</p>
                     <div class="relative">
                         <input v-model="form.confirmPassword" :type="showConfirm ? 'text' : 'password'"
@@ -310,13 +310,13 @@ const handleSave = async () => {
         </div>
     </div>
     <!-- Action Buttons -->
-    <div class="flex justify-end gap-3">
+    <div class="mt-2 flex w-full flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <button @click="auth.fetchUserData(auth.user)" :disabled="saving"
-            class="px-6 py-2 rounded-full border-2 border-red-800 text-red-800 font-semibold text-sm hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50">
+            class="w-full rounded-full border-2 border-red-800 px-6 py-2 text-sm font-semibold text-red-800 transition-colors hover:bg-red-100 cursor-pointer disabled:opacity-50 sm:w-auto sm:min-w-[120px]">
             Reset
         </button>
         <button @click="handleSave" :disabled="saving"
-            class="px-6 py-2 rounded-full bg-green-900 text-white font-semibold text-sm hover:bg-green-800 transition-colors cursor-pointer disabled:opacity-60 flex items-center gap-2">
+            class="flex w-full items-center justify-center gap-2 rounded-full bg-green-900 px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-800 cursor-pointer disabled:opacity-60 sm:w-auto sm:min-w-[120px]">
             <svg v-if="saving" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />

@@ -190,7 +190,7 @@ const onCloseAddTask = () => {
         v-if="!selectionMode && (auth.isDirector || auth.isUnitHead || auth.isMember)"
         @click="addTask = true"
         class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl
-               hover:bg-green-800 active:scale-95 transition-all text-sm flex-shrink-0">
+               hover:bg-green-800 active:scale-95 transition-all text-sm flex-shrink-0 hover:cursor-pointer">
         <Icons :icon="'add'" />
         <span class="hidden sm:inline">Add Task</span>
       </button>
