@@ -98,8 +98,8 @@ function hideTooltip() {
         </div>
 
         <!-- Pie Chart -->
-        <div v-else-if="expandedChart === 'pie'" class="flex h-full w-full flex-col items-center justify-center gap-5 sm:flex-row sm:gap-10">
-          <svg viewBox="0 0 200 200" class="w-full max-w-[260px] flex-shrink-0">
+        <div v-else-if="expandedChart === 'pie'" class="mx-auto flex h-full w-full max-w-[980px] flex-col items-center justify-center gap-4">
+          <svg viewBox="0 0 200 200" class="h-full w-full max-h-[500px] max-w-[500px] flex-shrink-0">
             <template v-for="seg in pieSegments" :key="seg.label">
               <circle v-if="seg.isFull" :cx="seg.cx" :cy="seg.cy" :r="seg.r" :fill="seg.color"
                 class="cursor-pointer transition-opacity duration-150 hover:opacity-80"
@@ -118,7 +118,7 @@ function hideTooltip() {
             <text v-for="seg in pieSegments" :key="'p'+seg.label"
               :x="seg.lx" :y="seg.ly + 6" text-anchor="middle" font-size="8" fill="white" class="pointer-events-none">({{ seg.pct }}%)</text>
           </svg>
-          <div class="grid w-full max-w-xs grid-cols-1 gap-3 sm:flex sm:max-w-none sm:flex-col sm:gap-4">
+          <div class="-mt-2 grid w-full max-w-[620px] grid-cols-2 gap-x-8 gap-y-3 place-items-start sm:grid-cols-4">
             <div v-for="d in pieData" :key="d.label" class="flex items-center gap-3 text-sm text-gray-700">
               <span class="w-4 h-4 rounded-sm flex-shrink-0" :style="{ background: d.color }"></span>
               {{ d.label }}
