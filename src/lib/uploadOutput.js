@@ -1,13 +1,4 @@
-const getDynamicUrl = () => {
-  const isLocal = window.location.hostname === 'localhost';
-  const baseUrl = isLocal 
-    ? 'http://localhost:3000' 
-    : window.location.origin; // e.g., https://myapp.com
-
-  return `${baseUrl}/api/upload-to-drive`;
-};
-
-const UPLOAD_URL = import.meta.env.VITE_UPLOAD_URL || getDynamicUrl();
+const UPLOAD_URL = import.meta.env.VITE_UPLOAD_URL || '/api/upload-to-drive'
 
 export async function uploadOutputFile({ file, userName, onProgress }) {
   if (!file) throw new Error('No file provided.')

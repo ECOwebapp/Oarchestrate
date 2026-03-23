@@ -26,7 +26,18 @@ const showDeleteConfirm = ref(false)
 const isDeleting        = ref(false)
 const deleteError       = ref('')
 
-const tasks = computed(() => store.tasks.filter(t => t.design === true))
+const tasks = computed(() => {
+  // If I am the Director...
+  if (auth.isDirector) {
+    return store.tasks.filter(t => 
+      t.design &&      // Still needs design work (is false)
+      t.unitHead === true // HAS been approved by Unit Head
+    )
+  }
+  
+  // For others, just show everything that isn't 'design: true'
+  return store.tasks.filter(t => t.design)
+})
 
 const activeUnitId = computed(() => {
   const headRole = auth.positions?.find(p => p.pos_id === 4)
