@@ -72,15 +72,15 @@ const handleSubmit = async () => {
       return
     }
 
-    if (status === 3) {
+    else if (status === 3) {
       await supabase.auth.signOut()
       deniedReason.value = statusData?.notes || ''
       showDenied.value = true
       loading.value = false
       return
+    } else {
+      router.push('/dashboard')
     }
-
-    router.push('/dashboard')
 
   } catch (e) {
     console.error('Login error:', e)

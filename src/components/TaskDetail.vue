@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import { uploadOutputFile } from '@/lib/uploadOutput'
 import { useMemberStore } from '@/stores/member'
 import { usePosStore } from '@/stores/positions'

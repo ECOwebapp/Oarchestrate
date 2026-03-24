@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import Icons from './Icons.vue'
 import { computed } from 'vue'
 
@@ -49,7 +49,7 @@ const avatarFontSize = computed(() => props.expanded ? '64px' : '32px')
         </div>
 
         <template v-if="!authStore.loading && authStore.initialized">
-          <div v-show="expanded" class="text-center">
+          <div v-if="expanded" class="text-center">
             <p class="text-white text-sm font-bold leading-tight truncate max-w-[180px]">
               {{ authStore.fullName }}
             </p>

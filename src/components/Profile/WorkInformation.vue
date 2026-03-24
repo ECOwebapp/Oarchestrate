@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import { useAuthStore } from '@/stores/useAuthStore';
 import { ref, onMounted } from 'vue'
 import Icons from '../Icons.vue';

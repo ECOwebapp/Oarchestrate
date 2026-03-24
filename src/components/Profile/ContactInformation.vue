@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import { useContactStore } from '@/stores/contact';
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -14,6 +14,8 @@ const form = ref({
 const saving = ref(false)
 const saveSuccess = ref(false)
 const saveError = ref('')
+
+defineExpose({saveSuccess, saveError})
 
 onMounted(async () => {
     await Promise.all([

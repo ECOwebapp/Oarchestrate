@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import { ref, onMounted, watch, computed } from 'vue'
 
 const PSGC = 'https://psgc.gitlab.io/api'

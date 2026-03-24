@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import Icons from '../Icons.vue';
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -25,6 +25,8 @@ const addressInfo = ref(null)
 const saving = ref(false)
 const saveSuccess = ref(false)
 const saveError = ref('')
+
+defineExpose({saveSuccess, saveError})
 
 const form = reactive({
     fname: '',

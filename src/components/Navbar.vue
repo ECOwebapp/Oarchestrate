@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import { useAuthStore } from '@/stores/useAuthStore'
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -43,38 +43,42 @@ const version = '0.1 alpha'
 
 <template>
 
-  <!-- ══ MOBILE: Hamburger ══ -->
-  <button @click="mobileOpen = true" class="xl:hidden fixed top-24 left-4 z-50 w-10 h-10 flex items-center justify-center
+  <div class="h-full">
+    <!-- ══ MOBILE: Hamburger ══ -->
+    <button @click="mobileOpen = true" class="xl:hidden fixed top-24 left-4 z-50 w-10 h-10 flex items-center justify-center
            rounded-xl bg-green-900 shadow-lg shadow-green-900/40 text-black
            active:scale-95 transition-transform">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
-      class="w-5 h-5">
-      <path d="M4 6h16M4 12h16M4 18h16" />
-    </svg>
-  </button>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+        class="w-5 h-5">
+        <path d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
 
-  <!-- ══ MOBILE: Backdrop ══ -->
-  <Transition name="overlay">
-    <div v-show="mobileOpen" class="xl:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" @click="closeDrawer" />
-  </Transition>
+    <!-- ══ MOBILE: Backdrop ══ -->
+    <Transition name="overlay">
+      <div v-if="mobileOpen" class="xl:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" @click="closeDrawer" />
+    </Transition>
 
-  <!-- ══ MOBILE: Drawer ══ -->
-  <Transition name="drawer">
-    <nav v-show="mobileOpen"
-      class="xl:hidden fixed left-0 top-0 bottom-0 z-50 w-68 flex flex-col drop-shadow-2xl bg-[url('/images/csu-background.png')] bg-center bg-cover no-repeat">
-      <NavInner :nav-names="navNames" :get-path="getPath" :is-active="isActive" :auth-store="authStore" :expanded="true"
-        :version="version" @logout="authStore.logout(router)" :formatted-positions="formattedPositions" :formatted-units="formattedUnits" @navigate="closeDrawer" />
-    </nav>
-  </Transition>
+    <!-- ══ MOBILE: Drawer ══ -->
+    <Transition name="drawer">
+      <nav v-if="mobileOpen"
+        class="xl:hidden fixed left-0 top-0 bottom-0 z-50 w-68 flex flex-col drop-shadow-2xl bg-[url('/images/csu-background.png')] bg-center bg-cover no-repeat">
+        <NavInner :nav-names="navNames" :get-path="getPath" :is-active="isActive" :auth-store="authStore"
+          :expanded="true" :version="version" @logout="authStore.logout(router)"
+          :formatted-positions="formattedPositions" :formatted-units="formattedUnits" @navigate="closeDrawer" />
+      </nav>
+    </Transition>
 
-  <!-- ══ DESKTOP: Collapsible sidebar ══ -->
-  <nav
-    class="hidden xl:flex flex-col drop-shadow-xl flex-shrink-0
+    <!-- ══ DESKTOP: Collapsible sidebar ══ -->
+    <nav
+      class="hidden xl:flex flex-col h-full drop-shadow-xl
            transition-all duration-300 ease-[cubic-bezier(.16,1,.3,1)] overflow-hidden bg-[url('/images/csu.png')] bg-center bg-cover no-repeat"
-    :class="expanded ? 'w-60' : 'w-[68px]'" @mouseenter="expanded = true" @mouseleave="expanded = false">
-    <NavInner :nav-names="navNames" :get-path="getPath" :is-active="isActive" :auth-store="authStore"
-      :expanded="expanded" :version="version" :formatted-positions="formattedPositions" :formatted-units="formattedUnits" @logout="authStore.logout(router)" />
-  </nav>
+      :class="expanded ? 'w-60' : 'w-[68px]'" @mouseenter="expanded = true" @mouseleave="expanded = false">
+      <NavInner :nav-names="navNames" :get-path="getPath" :is-active="isActive" :auth-store="authStore"
+        :expanded="expanded" :version="version" :formatted-positions="formattedPositions"
+        :formatted-units="formattedUnits" @logout="authStore.logout(router)" />
+    </nav>
+  </div>
 
 </template>
 

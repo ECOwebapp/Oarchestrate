@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import {
     mdiAccount,
     mdiAccountCircleOutline,
@@ -27,7 +27,7 @@ import {
     mdiContacts,
     mdiBriefcase,
     mdiDeleteOutline,
-    mdiPencil
+    mdiPencil,
 } from '@mdi/js';
 import { computed } from 'vue';
 
@@ -62,7 +62,7 @@ const icons = {
     contact: mdiContacts,
     work: mdiBriefcase,
     deleteOutline: mdiDeleteOutline,
-    edit: mdiPencil
+    edit: mdiPencil,
 }
 
 // Computed property that maps the nav array based on icon prop input

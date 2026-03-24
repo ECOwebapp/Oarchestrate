@@ -14,6 +14,7 @@ import { taskStore } from '@/stores/tasks'
 import { useMemberStore } from '@/stores/member'
 import { usePosStore } from '@/stores/positions'
 import { createRouter, createWebHistory } from 'vue-router'
+import { ref } from 'vue'
 
 const routes = [
   // ── Guest-only ──
@@ -94,11 +95,16 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0, behavior: 'smooth' }),
 })
 
-router.beforeEach(async (to) => {
+export const isPageLoading = ref(false)
+
+router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore()
   const tasks = taskStore()
   const members = useMemberStore()
   const fetchPos = usePosStore()
+
+  isPageLoading.value = true
+  next()
 
   await fetchPos.fetchPos()
   await fetchPos.fetchMemberPos()
@@ -133,6 +139,13 @@ router.beforeEach(async (to) => {
       return false  // navigation already handled by logout()
     }
   }
+})
+
+router.afterEach(() => {
+  // Add a tiny delay so the spinner doesn't "flicker" for fast loads
+  setTimeout(() => {
+    isPageLoading.value = false
+  }, 300)
 })
 
 export default router

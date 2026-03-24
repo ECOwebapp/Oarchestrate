@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import AddTask from '@/components/AddTask.vue'
 import TaskCard from '@/components/TaskCard.vue'
 import TaskDetail from '@/components/TaskDetail.vue'
@@ -7,17 +7,19 @@ import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
-const auth  = useAuthStore()
+const auth = useAuthStore()
 const store = taskStore()
+const loading = ref(false)
+const loaderVideo = ref(null)
 
 // ── Month navigation ──
-const selectedMonth  = ref(new Date().getMonth())
-const selectedYear   = ref(new Date().getFullYear())
-const MONTHS_FULL    = ['January','February','March','April','May','June',
-                        'July','August','September','October','November','December']
+const selectedMonth = ref(new Date().getMonth())
+const selectedYear = ref(new Date().getFullYear())
+const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December']
 const isCurrentMonth = computed(() =>
   selectedMonth.value === new Date().getMonth() &&
-  selectedYear.value  === new Date().getFullYear()
+  selectedYear.value === new Date().getFullYear()
 )
 const prevMonth = () => {
   if (selectedMonth.value === 0) { selectedMonth.value = 11; selectedYear.value-- }
@@ -31,35 +33,44 @@ const nextMonth = () => {
 
 // ── Selected task (modal) ──
 const selectedTask = ref(null)
-const openTask  = (t) => { selectedTask.value = t }
-const closeTask = () =>  { selectedTask.value = null }
+const openTask = (t) => { selectedTask.value = t }
+const closeTask = () => { selectedTask.value = null }
 const onRefresh = async () => {
   await store.fetchTasks()
   if (selectedTask.value)
     selectedTask.value = store.tasks.find(t => t.id === selectedTask.value.id) || null
 }
 
-onMounted(() => store.fetchTasks())
-
 // Realtime
 let channel = null
 onMounted(() => {
+  loading.value = true
+  if (loaderVideo.value) {
+    // Force play in case the 'autoplay' attribute was ignored
+    loaderVideo.value.play().catch(() => {
+      console.log("Autoplay blocked, but that's okay—it will play on first click.")
+    })
+  }
+  store.fetchTasks()
+
   channel = supabase
     .channel('dashboard-realtime')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'task_approval' }, onRefresh)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'task_output' },   onRefresh)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'task_output' }, onRefresh)
     .subscribe()
+
+  loading.value = false
 })
 onUnmounted(() => channel?.unsubscribe())
 
 // ── Helpers ──
-const fmt       = (d) => d ? new Date(d).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' }) : '—'
+const fmt = (d) => d ? new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'
 const isOverdue = (d) => d && new Date(d) < new Date()
 
 // ── Donut ──
-const R    = 42
-const CX   = 56
-const CY   = 56
+const R = 42
+const CX = 56
+const CY = 56
 const CIRC = 2 * Math.PI * R
 
 // ── Filtered tasks for current month ──
@@ -69,87 +80,87 @@ const forMonth = (list) => list.filter(t => {
   return d.getMonth() === selectedMonth.value && d.getFullYear() === selectedYear.value
 })
 
-const directorPending     = computed(() => store.tasks.filter(t => t.outputLink && !t.director))
-const directorMonth       = computed(() => forMonth(directorPending.value))
-const directorRegular     = computed(() => directorMonth.value.filter(t => t.type?.toLowerCase() !== 'insertion').sort((a,b) => (b.urgent?1:0)-(a.urgent?1:0)))
-const directorInsertion   = computed(() => directorMonth.value.filter(t => t.type?.toLowerCase() === 'insertion').sort((a,b) => (b.urgent?1:0)-(a.urgent?1:0)))
+const directorPending = computed(() => store.tasks.filter(t => t.outputLink && !t.director))
+const directorMonth = computed(() => forMonth(directorPending.value))
+const directorRegular = computed(() => directorMonth.value.filter(t => t.type?.toLowerCase() !== 'insertion').sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)))
+const directorInsertion = computed(() => directorMonth.value.filter(t => t.type?.toLowerCase() === 'insertion').sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)))
 
 const directorDonut = computed(() => {
-  const regular   = directorMonth.value.filter(t => t.type?.toLowerCase() !== 'insertion' && !t.urgent).length
-  const urgent    = directorMonth.value.filter(t => t.urgent).length
+  const regular = directorMonth.value.filter(t => t.type?.toLowerCase() !== 'insertion' && !t.urgent).length
+  const urgent = directorMonth.value.filter(t => t.urgent).length
   const insertion = directorMonth.value.filter(t => t.type?.toLowerCase() === 'insertion').length
-  const total     = regular + urgent + insertion || 1
+  const total = regular + urgent + insertion || 1
   let offset = 0
   return [
-    { value: regular,   color: '#15803d', label: 'Regular'   },
-    { value: urgent,    color: '#b91c1c', label: 'Urgent'    },
+    { value: regular, color: '#15803d', label: 'Regular' },
+    { value: urgent, color: '#b91c1c', label: 'Urgent' },
     { value: insertion, color: '#b45309', label: 'Insertion' },
-  ].map(s => { const len = CIRC*(s.value/total); const seg = {...s,len,offset:-offset}; offset+=len; return seg })
+  ].map(s => { const len = CIRC * (s.value / total); const seg = { ...s, len, offset: -offset }; offset += len; return seg })
 })
 
-const uhPending    = computed(() => store.tasks.filter(t =>
+const uhPending = computed(() => store.tasks.filter(t =>
   !t.isOwnTask &&
   t.outputLink &&
   !t.unitHead &&
   !t.director
 ))
-const uhOwn        = computed(() => store.tasks.filter(t => t.isOwnTask))
-const uhMonth      = computed(() => forMonth(uhPending.value))
-const uhRegular    = computed(() => uhMonth.value.filter(t => t.type?.toLowerCase() !== 'insertion').sort((a,b)=>(b.urgent?1:0)-(a.urgent?1:0)))
-const uhInsertion  = computed(() => uhMonth.value.filter(t => t.type?.toLowerCase() === 'insertion').sort((a,b)=>(b.urgent?1:0)-(a.urgent?1:0)))
+const uhOwn = computed(() => store.tasks.filter(t => t.isOwnTask))
+const uhMonth = computed(() => forMonth(uhPending.value))
+const uhRegular = computed(() => uhMonth.value.filter(t => t.type?.toLowerCase() !== 'insertion').sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)))
+const uhInsertion = computed(() => uhMonth.value.filter(t => t.type?.toLowerCase() === 'insertion').sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)))
 
 const uhDonut = computed(() => {
-  const regular   = uhMonth.value.filter(t => t.type?.toLowerCase() !== 'insertion' && !t.urgent).length
-  const urgent    = uhMonth.value.filter(t => t.urgent).length
+  const regular = uhMonth.value.filter(t => t.type?.toLowerCase() !== 'insertion' && !t.urgent).length
+  const urgent = uhMonth.value.filter(t => t.urgent).length
   const insertion = uhMonth.value.filter(t => t.type?.toLowerCase() === 'insertion').length
-  const total     = regular + urgent + insertion || 1
+  const total = regular + urgent + insertion || 1
   let offset = 0
   return [
-    { value: regular,   color: '#15803d', label: 'Regular'   },
-    { value: urgent,    color: '#b91c1c', label: 'Urgent'    },
+    { value: regular, color: '#15803d', label: 'Regular' },
+    { value: urgent, color: '#b91c1c', label: 'Urgent' },
     { value: insertion, color: '#b45309', label: 'Insertion' },
-  ].map(s => { const len = CIRC*(s.value/total); const seg = {...s,len,offset:-offset}; offset+=len; return seg })
+  ].map(s => { const len = CIRC * (s.value / total); const seg = { ...s, len, offset: -offset }; offset += len; return seg })
 })
 
-const memberRegular   = computed(() => store.tasks.filter(t => t.type?.toLowerCase() !== 'insertion').sort((a,b)=>(b.urgent?1:0)-(a.urgent?1:0)))
-const memberInsertion = computed(() => store.tasks.filter(t => t.type?.toLowerCase() === 'insertion').sort((a,b)=>(b.urgent?1:0)-(a.urgent?1:0)))
+const memberRegular = computed(() => store.tasks.filter(t => t.type?.toLowerCase() !== 'insertion').sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)))
+const memberInsertion = computed(() => store.tasks.filter(t => t.type?.toLowerCase() === 'insertion').sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)))
 const memberRevisions = computed(() => store.tasks.filter(t => t.revision && !t.director))
 
 const memberDonut = computed(() => {
-  const approved  = store.tasks.filter(t => t.director).length
+  const approved = store.tasks.filter(t => t.director).length
   const submitted = store.tasks.filter(t => t.outputLink && !t.director).length
-  const pending   = store.tasks.filter(t => !t.outputLink && !t.director).length
-  const total     = approved + submitted + pending || 1
+  const pending = store.tasks.filter(t => !t.outputLink && !t.director).length
+  const total = approved + submitted + pending || 1
   let offset = 0
   return [
-    { value: approved,  color: '#15803d', label: 'Approved'  },
+    { value: approved, color: '#15803d', label: 'Approved' },
     { value: submitted, color: '#b45309', label: 'Submitted' },
-    { value: pending,   color: '#9ca3af', label: 'Pending'   },
-  ].map(s => { const len = CIRC*(s.value/total); const seg = {...s,len,offset:-offset}; offset+=len; return seg })
+    { value: pending, color: '#9ca3af', label: 'Pending' },
+  ].map(s => { const len = CIRC * (s.value / total); const seg = { ...s, len, offset: -offset }; offset += len; return seg })
 })
 
-const activeDonut    = computed(() => auth.isDirector ? directorDonut.value    : auth.isUnitHead ? uhDonut.value    : memberDonut.value)
-const activePending  = computed(() => auth.isDirector ? directorMonth.value    : auth.isUnitHead ? uhMonth.value    : store.tasks)
-const activeRegular  = computed(() => auth.isDirector ? directorRegular.value  : auth.isUnitHead ? uhRegular.value  : memberRegular.value)
-const activeInsertion= computed(() => auth.isDirector ? directorInsertion.value: auth.isUnitHead ? uhInsertion.value: memberInsertion.value)
+const activeDonut = computed(() => auth.isDirector ? directorDonut.value : auth.isUnitHead ? uhDonut.value : memberDonut.value)
+const activePending = computed(() => auth.isDirector ? directorMonth.value : auth.isUnitHead ? uhMonth.value : store.tasks)
+const activeRegular = computed(() => auth.isDirector ? directorRegular.value : auth.isUnitHead ? uhRegular.value : memberRegular.value)
+const activeInsertion = computed(() => auth.isDirector ? directorInsertion.value : auth.isUnitHead ? uhInsertion.value : memberInsertion.value)
 
 // ── Subtask assign modal (Unit Head) ─────────────────────────────────────────
-const showAddTask  = ref(false)
-const preFillData  = ref(null)
+const showAddTask = ref(false)
+const preFillData = ref(null)
 
 const onAssignSubtask = (data) => {
   preFillData.value = {
-    name:         data.subtask.name,
-    description:  data.subtask.description || '',
-    assignee:     data.assignedMemberId,
+    name: data.subtask.name,
+    description: data.subtask.description || '',
+    assignee: data.assignedMemberId,
     assigneeName: data.assignedMemberName,
-    type:         1,
-    endDate:      data.parentTask?.to || null,
-    urgent:       false,
-    design:       false,
+    type: 1,
+    endDate: data.parentTask?.to || null,
+    urgent: false,
+    design: false,
   }
   selectedTask.value = null   // close TaskDetail first
-  showAddTask.value  = true
+  showAddTask.value = true
 }
 
 const onCloseAddTask = () => {
@@ -158,16 +169,25 @@ const onCloseAddTask = () => {
 }
 </script>
 <template>
-  <div class="director-dash flex flex-col w-full h-full overflow-hidden bg-gray-50">
+  <div v-if="loading" class="flex flex-col items-center justify-center gap-5 w-full h-screen overflow-hidden">
+    <!-- <Icons class=" text-grey-500/50 text-lg" :icon="'spin'" /> -->
+
+    <div class="w-30 h-30 animate-spin bg-[url('/images/csu_seal.png')] bg-cover bg-center no-repeat" />
+
+    <p class="animate-pulse text-gray-500/90 text-sm">Loading dashboard...</p>
+  </div>
+
+  <div v-else class="director-dash flex flex-col w-full h-full overflow-hidden bg-gray-50">
 
     <!-- ══ LOADING ══ -->
-    <div v-if="store.loading && !store.tasks.length"
-      class="flex-1 flex items-center justify-center gap-3">
-      <svg class="animate-spin w-5 h-5 text-green-700" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="10" stroke="#d1fae5" stroke-width="3"/>
-        <path d="M12 2a10 10 0 0 1 10 10" stroke="#15803d" stroke-width="3" stroke-linecap="round"/>
-      </svg>
-      <span class="text-sm text-gray-500 tracking-wide">Loading…</span>
+    <div v-if="store.loading && !store.tasks.length" class="flex-1 flex flex-col items-center justify-center gap-3">
+      <div class="flex flex-row gap-3">
+        <svg class="animate-spin w-5 h-5 text-green-700" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="#d1fae5" stroke-width="3" />
+          <path d="M12 2a10 10 0 0 1 10 10" stroke="#15803d" stroke-width="3" stroke-linecap="round" />
+        </svg>
+        <span class="text-sm text-gray-500 tracking-wide">Loading tasks...</span>
+      </div>
     </div>
 
     <!-- ══ CONTENT ══ -->
@@ -185,7 +205,7 @@ const onCloseAddTask = () => {
           <p class="text-base font-bold text-gray-800">
             {{ auth.isDirector ? 'Tasks Awaiting Your Approval'
               : auth.isUnitHead ? 'Unit Dashboard'
-              : 'My Tasks' }}
+                : 'My Tasks' }}
           </p>
         </div>
 
@@ -208,7 +228,7 @@ const onCloseAddTask = () => {
         <!-- Member: revision alert -->
         <div v-else-if="memberRevisions.length"
           class="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-1.5">
-          <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"/>
+          <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
           <span class="text-xs font-bold text-orange-700">
             {{ memberRevisions.length }} revision{{ memberRevisions.length > 1 ? 's' : '' }} needed
           </span>
@@ -223,19 +243,17 @@ const onCloseAddTask = () => {
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
             <!-- Donut -->
-            <div class="col-span-2 lg:col-span-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col items-center slide-up" style="animation-delay:0ms">
+            <div
+              class="col-span-2 lg:col-span-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col items-center slide-up"
+              style="animation-delay:0ms">
               <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3 self-start">Monthly Overview</p>
-              <svg :width="CX*2" :height="CY*2" :viewBox="`0 0 ${CX*2} ${CY*2}`" class="overflow-visible">
-                <circle :cx="CX" :cy="CY" :r="R" fill="none" stroke="#f3f4f6" stroke-width="12"/>
+              <svg :width="CX * 2" :height="CY * 2" :viewBox="`0 0 ${CX * 2} ${CY * 2}`" class="overflow-visible">
+                <circle :cx="CX" :cy="CY" :r="R" fill="none" stroke="#f3f4f6" stroke-width="12" />
                 <g :transform="`rotate(-90 ${CX} ${CY})`">
-                  <circle
-                    v-for="(seg, i) in activeDonut" :key="i"
-                    :cx="CX" :cy="CY" :r="R"
-                    fill="none" :stroke="seg.color" stroke-width="12" stroke-linecap="butt"
-                    :stroke-dasharray="`${seg.len} ${CIRC - seg.len}`"
-                    :stroke-dashoffset="seg.offset"
-                    class="donut-seg" :style="`animation-delay:${i*100}ms`"
-                  />
+                  <circle v-for="(seg, i) in activeDonut" :key="i" :cx="CX" :cy="CY" :r="R" fill="none"
+                    :stroke="seg.color" stroke-width="12" stroke-linecap="butt"
+                    :stroke-dasharray="`${seg.len} ${CIRC - seg.len}`" :stroke-dashoffset="seg.offset" class="donut-seg"
+                    :style="`animation-delay:${i * 100}ms`" />
                 </g>
                 <text :x="CX" :y="CY - 5" text-anchor="middle" font-size="24" font-weight="800" fill="#111827">
                   {{ activePending.length }}
@@ -247,7 +265,7 @@ const onCloseAddTask = () => {
               <div class="flex flex-col gap-1.5 w-full mt-3 px-1">
                 <div v-for="seg in activeDonut" :key="seg.label" class="flex items-center justify-between text-xs">
                   <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full" :style="`background:${seg.color}`"/>
+                    <span class="w-2.5 h-2.5 rounded-full" :style="`background:${seg.color}`" />
                     <span class="text-gray-500">{{ seg.label }}</span>
                   </div>
                   <span class="font-bold text-gray-800">{{ seg.value }}</span>
@@ -256,10 +274,13 @@ const onCloseAddTask = () => {
             </div>
 
             <!-- Stat card 1 -->
-            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col justify-between slide-up" style="animation-delay:60ms">
+            <div
+              class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col justify-between slide-up"
+              style="animation-delay:60ms">
               <div class="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center mb-4">
                 <svg viewBox="0 0 24 24" class="w-5 h-5 fill-green-700">
-                  <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9l2 2 4-4"/>
+                  <path
+                    d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9l2 2 4-4" />
                 </svg>
               </div>
               <div>
@@ -267,16 +288,18 @@ const onCloseAddTask = () => {
                 <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Regular Tasks</p>
               </div>
               <p class="text-xs text-gray-400 mt-3 flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
-                {{ activeRegular.filter(t=>t.urgent).length }} urgent priority
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                {{activeRegular.filter(t => t.urgent).length}} urgent priority
               </p>
             </div>
 
             <!-- Stat card 2 -->
-            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col justify-between slide-up" style="animation-delay:120ms">
+            <div
+              class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col justify-between slide-up"
+              style="animation-delay:120ms">
               <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center mb-4">
                 <svg viewBox="0 0 24 24" class="w-5 h-5 fill-amber-700">
-                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
                 </svg>
               </div>
               <div>
@@ -284,28 +307,28 @@ const onCloseAddTask = () => {
                 <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Insertion Tasks</p>
               </div>
               <p class="text-xs text-gray-400 mt-3 flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
-                {{ activeInsertion.filter(t=>t.urgent).length }} urgent priority
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                {{activeInsertion.filter(t => t.urgent).length}} urgent priority
               </p>
             </div>
 
             <!-- Stat card 3 -->
             <div class="bg-white rounded-2xl border shadow-sm p-5 flex flex-col justify-between slide-up"
-              :class="auth.isMember ? 'border-orange-100' : 'border-red-100'"
-              style="animation-delay:180ms">
+              :class="auth.isMember ? 'border-orange-100' : 'border-red-100'" style="animation-delay:180ms">
               <div class="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
                 :class="auth.isMember ? 'bg-orange-100' : 'bg-red-100'">
                 <svg v-if="!auth.isMember" viewBox="0 0 24 24" class="w-5 h-5 fill-red-700">
-                  <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <path
+                    d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                 </svg>
                 <svg v-else viewBox="0 0 24 24" class="w-5 h-5 fill-orange-700">
-                  <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                  <path
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </div>
               <div>
-                <p class="text-4xl font-black tabular-nums"
-                  :class="auth.isMember ? 'text-orange-700' : 'text-red-700'">
-                  {{ auth.isMember ? memberRevisions.length : activePending.filter(t=>t.urgent).length }}
+                <p class="text-4xl font-black tabular-nums" :class="auth.isMember ? 'text-orange-700' : 'text-red-700'">
+                  {{auth.isMember ? memberRevisions.length : activePending.filter(t => t.urgent).length}}
                 </p>
                 <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">
                   {{ auth.isMember ? 'Revisions Needed' : 'Urgent Tasks' }}
@@ -314,7 +337,7 @@ const onCloseAddTask = () => {
               <p class="text-xs mt-3 flex items-center gap-1.5"
                 :class="auth.isMember ? 'text-orange-400' : 'text-red-400'">
                 <span class="w-2 h-2 rounded-full animate-pulse"
-                  :class="auth.isMember ? 'bg-orange-500' : 'bg-red-500'"/>
+                  :class="auth.isMember ? 'bg-orange-500' : 'bg-red-500'" />
                 {{ auth.isMember ? 'Action required' : 'Needs priority review' }}
               </p>
             </div>
@@ -334,16 +357,13 @@ const onCloseAddTask = () => {
             <div v-if="activeRegular.length === 0"
               class="bg-white border border-dashed border-gray-200 rounded-2xl p-10 text-center">
               <p class="text-sm text-gray-400">
-                No regular tasks pending{{ auth.isDirector || auth.isUnitHead ? ` for ${MONTHS_FULL[selectedMonth]}` : '' }}.
+                No regular tasks pending{{ auth.isDirector || auth.isUnitHead ? ` for ${MONTHS_FULL[selectedMonth]}` :
+                  '' }}.
               </p>
             </div>
 
             <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              <TaskCard
-                v-for="task in activeRegular" :key="task.id"
-                :task="task"
-                @open="openTask"
-              />
+              <TaskCard v-for="task in activeRegular" :key="task.id" :task="task" @open="openTask" />
             </div>
           </section>
 
@@ -361,16 +381,13 @@ const onCloseAddTask = () => {
             <div v-if="activeInsertion.length === 0"
               class="bg-white border border-dashed border-gray-200 rounded-2xl p-10 text-center">
               <p class="text-sm text-gray-400">
-                No insertion tasks pending{{ auth.isDirector || auth.isUnitHead ? ` for ${MONTHS_FULL[selectedMonth]}` : '' }}.
+                No insertion tasks pending{{ auth.isDirector || auth.isUnitHead ? ` for ${MONTHS_FULL[selectedMonth]}` :
+                  '' }}.
               </p>
             </div>
 
             <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              <TaskCard
-                v-for="task in activeInsertion" :key="task.id"
-                :task="task"
-                @open="openTask"
-              />
+              <TaskCard v-for="task in activeInsertion" :key="task.id" :task="task" @open="openTask" />
             </div>
           </section>
 
@@ -383,11 +400,8 @@ const onCloseAddTask = () => {
               </span>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              <TaskCard
-                v-for="task in uhOwn.slice().sort((a,b)=>(b.urgent?1:0)-(a.urgent?1:0))" :key="task.id"
-                :task="task"
-                @open="openTask"
-              />
+              <TaskCard v-for="task in uhOwn.slice().sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0))"
+                :key="task.id" :task="task" @open="openTask" />
             </div>
           </section>
 
@@ -397,19 +411,13 @@ const onCloseAddTask = () => {
 
     <!-- ══ TASK DETAIL MODAL ══ -->
     <Transition name="modal">
-      <TaskDetail
-        v-if="selectedTask"
-        :task="selectedTask"
-        @close="closeTask"
-        @refresh="onRefresh"
-        @assignSubtask="onAssignSubtask"
-      />
+      <TaskDetail v-if="selectedTask" :task="selectedTask" @close="closeTask" @refresh="onRefresh"
+        @assignSubtask="onAssignSubtask" />
     </Transition>
 
     <!-- ══ ADD TASK MODAL (Unit Head subtask assign) ══ -->
     <Transition name="modal">
-      <div v-if="showAddTask"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      <div v-if="showAddTask" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
         @click.self="onCloseAddTask">
         <AddTask @close="onCloseAddTask" :design="false" :pre-fill="preFillData" />
       </div>
@@ -419,25 +427,68 @@ const onCloseAddTask = () => {
 </template>
 
 <style scoped>
-@keyframes fadeIn  { from { opacity:0 } to { opacity:1 } }
-@keyframes slideUp { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:translateY(0) } }
-@keyframes donutIn { from { stroke-dashoffset:340; opacity:0 } to { opacity:1 } }
+@keyframes fadeIn {
+  from {
+    opacity: 0
+  }
 
-.fade-in  { animation: fadeIn  0.35s ease both }
-.slide-up { animation: slideUp 0.45s cubic-bezier(.16,1,.3,1) both }
+  to {
+    opacity: 1
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px)
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0)
+  }
+}
+
+@keyframes donutIn {
+  from {
+    stroke-dashoffset: 340;
+    opacity: 0
+  }
+
+  to {
+    opacity: 1
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.35s ease both
+}
+
+.slide-up {
+  animation: slideUp 0.45s cubic-bezier(.16, 1, .3, 1) both
+}
 
 .task-card {
-  animation: slideUp 0.45s cubic-bezier(.16,1,.3,1) both;
+  animation: slideUp 0.45s cubic-bezier(.16, 1, .3, 1) both;
   transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
+
 .task-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 10px 28px -6px rgba(0,0,0,0.11);
+  box-shadow: 0 10px 28px -6px rgba(0, 0, 0, 0.11);
 }
-.donut-seg { animation: donutIn 0.65s cubic-bezier(.16,1,.3,1) both }
 
-.modal-enter-active { animation: fadeIn  0.25s ease both }
-.modal-leave-active { animation: fadeIn  0.18s ease reverse }
+.donut-seg {
+  animation: donutIn 0.65s cubic-bezier(.16, 1, .3, 1) both
+}
+
+.modal-enter-active {
+  animation: fadeIn 0.25s ease both
+}
+
+.modal-leave-active {
+  animation: fadeIn 0.18s ease reverse
+}
 
 .line-clamp-2 {
   display: -webkit-box;
