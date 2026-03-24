@@ -22,7 +22,7 @@ const loading = ref({
 
 onMounted(async () => {
     await Promise.all([
-        posStore.fetchRoles(), 
+        posStore.fetchRoles(),
         unitStore.fetchUnit()
     ])
 })
@@ -52,21 +52,21 @@ const deleteMember = ref({ user_id: null })
 watch(() => changePosMembers.value.user_id, (userId) => {
     changePosMembers.value.pos_id = changePosMembers.value.unit_id = null
 
-    if(!userId) return
+    if (!userId) return
 
-    const isExecutive = memberPos.value.find(p => 
-        String(p.user_id).trim() === String(userId).trim() && 
+    const isExecutive = memberPos.value.find(p =>
+        String(p.user_id).trim() === String(userId).trim() &&
         [1, 4].includes(Number(p.pos_id))
     )
 
-    if(isExecutive) {
+    if (isExecutive) {
         changePosMembers.value.pos_id = isExecutive?.pos_id
         changePosMembers.value.unit_id = isExecutive?.unit_id
     }
 })
 
 const availableUnit = computed(() => {
-    
+
     const selectedUserId = changePosMembers.value.user_id;
     const selectedPosId = changePosMembers.value.pos_id
 
@@ -89,6 +89,27 @@ const availableUnit = computed(() => {
         return String(u.id).trim() !== String(currentMember.unit_id).trim();
     });
 });
+
+const selectedMemberUnitLabel = computed(() => {
+    const selectedUserId = changePosMembers.value.user_id
+    if (!selectedUserId) return ''
+
+    const selectedRows = memberPos.value.filter(p =>
+        String(p.user_id).trim() === String(selectedUserId).trim()
+    )
+
+    if (!selectedRows.length) return 'No unit assigned'
+
+    const unitId = selectedRows.find(r => r.unit_id != null)?.unit_id ?? selectedRows[0]?.unit_id
+    if (unitId == null) return 'No unit assigned'
+
+    const unitMatch = unit.value.find(u => {
+        const rowUnitId = u.id ?? u.unit_id
+        return String(rowUnitId) === String(unitId)
+    })
+
+    return unitMatch?.unit_name || unitMatch?.name || 'No unit assigned'
+})
 
 // Change Member position to Director/Unit Head/Unit Member
 const submitChangeRole = async () => {
@@ -188,6 +209,11 @@ const removeMember = async () => {
                                     member.fname }} {{
                                         member.middle_initial }} {{ member.lname }}</option>
                             </select>
+                            <p v-if="changePosMembers.user_id" class="mt-2 text-xs text-gray-600">
+                                Current unit: <span class="font-semibold text-gray-800">{{ selectedMemberUnitLabel
+                                    }}</span>
+                            </p>
+                            <p class="text-xs text-red-500 mt-1">* Not 2 members at the same time</p>
                         </div>
 
                         <div v-if="changePosMembers.user_id">

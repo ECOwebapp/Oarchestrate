@@ -31,11 +31,28 @@ export const taskStore = defineStore('tasks', () => {
   const resolveUnitIds = async (uids) => {
     const missing = uids.filter(id => id && !(id in unitIdMap.value))
     if (!missing.length) return
+    const auth = useAuthStore()
+    const activeUnitHeadId = (auth.positions || []).find(p => Number(p.pos_id) === 4)?.unit_id ?? null
     const { data } = await supabase
       .from('position_of_members')
       .select('user_id, unit_id')
       .in('user_id', missing)
-      ; (data || []).forEach(u => { unitIdMap.value[u.user_id] = u.unit_id })
+      .order('unit_id', { ascending: true })
+
+    const memberships = {}
+    ; (data || []).forEach(u => {
+      if (!u?.user_id || u.unit_id == null) return
+      if (!memberships[u.user_id]) memberships[u.user_id] = []
+      memberships[u.user_id].push(u.unit_id)
+    })
+
+    Object.entries(memberships).forEach(([userId, units]) => {
+      const preferred = activeUnitHeadId != null && units.includes(activeUnitHeadId)
+        ? activeUnitHeadId  
+        : units[0]
+      unitIdMap.value[userId] = preferred ?? null
+    })
+
     missing.forEach(id => { if (!(id in unitIdMap.value)) unitIdMap.value[id] = null })
   }
 

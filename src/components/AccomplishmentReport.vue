@@ -15,7 +15,9 @@ const emit = defineEmits(['close'])
 const auth = useAuthStore()
 const currentUserUnitId = computed(() => {
   const positions = auth.positions || []
-  const pos = positions.find(p => p.unit_id != null)
+  // Prefer the active Unit Head assignment so report scope matches the user's headed unit.
+  const pos = positions.find(p => Number(p.pos_id) === 4 && p.unit_id != null)
+    || positions.find(p => p.unit_id != null)
   return pos?.unit_id ?? null
 })
 
@@ -54,10 +56,12 @@ const loadAllTasks = async () => {
     if (row.user_id) unitMemberMap[uid].push(row.user_id)
   }
 
-  // Build reverse map: user_id → unit_id (a user belongs to one unit)
+  // Build reverse map: user_id -> [unit_id,...] to support multi-unit memberships.
   const userUnitMap = {}
   for (const row of unitRows) {
-    if (row.user_id) userUnitMap[row.user_id] = row.unit_id
+    if (!row.user_id || row.unit_id == null) continue
+    if (!userUnitMap[row.user_id]) userUnitMap[row.user_id] = []
+    userUnitMap[row.user_id].push(row.unit_id)
   }
 
   // If not director, restrict to own unit only
@@ -65,7 +69,10 @@ const loadAllTasks = async () => {
     ? Object.keys(unitMemberMap).map(Number)
     : currentUserUnitId.value ? [currentUserUnitId.value] : []
 
-  const allMemberIds = [...new Set(allowedUnitIds.flatMap(uid => unitMemberMap[uid] || []))]
+  const allMemberIds = [...new Set([
+    ...allowedUnitIds.flatMap(uid => unitMemberMap[uid] || []),
+    auth.userID,
+  ].filter(Boolean))]
   if (!allMemberIds.length) { unitGroups.value = []; return }
 
   // 3. Fetch tasks for those members
@@ -128,9 +135,15 @@ const loadAllTasks = async () => {
   }
 
   // 6. Map rows
-  const mapped = data.map(t => ({
+  const mapped = data.map(t => {
+    const assigneeUnits = userUnitMap[t.assignee] || []
+    const resolvedUnitId = assigneeUnits.find(uid =>
+      allowedUnitIds.includes(Number(uid))
+    ) ?? assigneeUnits[0] ?? null
+
+    return {
     id:           t.id,
-    unitId:       userUnitMap[t.assignee] || null,
+    unitId:       resolvedUnitId,
     ppa:          '',
     name:         t.task_profile?.title || '',
     type:         t.task_profile?.task_type_ref?.task_type || 'General',
@@ -145,7 +158,7 @@ const loadAllTasks = async () => {
     remarks:      statusOf(t),
     rawStart:     t.task_duration?.created  || null,
     rawEnd:       t.task_duration?.deadline || null,
-  }))
+  }})
 
   // 7. Group by unit → then by task title (merge multiple assignees into one row)
   const unitTaskMap = {}
