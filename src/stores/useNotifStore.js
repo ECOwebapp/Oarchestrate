@@ -238,7 +238,7 @@ export const useNotifStore = defineStore('notif', () => {
               : `Assigned by ${assigner} · ${taskType}${urgent ? ' · URGENT' : ''}`,
           time:  t.task_duration?.created,
           read:  isRead,
-          meta:  { urgent, taskType },
+          meta:  { urgent, taskType, taskId: t.id },
         })
       })
 

@@ -28,10 +28,10 @@ const progress = computed(() => {
 
 const statusLabel = computed(() => {
   if (props.task?.director)   return { label: 'Approved',            cls: 'bg-green-100 text-green-800'  }
-  if (props.task?.unitHead)   return { label: 'Pending Director',    cls: 'bg-amber-100 text-amber-800'  }
+  if (props.task?.unitHead)   return { label: 'Pending',    cls: 'bg-amber-100 text-amber-800'  }
   if (props.task?.revision)   return { label: 'Needs Revision',      cls: 'bg-orange-100 text-orange-700'}
   if ((props.task?.assigneeIsOffice || props.task?.isSelfAssigned) && props.task?.outputLink)
-                              return { label: 'Pending Director',    cls: 'bg-amber-100 text-amber-800'  }
+                              return { label: 'Waiting for Submission',    cls: 'bg-amber-100 text-amber-800'  }
   if (!props.task?.assigneeIsOffice && !props.task?.isSelfAssigned && props.task?.outputLink)
                               return { label: 'Pending Unit Head',   cls: 'bg-gray-100 text-gray-600'    }
   return                             { label: 'Pending',             cls: 'bg-gray-100 text-gray-600'    }

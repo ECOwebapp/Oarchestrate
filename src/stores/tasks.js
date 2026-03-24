@@ -306,6 +306,33 @@ export const taskStore = defineStore('tasks', () => {
     }
   }
 
+  // ── FETCH SINGLE TASK BY ID ─────────────────────────────────────────────────
+const fetchTaskById = async (taskId) => {
+  const { data, error } = await supabase
+    .from('task')
+    .select(TASK_SELECT)
+    .eq('id', taskId)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error('Task not found.')
+
+  const allUserIds = [
+    data.assigner, data.assignee,
+    ...(data.subtasks || []).map(s => s.assignee),
+    ...(data.subtasks || []).map(s => s.assigner),
+  ].filter(Boolean)
+
+  const allSubtaskIds = (data.subtasks || []).map(s => s.id)
+  const extraSpawnedRows = await fetchSpawnedForSubtasks(allSubtaskIds)
+  const extraAssigneeIds = extraSpawnedRows.map(r => r.assignee).filter(Boolean)
+
+  await resolveNames([...new Set([...allUserIds, ...extraAssigneeIds])])
+
+  const spawnedMap = buildSpawnedMap([data, ...extraSpawnedRows])
+  return mapRow(data, spawnedMap)
+}
+
   // ── NOTIFICATION HELPER ─────────────────────────────────────────────────────
   // Uses position_of_members directly (not the position table) to find Unit
   // Heads, deduplicates by user_id, and checks for existing unread notifications
@@ -783,9 +810,10 @@ export const taskStore = defineStore('tasks', () => {
   }
 
   return {
-    tasks, loading, nameMap, unitMembers,
-    fetchTasks, addTasks, submitOutput,
-    approveTask, requestRevision, resubmitTask, fetchRevisions,
-    fetchUnitMembers, deleteTasks, assignSubtask,
-  }
+  tasks, loading, nameMap, unitMembers,
+  fetchTasks, addTasks, submitOutput,
+  approveTask, requestRevision, resubmitTask, fetchRevisions,
+  fetchUnitMembers, deleteTasks, assignSubtask,
+  fetchTaskById,
+}
 })
