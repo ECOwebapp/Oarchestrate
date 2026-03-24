@@ -4,20 +4,28 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useMemberStore } from '@/stores/member';
 import { useNotifStore } from '@/stores/useNotifStore';
 import { usePosStore } from '@/stores/positions';
+import { useUnitStore } from '@/stores/unit';
 
 // 1. Use storeToRefs to keep the properties reactive
 const memberStore = useMemberStore()
 const notifStore = useNotifStore()
 const posStore = usePosStore()
+const unitStore = useUnitStore()
 const { members } = storeToRefs(memberStore)
 const { position, roles, memberPos } = storeToRefs(posStore)
+const { unit } = storeToRefs(unitStore)
 const selectedMember = ref([null])
 const loading = ref({
     update: false,
     delete: false
 })
 
-onMounted(async() => await posStore.fetchRoles())
+onMounted(async() => {
+    await Promise.all([
+        posStore.fetchRoles(),
+        unitStore.fetchUnit(),
+    ])
+})
 
 const pendingMembers = computed(() => {
     // 1. Create the list of expected notification IDs (e.g., ["reg-uuid1", "reg-uuid2"])
@@ -60,6 +68,27 @@ const availableRoles = computed(() => {
         return String(r.pos_id) !== String(currentMember.pos_id);
     });
 });
+
+const selectedMemberUnitLabel = computed(() => {
+    const selectedUserId = changePosMembers.value.user_id
+    if (!selectedUserId) return ''
+
+    const selectedRows = memberPos.value.filter(p =>
+        String(p.user_id).trim() === String(selectedUserId).trim()
+    )
+
+    if (!selectedRows.length) return 'No unit assigned'
+
+    const unitId = selectedRows.find(r => r.unit_id != null)?.unit_id ?? selectedRows[0]?.unit_id
+    if (unitId == null) return 'No unit assigned'
+
+    const unitMatch = unit.value.find(u => {
+        const rowUnitId = u.id ?? u.unit_id
+        return String(rowUnitId) === String(unitId)
+    })
+
+    return unitMatch?.unit_name || unitMatch?.name || 'No unit assigned'
+})
 
 // Change Member position to Director/Unit Head/Unit Member
 const submitChangeRole = async () => {
@@ -160,6 +189,9 @@ const removeMember = async () => {
                                     member.fname }} {{
                                         member.middle_initial }} {{ member.lname }}</option>
                             </select>
+                            <p v-if="changePosMembers.user_id" class="mt-2 text-xs text-gray-600">
+                                Current unit: <span class="font-semibold text-gray-800">{{ selectedMemberUnitLabel }}</span>
+                            </p>
                             <p class="text-xs text-red-500 mt-1">* Not 2 members at the same time</p>
                         </div>
 
