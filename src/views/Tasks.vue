@@ -27,21 +27,21 @@ const isDeleting        = ref(false)
 const deleteError       = ref('')
 
 const tasks = computed(() => {
-  if (auth.isDirector) {
-    return store.tasks.filter(t => {
-      // 1. Core requirement: Must not be marked as 'design'
-      const isNotDesigned = !t.design;
+  // if (auth.isDirector) {
+  //   return store.tasks.filter(t => {
+  //     // 1. Core requirement: Must not be marked as 'design'
+  //     const isNotDesigned = !t.design;
 
-      const isParentTask = !t.parentId
+  //     const isParentTask = !t.parentId
 
-      // 2. The Exception: 
-      // Show it if the Unit Head approved it (true) 
-      // OR if the task type is 'Insertion' (typeId === 2)
-      const isVisibleToDirector = t.unitHead || t.typeId === 2;
+  //     // 2. The Exception: 
+  //     // Show it if the Unit Head approved it (true) 
+  //     // OR if the task type is 'Insertion' (typeId === 2)
+  //     const isVisibleToDirector = t.unitHead || t.typeId === 2;
 
-      return isNotDesigned && isVisibleToDirector && isParentTask;
-    });
-  }
+  //     return isNotDesigned;
+  //   });
+  // }
   
   // Default filter for everyone else
   return store.tasks.filter(t => !t.design);
