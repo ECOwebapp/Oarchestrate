@@ -6,21 +6,21 @@ import TaskDetail from './TaskDetail.vue'
 const props = defineProps({
   tasks:       Array,
   selectable:  { type: Boolean, default: false },
-  selectedIds: { type: Object,  default: () => new Set() },  // Set of selected task ids
+  selectedIds: { type: Object,  default: () => new Set() },
   isDeletable: { type: Function, default: () => false },
 })
 const emit     = defineEmits(['assignSubtask', 'toggle-select'])
 const selected = ref(null)
 
 const handleOpen = (task) => {
-  if (props.selectable) return   // block detail open while in selection mode
+  if (props.selectable) return
   selected.value = task
 }
 </script>
 
 <template>
   <div v-if="props.tasks.length === 0"
-    class="flex flex-col items-center justify-center h-full py-20 text-gray-400">
+    class="flex flex-col items-center justify-center h-full py-50 text-gray-400">
     <svg class="w-12 h-12 mb-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
         d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
@@ -29,8 +29,9 @@ const handleOpen = (task) => {
   </div>
 
   <div v-else
-    class="h-full grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4
-           justify-items-stretch px-4 sm:px-6 lg:px-10 py-6 gap-4
+    class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4
+           items-start
+           px-3 sm:px-6 lg:px-10 py-4 sm:py-6 gap-3 sm:gap-4
            overflow-y-auto mask-y-from-95% mask-y-to-97%">
     <TaskCard
       v-for="task in props.tasks"
