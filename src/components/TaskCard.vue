@@ -67,17 +67,20 @@ const handleCheckboxClick = (e) => {
 </script>
 
 <template>
-  <div @click="handleClick" class="relative flex flex-col rounded-2xl py-3 px-3 sm:px-4 overflow-hidden bg-white shadow-lg
-           hover:shadow-xl hover:cursor-pointer transition-all duration-200 hover:-translate-y-0.5 group
-           min-h-[160px] sm:min-h-[176px]" :class="[
-            cardClass,
-            selected ? 'ring-2 ring-green-600 ring-offset-1' : '',
-            task.urgent
-              ? 'outline outline-2 outline-red-800'
-              : task.revision
-                ? 'outline outline-2 outline-orange-400'
-                : 'outline outline-2 outline-green-950'
-          ]">
+  <div
+    @click="handleClick"
+    class="hover:cursor-pointer relative flex flex-col rounded-2xl py-3 px-3 sm:px-4 overflow-hidden bg-white shadow-lg
+           hover:shadow-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 group
+           h-full min-h-[160px] sm:min-h-[176px]"
+    :class="[
+      cardClass,
+      selected ? 'ring-2 ring-green-600 ring-offset-1' : '',
+      task.urgent
+        ? 'outline outline-2 outline-red-800'
+        : task.revision
+          ? 'outline outline-2 outline-orange-400'
+          : 'outline outline-2 outline-green-950'
+    ]">
 
     <!-- Selection checkbox — top-right, always visible in selectable mode -->
     <div v-if="selectable" @click="handleCheckboxClick" class="absolute top-2.5 right-2.5 z-20 w-5 h-5 rounded-md border-2 flex items-center justify-center
