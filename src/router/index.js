@@ -139,4 +139,11 @@ router.afterEach(() => {
   }, 300)
 })
 
+router.afterEach(() => {
+  // Add a tiny delay so the spinner doesn't "flicker" for fast loads
+  setTimeout(() => {
+    isPageLoading.value = false
+  }, 300)
+})
+
 export default router

@@ -127,14 +127,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!--
-    Positioning:
-    - Mobile  (< sm): bottom-14 right-3  — sits just above the mobile nav bar
-    - sm+:            bottom-16 right-6  — original spacing
-    Bell size:
-    - Mobile: w-10 h-10 rounded-xl
-    - sm+:    w-12 h-12 rounded-2xl
-  -->
+  <div>
+    <template>
   <div id="notif-widget" class="fixed bottom-14 sm:bottom-16 right-3 sm:right-6 z-50 flex flex-col items-end">
 
     <Transition name="panel">
@@ -291,6 +285,9 @@ onUnmounted(() => {
         <button @click="loadTaskError = ''" class="opacity-70 hover:opacity-100 text-base">×</button>
       </div>
     </Transition>
+
+  </div>
+</template>
 
   </div>
 </template>

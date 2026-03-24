@@ -173,7 +173,7 @@ const onCloseAddTask = () => {
 </script>
 
 <template>
-  <Loading v-if="loading" :message="'A moment...'" />
+  <Loading v-if="loading" :message="'Setting up...'" />
 
 
   <div v-else class="director-dash flex flex-col w-full h-full overflow-hidden bg-gray-50">
