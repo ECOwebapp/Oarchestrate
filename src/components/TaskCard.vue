@@ -27,14 +27,14 @@ const progress = computed(() => {
 })
 
 const statusLabel = computed(() => {
-  if (props.task?.director) return { label: 'Approved', cls: 'bg-green-100 text-green-800' }
-  if (props.task?.unitHead) return { label: 'Pending', cls: 'bg-amber-100 text-amber-800' }
-  if (props.task?.revision) return { label: 'Needs Revision', cls: 'bg-orange-100 text-orange-700' }
+  if (props.task?.director)   return { label: 'Approved',               cls: 'bg-green-100 text-green-800'  }
+  if (props.task?.unitHead)   return { label: 'Pending',                cls: 'bg-amber-100 text-amber-800'  }
+  if (props.task?.revision)   return { label: 'Needs Revision',         cls: 'bg-orange-100 text-orange-700'}
   if ((props.task?.assigneeIsOffice || props.task?.isSelfAssigned) && props.task?.outputLink)
-    return { label: 'Waiting for Submission', cls: 'bg-amber-100 text-amber-800' }
+                              return { label: 'Waiting for Submission',  cls: 'bg-amber-100 text-amber-800'  }
   if (!props.task?.assigneeIsOffice && !props.task?.isSelfAssigned && props.task?.outputLink)
-    return { label: 'Pending Unit Head', cls: 'bg-gray-100 text-gray-600' }
-  return { label: 'Pending', cls: 'bg-gray-100 text-gray-600' }
+                              return { label: 'Pending Unit Head',       cls: 'bg-gray-100 text-gray-600'    }
+  return                             { label: 'Pending',                 cls: 'bg-gray-100 text-gray-600'    }
 })
 
 const cardClass = computed(() => {
@@ -52,7 +52,7 @@ const isResubmitted = computed(() =>
   props.task?.outputLink && !props.task?.revision && !props.task?.director && props.task?.revisedAt
 )
 
-const handleClick = (e) => {
+const handleClick = () => {
   if (props.selectable) {
     emit('toggle-select', props.task)
   } else {
@@ -67,9 +67,9 @@ const handleCheckboxClick = (e) => {
 </script>
 
 <template>
-  <div @click="handleClick" class="relative flex flex-col rounded-2xl py-3 px-4 overflow-hidden bg-white shadow-lg
-           hover:shadow-xl hover:cursor-pointer transition-all duration-200 hover:-translate-y-0.5 group animate-slide-up
-           h-44" :class="[
+  <div @click="handleClick" class="relative flex flex-col rounded-2xl py-3 px-3 sm:px-4 overflow-hidden bg-white shadow-lg
+           hover:shadow-xl hover:cursor-pointer transition-all duration-200 hover:-translate-y-0.5 group
+           min-h-[160px] sm:min-h-[176px]" :class="[
             cardClass,
             selected ? 'ring-2 ring-green-600 ring-offset-1' : '',
             task.urgent
@@ -101,20 +101,20 @@ const handleCheckboxClick = (e) => {
     </div>
 
     <!-- Type + revision badges -->
-    <div class="flex items-center gap-2 mb-2 flex-wrap">
-      <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full" :class="task.type?.toLowerCase() === 'insertion'
+    <div class="flex items-center gap-1.5 mb-2 flex-wrap">
+      <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full whitespace-nowrap" :class="task.type?.toLowerCase() === 'insertion'
         ? 'bg-red-100 text-red-700'
         : 'bg-green-100 text-green-800'">
         {{ task.type }}
       </span>
       <span v-if="task.revision"
-        class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 flex items-center gap-1">
+        class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 flex items-center gap-1 whitespace-nowrap">
         <span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse inline-block" />
         Revision
       </span>
       <span v-if="isResubmitted"
-        class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1">
-        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+        class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1 whitespace-nowrap">
+        <svg class="w-3 h-3 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
           <path :d="mdiLink" />
         </svg>
         Resubmitted
@@ -122,7 +122,7 @@ const handleCheckboxClick = (e) => {
     </div>
 
     <!-- Title -->
-    <p class="truncate font-bold text-sm mb-1" :class="task.urgent ? 'text-red-900' : 'text-green-950'">
+    <p class="truncate font-bold text-sm mb-1 pr-1" :class="task.urgent ? 'text-red-900' : 'text-green-950'">
       {{ task.name }}
     </p>
 
@@ -142,21 +142,47 @@ const handleCheckboxClick = (e) => {
       <span class="self-start text-[10px] font-bold px-2 py-0.5 rounded-full mb-2" :class="statusLabel.cls">
         {{ statusLabel.label }}
       </span>
+
+
     </div>
 
     <!-- Output submitted indicator -->
-      <div v-if="task.outputLink && !task.director"
-        class="flex items-center gap-1 text-[10px] text-blue-600 font-semibold mb-1">
-        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-          <path :d="mdiLink" />
-        </svg>
-        Output submitted
-      </div>
+    <div v-if="task.outputLink && !task.director"
+      class="flex items-center gap-1 text-[10px] text-blue-600 font-semibold mb-1">
+      <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+        <path :d="mdiLink" />
+      </svg>
+      Output submitted
+    </div>
 
+    =======
+    <!-- Assignee (director/unit head view) -->
+    <p v-if="showAssignee" class="text-xs text-gray-400 mb-2 truncate flex items-center gap-1">
+      <svg class="w-3 h-3 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+        <path :d="mdiAccount" />
+      </svg>
+      <span class="truncate">{{ task.assigneeName }}</span>
+    </p>
+
+    <!-- Status badge -->
+    <span class="self-start text-[10px] font-bold px-2 py-0.5 rounded-full mb-2 whitespace-nowrap"
+      :class="statusLabel.cls">
+      {{ statusLabel.label }}
+    </span>
+
+    <!-- Output submitted indicator -->
+    <div v-if="task.outputLink && !task.director"
+      class="flex items-center gap-1 text-[10px] text-blue-600 font-semibold mb-1">
+      <svg class="w-3 h-3 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+        <path :d="mdiLink" />
+      </svg>
+      Output submitted
+    </div>
+    >>>>>>> 36f38ec (Task display responsiveness)
 
     <!-- Progress bar + due date -->
     <div class="flex items-center gap-2 mt-auto pt-1">
-      <div class="flex-1 bg-gray-200 rounded-full h-1.5 overflow-hidden">
+      <div class="flex-1 bg-gray-200 rounded-full h-1.5 overflow-hidden min-w-0">
         <div class="h-full rounded-full transition-all duration-500"
           :class="task.urgent ? 'bg-red-800' : task.director ? 'bg-green-600' : 'bg-green-950'"
           :style="{ width: progress + '%' }" />
