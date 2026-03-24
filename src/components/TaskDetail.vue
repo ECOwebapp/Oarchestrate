@@ -755,7 +755,7 @@ const resubmit = async () => {
                               </p>
                             </div>
                             <!-- MDI Check icon for selected member -->
-                            <svg v-if="currentlyAssignedMember(sub, member)" viewBox="0 0 24 24"
+                            <svg v-if="String(subtaskAssigneeId(sub)) === String(member.id)" viewBox="0 0 24 24"
                               class="w-3.5 h-3.5 text-green-600 flex-shrink-0" fill="currentColor">
                               <path :d="mdiCheck" />
                             </svg>

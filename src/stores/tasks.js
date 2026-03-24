@@ -248,6 +248,8 @@ export const taskStore = defineStore('tasks', () => {
           .order('id', { ascending: false })
         if (error) throw error
 
+        console.log(rows)
+
         const allUserIds = [...new Set((rows || []).flatMap(t => [
           t.assigner, t.assignee,
           ...(t.subtasks || []).map(s => s.assignee),
@@ -268,9 +270,9 @@ export const taskStore = defineStore('tasks', () => {
         const roleMap = Object.fromEntries((roleRes.data || []).map(r => [r.user_id, r.pos_id]))
 
         const spawnedMap = buildSpawnedMap([...(rows || []), ...extraSpawnedRows])
-        const parentRows = (rows || []).filter(r => !r.source_subtask_id)
+        // const parentRows = (rows || []).filter(r => !r.source_subtask_id)
 
-        tasks.value = parentRows.map(t => ({
+        tasks.value = rows.map(t => ({
           ...mapRow(t, spawnedMap),
           assigneeRole: roleMap[t.assignee] || null,
           assigneeUnitId: getAssigneeUnitId(t.assignee),
@@ -713,11 +715,9 @@ const fetchTaskById = async (taskId) => {
 
         const { data, error } = await supabase
           .from('task')
-          .update({ assignee: String(assigneeId).trim() })
+          .update({ assignee: assigneeId })
           .eq('source_subtask_id', Number(spawnedTaskId)) // This one took me a whole day to find out that this is the fking culprit
-          .select()
 
-        console.log('Data returned: ', data)
         if (error) throw new Error('Failed to reassign: ' + error.message)
 
         await supabase.from('subtask_assignment_log').insert({
@@ -773,8 +773,8 @@ const fetchTaskById = async (taskId) => {
           }),
           supabase.from('task_approval').insert({
             id,
-            unit_head: isSelfAssign,
-            director: isSelfAssign,
+            unit_head: false,
+            director: false,
           }),
           supabase.from('task_duration').insert({
             id,

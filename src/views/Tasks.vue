@@ -44,6 +44,8 @@ const tasks = computed(() => {
   // }
   
   // Default filter for everyone else
+
+
   return store.tasks.filter(t => !t.design);
 });
 
