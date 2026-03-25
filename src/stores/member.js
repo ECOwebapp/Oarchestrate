@@ -12,6 +12,10 @@ export const useMemberStore = defineStore('member', () => {
                 .from('members')
                 .select('*')
 
+            const { data: profRows, error: profErr } = await supabase
+                .from('profession')
+                .select(`id, user_id, profession_name:prof_id(prof_name)`)
+
             const { data: statusRows, error: statusErr } = await supabase
                 .from('account_status')
                 .select(`user_id, status_id`)
@@ -20,11 +24,14 @@ export const useMemberStore = defineStore('member', () => {
                 throw memberErr
             } else if (statusErr) {
                 throw statusErr
+            } else if(profErr){
+                throw profErr
             } else {
                 if (memberRows) {
                     members.value = (memberRows || [])
                         .map(m => ({
                             id: m.user_id,
+                            profession: profRows.find(p => p.user_id === m.user_id)?.profession_name?.prof_name.trim() || '',
                             lname: m.lname,
                             fname: m.fname,
                             middle_initial: m.middle_initial,
@@ -33,10 +40,11 @@ export const useMemberStore = defineStore('member', () => {
                             email: m.email_address,
                             gender: m.gender,
                             status_id: statusRows.find(s => s.user_id === m.user_id)?.status_id,
+                            avatar_url: m.avatar_url
                         }))
                 }
             }
-            // console.log(memberRows)
+            // console.log(profRows)
             // console.log(members.value)
 
         } catch (e) {
