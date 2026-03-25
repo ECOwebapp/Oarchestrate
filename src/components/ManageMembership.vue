@@ -79,15 +79,25 @@ const selectedMemberUnitLabel = computed(() => {
 
     if (!selectedRows.length) return 'No unit assigned'
 
-    const unitId = selectedRows.find(r => r.unit_id != null)?.unit_id ?? selectedRows[0]?.unit_id
-    if (unitId == null) return 'No unit assigned'
+    const uniqueUnitIds = [...new Set(
+        selectedRows
+            .map(r => r.unit_id)
+            .filter(unitId => unitId != null)
+            .map(unitId => String(unitId))
+    )]
 
-    const unitMatch = unit.value.find(u => {
-        const rowUnitId = u.id ?? u.unit_id
-        return String(rowUnitId) === String(unitId)
+    if (!uniqueUnitIds.length) return 'No unit assigned'
+
+    const unitLabels = uniqueUnitIds.map(unitId => {
+        const unitMatch = unit.value.find(u => {
+            const rowUnitId = u.id ?? u.unit_id
+            return String(rowUnitId) === unitId
+        })
+
+        return unitMatch?.unit_name || unitMatch?.name || `Unit ${unitId}`
     })
 
-    return unitMatch?.unit_name || unitMatch?.name || 'No unit assigned'
+    return unitLabels.join(', ')
 })
 
 // Change Member position to Director/Unit Head/Unit Member
@@ -190,7 +200,7 @@ const removeMember = async () => {
                                         member.middle_initial }} {{ member.lname }}</option>
                             </select>
                             <p v-if="changePosMembers.user_id" class="mt-2 text-xs text-gray-600">
-                                Current unit: <span class="font-semibold text-gray-800">{{ selectedMemberUnitLabel }}</span>
+                                Current unit(s): <span class="font-semibold text-gray-800">{{ selectedMemberUnitLabel }}</span>
                             </p>
                             <p class="text-xs text-red-500 mt-1">* Not 2 members at the same time</p>
                         </div>
