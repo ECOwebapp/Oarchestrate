@@ -22,6 +22,8 @@ const mdiClose = 'M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,
 const mdiCheckCircle = 'M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z'
 const mdiClockOutline = 'M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z'
 const mdiRefresh = 'M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z'
+const mdiPencil = 'M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z'
+const mdiTrashCan = 'M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z'
 
 const props = defineProps(['task'])
 const emit = defineEmits(['close', 'refresh', 'assignSubtask'])
@@ -47,11 +49,14 @@ const assigningId = ref(null)
 
 const uploadFile = ref(null)
 const resubmitFile = ref(null)
+const editFile = ref(null)
 const uploadProgress = ref(0)
 const dragOverSubmit = ref(false)
 const dragOverResub = ref(false)
+const dragOverEdit = ref(false)
 const fileInputRef = ref(null)
 const resubInputRef = ref(null)
+const editInputRef = ref(null)
 const action = ref(null)
 
 const handleOutsideClick = (e) => {
@@ -71,8 +76,14 @@ onMounted(async () => {
 onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 
 // A simple method is best for this use case
+// ── Edit submission UI state ─────────────────────────────────────────────────
+// true  = user clicked "Edit" and we show the replace-file picker
+// false = normal "submitted" view
+const editingSubmission = ref(false)
+// true  = user clicked "Delete" and we show a confirm prompt
+const confirmingDelete = ref(false)
+
 const currentlyAssignedMember = (sub, selectedMember) => {
-  // If no task has been spawned yet, nobody is assigned
   if (!sub.spawnedTaskId || !sub.spawnedAssignee) {
     action.value = 'assign'
     return false;
@@ -106,6 +117,11 @@ const onDropResub = (e) => {
   const f = e.dataTransfer?.files?.[0]
   if (f) { resubmitFile.value = f; submitError.value = '' }
 }
+const onDropEdit = (e) => {
+  dragOverEdit.value = false
+  const f = e.dataTransfer?.files?.[0]
+  if (f) { editFile.value = f; submitError.value = '' }
+}
 const onFilePickSubmit = (e) => {
   const f = e.target?.files?.[0]
   if (f) { uploadFile.value = f; submitError.value = '' }
@@ -113,6 +129,10 @@ const onFilePickSubmit = (e) => {
 const onFilePickResub = (e) => {
   const f = e.target?.files?.[0]
   if (f) { resubmitFile.value = f; submitError.value = '' }
+}
+const onFilePickEdit = (e) => {
+  const f = e.target?.files?.[0]
+  if (f) { editFile.value = f; submitError.value = '' }
 }
 
 const loadRevisions = async () => {
@@ -174,6 +194,9 @@ watch(() => props.task?.id, () => {
   submitError.value = ''
   tab.value = 'detail'
   openDropdownId.value = null
+  editingSubmission.value = false
+  confirmingDelete.value = false
+  editFile.value = null
   loadRevisions()
 })
 
@@ -251,13 +274,9 @@ const toggleDropdown = (sub) => {
 }
 
 const pickMemberAndAssign = async (sub, member) => {
-  // 1. Close the UI state
   openDropdownId.value = null;
   assigningId.value = sub.id;
-
-  // 2. Determine the action
   currentlyAssignedMember(sub, member)
-
   emit('assignSubtask', {
     subtask: sub,
     assignedMemberId: member.id,
@@ -267,10 +286,8 @@ const pickMemberAndAssign = async (sub, member) => {
       member.lname
     ].filter(Boolean).join(' '),
     parentTask: props.task,
-    // Use the logic here
     action: action.value
   });
-
   assigningId.value = null;
 };
 
@@ -295,6 +312,20 @@ const canResubmit = computed(() =>
   (auth.isMember || (auth.isUnitHead && props.task?.isOwnTask)) &&
   !!props.task?.revision && !props.task?.director
 )
+
+// ── can the submitter manage (edit/delete) their own submission?
+// Conditions:
+//   - current user is the task assignee
+//   - output has been submitted (outputLink exists)
+//   - director has NOT given final approval yet
+const canManageSubmission = computed(() => {
+  const isAssignee = String(props.task?.assignee) === String(auth.userID)
+  const isUnitHeadOwnTask = auth.isUnitHead && props.task?.isOwnTask
+  return (auth.isMember || isUnitHeadOwnTask || isAssignee) &&
+    !!props.task?.outputLink &&
+    !props.task?.director
+})
+
 const canRequestRevision = computed(() =>
   (canApproveAsUnitHead.value || canApproveAsDirector.value) && revisionComment.value.trim().length > 0
 )
@@ -398,6 +429,46 @@ const resubmit = async () => {
     uploadProgress.value = 0
   }
 }
+
+// ── NEW: edit submission (replace the file while still pending review) ────────
+const saveEditedOutput = async () => {
+  if (!editFile.value) return
+  acting.value = 'editOutput'
+  submitError.value = ''
+  uploadProgress.value = 0
+  try {
+    const result = await uploadOutputFile({
+      file: editFile.value,
+      onProgress: (p) => { uploadProgress.value = p }
+    })
+    await store.editOutput(props.task.id, result.fileUrl)
+    editFile.value = null
+    editingSubmission.value = false
+    uploadProgress.value = 0
+    emit('refresh')
+    // Stay open so the user can see the updated link
+  } catch (err) {
+    submitError.value = err.message || 'Upload failed. Please try again.'
+  } finally {
+    acting.value = ''
+    uploadProgress.value = 0
+  }
+}
+
+// ── NEW: delete submission (retract the file, reset back to "no output") ──────
+const confirmDeleteOutput = async () => {
+  acting.value = 'deleteOutput'
+  try {
+    await store.deleteOutput(props.task.id)
+    confirmingDelete.value = false
+    emit('refresh')
+    // Stay open; task now shows the upload UI again
+  } catch (err) {
+    submitError.value = err.message || 'Failed to remove submission.'
+  } finally {
+    acting.value = ''
+  }
+}
 </script>
 
 <template>
@@ -474,7 +545,6 @@ const resubmit = async () => {
               <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Assigned by</p>
               <div class="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 bg-white">
                 <div class="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                  <!-- MDI Account icon -->
                   <svg viewBox="0 0 24 24" class="w-4 h-4 text-green-800" fill="currentColor">
                     <path :d="mdiAccount" />
                   </svg>
@@ -486,7 +556,6 @@ const resubmit = async () => {
               <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Assigned to</p>
               <div class="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 bg-white">
                 <div class="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                  <!-- MDI Account icon -->
                   <svg viewBox="0 0 24 24" class="w-4 h-4 text-green-800" fill="currentColor">
                     <path :d="mdiAccount" />
                   </svg>
@@ -509,18 +578,185 @@ const resubmit = async () => {
           <!-- OUTPUT -->
           <div>
             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Output</p>
-            <div v-if="task.outputLink"
-              class="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3 bg-green-50">
-              <!-- MDI Link icon -->
-              <svg viewBox="0 0 24 24" class="w-5 h-5 text-green-700 flex-shrink-0" fill="currentColor">
-                <path :d="mdiLink" />
-              </svg>
-              <a :href="task.outputLink" target="_blank"
-                class="text-sm text-green-800 font-semibold hover:underline truncate flex-1">
-                View submitted output ↗
-              </a>
-            </div>
 
+            <!-- ── SUBMITTED: normal view + manage controls ── -->
+            <template v-if="task.outputLink && !editingSubmission && !confirmingDelete">
+
+              <div class="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3 bg-green-50">
+                <svg viewBox="0 0 24 24" class="w-5 h-5 text-green-700 flex-shrink-0" fill="currentColor">
+                  <path :d="mdiLink" />
+                </svg>
+                <a :href="task.outputLink" target="_blank"
+                  class="text-sm text-green-800 font-semibold hover:underline truncate flex-1">
+                  View submitted output ↗
+                </a>
+              </div>
+
+              <!-- Edit / Delete buttons — only shown when submission is still pending review -->
+              <div v-if="canManageSubmission" class="flex gap-2 mt-2">
+                <button @click="editingSubmission = true; submitError = ''"
+                  class="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-gray-300
+                         text-xs font-semibold text-gray-600 hover:border-green-700 hover:text-green-800
+                         hover:bg-green-50 transition-colors">
+                  <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="currentColor">
+                    <path :d="mdiPencil" />
+                  </svg>
+                  Edit submission
+                </button>
+                <button @click="confirmingDelete = true; submitError = ''"
+                  class="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-gray-300
+                         text-xs font-semibold text-gray-600 hover:border-red-400 hover:text-red-600
+                         hover:bg-red-50 transition-colors">
+                  <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="currentColor">
+                    <path :d="mdiTrashCan" />
+                  </svg>
+                  Remove submission
+                </button>
+              </div>
+            </template>
+
+            <!-- ── EDIT SUBMISSION: replace file picker ── -->
+            <template v-else-if="editingSubmission">
+              <div class="space-y-2.5">
+                <!-- Current file reference -->
+                <div class="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                  <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-green-700 flex-shrink-0" fill="currentColor">
+                    <path :d="mdiLink" />
+                  </svg>
+                  <span class="truncate">Current:
+                    <a :href="task.outputLink" target="_blank" class="text-green-700 hover:underline font-medium">
+                      view file ↗
+                    </a>
+                  </span>
+                </div>
+
+                <input ref="editInputRef" type="file" class="hidden" @change="onFilePickEdit" />
+                <div v-if="!editFile" @dragover.prevent="dragOverEdit = true"
+                  @dragleave.prevent="dragOverEdit = false" @drop.prevent="onDropEdit" @click="editInputRef?.click()"
+                  class="border-2 border-dashed rounded-2xl px-5 py-6 flex flex-col items-center
+                         justify-center gap-2 cursor-pointer transition-all select-none"
+                  :class="dragOverEdit
+                    ? 'border-green-700 bg-green-50'
+                    : 'border-gray-300 bg-gray-50 hover:border-green-700 hover:bg-green-50'">
+                  <div class="w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
+                    :class="dragOverEdit ? 'bg-green-100' : 'bg-white border border-gray-200'">
+                    <svg viewBox="0 0 24 24" class="w-5 h-5" :class="dragOverEdit ? 'text-green-700' : 'text-gray-400'"
+                      fill="currentColor">
+                      <path :d="mdiCloudUpload" />
+                    </svg>
+                  </div>
+                  <p class="text-sm font-semibold text-gray-700">
+                    {{ dragOverEdit ? 'Drop to replace' : 'Drop replacement file or click to browse' }}
+                  </p>
+                  <p class="text-xs text-gray-400">Replaces the current submission</p>
+                </div>
+
+                <div v-else
+                  class="flex items-center gap-3 border-2 border-green-200 bg-green-50 rounded-2xl px-4 py-3">
+                  <div
+                    class="w-9 h-9 rounded-xl bg-white border border-green-200 flex items-center justify-center flex-shrink-0">
+                    <svg viewBox="0 0 24 24" class="w-4 h-4 text-green-700" fill="currentColor">
+                      <path :d="mdiFileDocument" />
+                    </svg>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-gray-800 truncate">{{ editFile.name }}</p>
+                    <p class="text-xs text-gray-400">{{ formatBytes(editFile.size) }}</p>
+                  </div>
+                  <button @click="editFile = null; editInputRef && (editInputRef.value = '')"
+                    class="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0">
+                    <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor">
+                      <path :d="mdiClose" />
+                    </svg>
+                  </button>
+                </div>
+
+                <!-- Upload progress -->
+                <div v-if="acting === 'editOutput'" class="space-y-1">
+                  <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div class="h-full bg-green-700 rounded-full transition-all duration-300"
+                      :style="{ width: uploadProgress + '%' }" />
+                  </div>
+                  <p class="text-xs text-gray-500 text-right">
+                    {{ uploadProgress < 100 ? `Uploading… ${uploadProgress}%` : 'Saving…' }}
+                  </p>
+                </div>
+
+                <p v-if="submitError" class="text-xs text-red-600 font-medium flex items-center gap-1.5">
+                  <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor">
+                    <path :d="mdiAlertCircle" />
+                  </svg>
+                  {{ submitError }}
+                </p>
+
+                <div class="flex gap-2">
+                  <button @click="editingSubmission = false; editFile = null; submitError = ''"
+                    :disabled="acting === 'editOutput'"
+                    class="flex-1 h-10 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm
+                           hover:border-gray-400 disabled:opacity-40 transition-colors active:scale-95">
+                    Cancel
+                  </button>
+                  <button @click="saveEditedOutput" :disabled="acting === 'editOutput' || !editFile"
+                    class="flex-1 h-10 rounded-xl bg-green-950 text-white text-sm font-bold
+                           hover:bg-green-800 disabled:opacity-40 transition-all active:scale-95
+                           flex items-center justify-center gap-2">
+                    <svg v-if="acting === 'editOutput'" class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24"
+                      fill="none">
+                      <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
+                      <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
+                    </svg>
+                    {{ acting === 'editOutput'
+                      ? (uploadProgress < 100 ? `Uploading ${uploadProgress}%…` : 'Saving…')
+                      : 'Save new file' }}
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <!-- ── DELETE CONFIRMATION ── -->
+            <template v-else-if="confirmingDelete">
+              <div class="border-2 border-red-200 bg-red-50 rounded-xl px-4 py-4 space-y-3">
+                <div class="flex items-start gap-3">
+                  <svg viewBox="0 0 24 24" class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="currentColor">
+                    <path :d="mdiAlert" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-bold text-red-700">Remove this submission?</p>
+                    <p class="text-xs text-red-600 mt-0.5 leading-relaxed">
+                      The submitted file will be removed and the task will return to "awaiting submission" state.
+                      The reviewer will be notified.
+                    </p>
+                  </div>
+                </div>
+                <p v-if="submitError" class="text-xs text-red-600 font-medium flex items-center gap-1.5">
+                  <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor">
+                    <path :d="mdiAlertCircle" />
+                  </svg>
+                  {{ submitError }}
+                </p>
+                <div class="flex gap-2">
+                  <button @click="confirmingDelete = false; submitError = ''"
+                    :disabled="acting === 'deleteOutput'"
+                    class="flex-1 h-9 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm
+                           hover:border-gray-400 disabled:opacity-40 transition-colors active:scale-95">
+                    Cancel
+                  </button>
+                  <button @click="confirmDeleteOutput" :disabled="acting === 'deleteOutput'"
+                    class="flex-1 h-9 rounded-xl bg-red-600 text-white text-sm font-bold
+                           hover:bg-red-500 disabled:opacity-40 transition-all active:scale-95
+                           flex items-center justify-center gap-2">
+                    <svg v-if="acting === 'deleteOutput'" class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24"
+                      fill="none">
+                      <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
+                      <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
+                    </svg>
+                    {{ acting === 'deleteOutput' ? 'Removing…' : 'Yes, remove it' }}
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <!-- ── SUBMIT OUTPUT (no file yet) ── -->
             <div v-else-if="canSubmitOutput" class="space-y-2.5">
               <input ref="fileInputRef" type="file" class="hidden" @change="onFilePickSubmit" />
               <div v-if="!uploadFile" @dragover.prevent="dragOverSubmit = true"
@@ -531,7 +767,6 @@ const resubmit = async () => {
                           : 'border-gray-300 bg-gray-50 hover:border-green-700 hover:bg-green-50'">
                 <div class="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
                   :class="dragOverSubmit ? 'bg-green-100' : 'bg-white border border-gray-200'">
-                  <!-- MDI Cloud Upload icon -->
                   <svg viewBox="0 0 24 24" class="w-5 h-5" :class="dragOverSubmit ? 'text-green-700' : 'text-gray-400'"
                     fill="currentColor">
                     <path :d="mdiCloudUpload" />
@@ -545,7 +780,6 @@ const resubmit = async () => {
               <div v-else class="flex items-center gap-3 border-2 border-green-200 bg-green-50 rounded-2xl px-4 py-3">
                 <div
                   class="w-9 h-9 rounded-xl bg-white border border-green-200 flex items-center justify-center flex-shrink-0">
-                  <!-- MDI File Document icon -->
                   <svg viewBox="0 0 24 24" class="w-4 h-4 text-green-700" fill="currentColor">
                     <path :d="mdiFileDocument" />
                   </svg>
@@ -556,7 +790,6 @@ const resubmit = async () => {
                 </div>
                 <button @click="uploadFile = null; fileInputRef && (fileInputRef.value = '')"
                   class="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0">
-                  <!-- MDI Close icon -->
                   <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor">
                     <path :d="mdiClose" />
                   </svg>
@@ -568,10 +801,10 @@ const resubmit = async () => {
                     :style="{ width: uploadProgress + '%' }" />
                 </div>
                 <p class="text-xs text-gray-500 text-right">
-                  {{ uploadProgress < 100 ? `Uploading… ${uploadProgress}%` : 'Saving…' }} </p>
+                  {{ uploadProgress < 100 ? `Uploading… ${uploadProgress}%` : 'Saving…' }}
+                </p>
               </div>
               <p v-if="submitError" class="text-xs text-red-600 font-medium flex items-center gap-1.5">
-                <!-- MDI Alert Circle icon -->
                 <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor">
                   <path :d="mdiAlertCircle" />
                 </svg>
@@ -585,14 +818,15 @@ const resubmit = async () => {
                   <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
                 </svg>
                 {{ submitting ? (uploadProgress < 100 ? `Uploading ${uploadProgress}%…` : 'Saving…')
-                  : 'Upload & Submit' }} </button>
+                  : 'Upload & Submit' }}
+              </button>
             </div>
 
+            <!-- ── RESUBMIT (revision requested) ── -->
             <div v-else-if="canResubmit" class="space-y-2.5">
               <input ref="resubInputRef" type="file" class="hidden" @change="onFilePickResub" />
               <div v-if="task.revisionComment"
                 class="flex items-start gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
-                <!-- MDI Alert icon -->
                 <svg viewBox="0 0 24 24" class="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" fill="currentColor">
                   <path :d="mdiAlert" />
                 </svg>
@@ -607,7 +841,6 @@ const resubmit = async () => {
                        justify-center gap-2 cursor-pointer transition-all select-none" :class="dragOverResub ? 'border-orange-500 bg-orange-50'
                         : 'border-orange-200 bg-orange-50/50 hover:border-orange-400 hover:bg-orange-50'">
                 <div class="w-10 h-10 rounded-xl bg-white border border-orange-200 flex items-center justify-center">
-                  <!-- MDI Cloud Upload icon -->
                   <svg viewBox="0 0 24 24" class="w-5 h-5 text-orange-400" fill="currentColor">
                     <path :d="mdiCloudUpload" />
                   </svg>
@@ -620,7 +853,6 @@ const resubmit = async () => {
               <div v-else class="flex items-center gap-3 border-2 border-orange-200 bg-orange-50 rounded-2xl px-4 py-3">
                 <div
                   class="w-9 h-9 rounded-xl bg-white border border-orange-200 flex items-center justify-center flex-shrink-0">
-                  <!-- MDI File Document icon -->
                   <svg viewBox="0 0 24 24" class="w-4 h-4 text-orange-600" fill="currentColor">
                     <path :d="mdiFileDocument" />
                   </svg>
@@ -631,7 +863,6 @@ const resubmit = async () => {
                 </div>
                 <button @click="resubmitFile = null; resubInputRef && (resubInputRef.value = '')"
                   class="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0">
-                  <!-- MDI Close icon -->
                   <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor">
                     <path :d="mdiClose" />
                   </svg>
@@ -643,10 +874,10 @@ const resubmit = async () => {
                     :style="{ width: uploadProgress + '%' }" />
                 </div>
                 <p class="text-xs text-orange-500 text-right">
-                  {{ uploadProgress < 100 ? `Uploading… ${uploadProgress}%` : 'Saving…' }} </p>
+                  {{ uploadProgress < 100 ? `Uploading… ${uploadProgress}%` : 'Saving…' }}
+                </p>
               </div>
               <p v-if="submitError" class="text-xs text-red-600 font-medium flex items-center gap-1.5">
-                <!-- MDI Alert Circle icon -->
                 <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor">
                   <path :d="mdiAlertCircle" />
                 </svg>
@@ -661,9 +892,10 @@ const resubmit = async () => {
                 </svg>
                 {{ acting === 'resubmit'
                   ? (uploadProgress < 100 ? `Uploading ${uploadProgress}%…` : 'Saving…') : 'Upload & Resubmit' }}
-                  </button>
+              </button>
             </div>
 
+            <!-- ── FALLBACK ── -->
             <div v-else
               class="border border-dashed border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-400 text-center">
               No output submitted yet
@@ -688,20 +920,17 @@ const resubmit = async () => {
                   ? 'border-amber-200 bg-amber-50/40'
                   : 'border-gray-200'">
 
-                <!-- Step number -->
                 <span class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center
                              text-white text-[10px] font-bold"
                   :class="isSubtaskUnassigned(sub) ? 'bg-gray-300' : 'bg-green-900'">
                   {{ i + 1 }}
                 </span>
 
-                <!-- Subtask info -->
                 <div class="flex-1 min-w-0">
                   <p class="text-sm text-gray-700 leading-snug truncate">{{ sub.name }}</p>
                   <div class="flex items-center gap-1.5 mt-0.5">
                     <span v-if="!isSubtaskUnassigned(sub)" class="text-[10px] text-green-700 font-semibold bg-green-50 border border-green-200
                              px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                      <!-- MDI Account icon -->
                       <svg viewBox="0 0 24 24" class="w-2.5 h-2.5 flex-shrink-0" fill="currentColor">
                         <path :d="mdiAccount" />
                       </svg>
@@ -714,17 +943,13 @@ const resubmit = async () => {
                   </div>
                 </div>
 
-                <!-- Actions -->
                 <div class="flex items-center gap-2 flex-shrink-0">
                   <a v-if="sub.outputLink" :href="sub.outputLink" target="_blank"
                     class="text-xs text-green-800 font-semibold hover:underline flex-shrink-0">
                     ↗ View
                   </a>
 
-                  <!-- Assign / Reassign dropdown — Unit Head only -->
                   <div v-if="canAssignSubtasks" class="relative" data-dropdown>
-
-                    <!-- Saving spinner -->
                     <div v-if="assigningId === sub.id" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg
                              border-2 border-gray-200 bg-gray-50 text-gray-400 text-xs font-bold
                              cursor-not-allowed select-none">
@@ -749,14 +974,12 @@ const resubmit = async () => {
                           <span class="truncate max-w-[90px]">{{ subtaskDisplayName(sub) }}</span>
                         </template>
                         <template v-else>Assign</template>
-                        <!-- MDI Chevron Down icon -->
                         <svg viewBox="0 0 24 24" class="w-3 h-3 flex-shrink-0 transition-transform duration-150"
                           :class="openDropdownId === sub.id ? 'rotate-180' : ''" fill="currentColor">
                           <path :d="mdiChevronDown" />
                         </svg>
                       </button>
 
-                      <!-- Member picker -->
                       <Transition enter-active-class="transition duration-100 ease-out"
                         enter-from-class="opacity-0 scale-95 -translate-y-1"
                         enter-to-class="opacity-100 scale-100 translate-y-0"
@@ -799,7 +1022,6 @@ const resubmit = async () => {
                                 {{ member.pos_name }}
                               </p>
                             </div>
-                            <!-- MDI Check icon for selected member -->
                             <svg v-if="String(subtaskAssigneeId(sub)) === String(member.id)" viewBox="0 0 24 24"
                               class="w-3.5 h-3.5 text-green-600 flex-shrink-0" fill="currentColor">
                               <path :d="mdiCheck" />
@@ -843,7 +1065,6 @@ const resubmit = async () => {
             </div>
             <div v-else-if="filteredRevisions.length < 1"
               class="flex flex-col items-center justify-center py-14 text-center text-gray-400">
-              <!-- MDI Comment Outline icon -->
               <svg viewBox="0 0 24 24" class="w-12 h-12 mb-3 opacity-20" fill="currentColor">
                 <path :d="mdiCommentOutline" />
               </svg>
@@ -905,7 +1126,6 @@ const resubmit = async () => {
               <button @click="resubInputRef?.click()"
                 class="flex items-center gap-2 h-9 px-3 rounded-xl border-2 border-orange-200
                        bg-white text-orange-700 text-xs font-bold hover:border-orange-400 transition-colors flex-shrink-0">
-                <!-- MDI Paperclip icon -->
                 <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="currentColor">
                   <path :d="mdiPaperclip" />
                 </svg>
@@ -916,7 +1136,6 @@ const resubmit = async () => {
               </span>
               <button v-if="resubmitFile" @click="resubmitFile = null"
                 class="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0">
-                <!-- MDI Close icon -->
                 <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor">
                   <path :d="mdiClose" />
                 </svg>
@@ -934,7 +1153,8 @@ const resubmit = async () => {
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
               </svg>
               {{ acting === 'resubmit'
-                ? (uploadProgress < 100 ? `Uploading ${uploadProgress}%…` : 'Saving…') : 'Upload & Resubmit' }} </button>
+                ? (uploadProgress < 100 ? `Uploading ${uploadProgress}%…` : 'Saving…') : 'Upload & Resubmit' }}
+            </button>
           </div>
         </div>
       </div>
@@ -978,7 +1198,6 @@ const resubmit = async () => {
         <template v-else-if="task.director">
           <div
             class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-green-50 border border-green-200">
-            <!-- MDI Check icon -->
             <svg viewBox="0 0 24 24" class="w-4 h-4 text-green-700" fill="currentColor">
               <path :d="mdiCheck" />
             </svg>

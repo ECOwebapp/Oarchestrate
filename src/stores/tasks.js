@@ -1,3 +1,4 @@
+import { deleteOutputFile } from '@/lib/uploadOutput'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { usePosStore } from './positions'
@@ -48,7 +49,7 @@ export const taskStore = defineStore('tasks', () => {
 
     Object.entries(memberships).forEach(([userId, units]) => {
       const preferred = activeUnitHeadId != null && units.includes(activeUnitHeadId)
-        ? activeUnitHeadId  
+        ? activeUnitHeadId
         : units[0]
       unitIdMap.value[userId] = preferred ?? null
     })
@@ -287,7 +288,6 @@ export const taskStore = defineStore('tasks', () => {
         const roleMap = Object.fromEntries((roleRes.data || []).map(r => [r.user_id, r.pos_id]))
 
         const spawnedMap = buildSpawnedMap([...(rows || []), ...extraSpawnedRows])
-        // const parentRows = (rows || []).filter(r => !r.source_subtask_id)
 
         tasks.value = rows.map(t => ({
           ...mapRow(t, spawnedMap),
@@ -353,9 +353,6 @@ export const taskStore = defineStore('tasks', () => {
   }
 
   // ── NOTIFICATION HELPER ─────────────────────────────────────────────────────
-  // Uses position_of_members directly (not the position table) to find Unit
-  // Heads, deduplicates by user_id, and checks for existing unread notifications
-  // before inserting to prevent duplicate "awaiting your review" messages.
   const _notifySubmission = async (taskId, assigneeId, fromUserId, message = null, isSelfAssigned = false) => {
     await resolveUnitIds([assigneeId])
     const assigneeIsOffice = isOfficeUser(assigneeId)
@@ -364,7 +361,6 @@ export const taskStore = defineStore('tasks', () => {
 
     if (assigneeIsOffice || isSelfAssigned) {
       if (directorId) {
-        // Only insert if no unread notification already exists
         const { data: existing } = await supabase
           .from('task_revision')
           .select('id')
@@ -389,7 +385,6 @@ export const taskStore = defineStore('tasks', () => {
         { onConflict: 'task_id' }
       )
     } else {
-      // Query position_of_members directly with pos_id=4 filter, deduplicated
       const { data: uhRows } = await supabase
         .from('position_of_members')
         .select('user_id')
@@ -406,7 +401,6 @@ export const taskStore = defineStore('tasks', () => {
       const isSenderAUnitHead = allUnitHeads.includes(fromUserId)
 
       for (const uhId of uhIds) {
-        // Only insert if no unread notification already exists for this UH
         const { data: existing } = await supabase
           .from('task_revision')
           .select('id')
@@ -538,6 +532,103 @@ export const taskStore = defineStore('tasks', () => {
     }
 
     await _notifySubmission(taskId, assigneeId, auth.user.id, null, isSelfAssigned)
+    await fetchTasks()
+  }
+
+  // ── EDIT OUTPUT ───────────────────────────────────────────────────────────────────────
+  const editOutput = async (taskId, newLink) => {
+    const auth = useAuthStore()
+
+    // 1. Grab the old link before overwriting so we can delete it from Drive
+    const { data: oldOutput } = await supabase
+      .from('task_output')
+      .select('link')
+      .eq('id', taskId)
+      .maybeSingle()
+    const oldLink = oldOutput?.link || null
+
+    // 2. Swap the output link in Supabase
+    const { error: updErr } = await supabase
+      .from('task_output')
+      .update({ link: newLink })
+      .eq('id', taskId)
+    if (updErr) throw new Error(updErr.message)
+
+    // 3. Delete the old Drive file (fire-and-forget)
+    if (oldLink && oldLink !== newLink) {
+      deleteOutputFile(oldLink).catch((e) =>
+        console.warn('[editOutput] Could not delete old Drive file:', e.message)
+      )
+    }
+
+    // 4. Mark old pending notifications as read so a fresh one can go through
+    await supabase
+      .from('task_revision')
+      .update({ is_read: true })
+      .eq('task_id', taskId)
+      .eq('is_read', false)
+
+    // 5. Re-notify the reviewer with the updated file
+    const { data: taskRow } = await supabase
+      .from('task').select('assignee, assigner').eq('id', taskId).maybeSingle()
+    const assigneeId = taskRow?.assignee || auth.user.id
+    const assignerId = taskRow?.assigner || auth.user.id
+    const isSelfAssigned = assigneeId === assignerId
+
+    await _notifySubmission(
+      taskId,
+      assigneeId,
+      auth.user.id,
+      '📝 Submission updated — please review the new file.',
+      isSelfAssigned
+    )
+
+    await fetchTasks()
+  }
+
+  // ── DELETE OUTPUT ───────────────────────────────────────────────────────────────────────
+  const deleteOutput = async (taskId) => {
+    // 1. Grab the current link so we can delete it from Drive
+    const { data: currentOutput } = await supabase
+      .from('task_output')
+      .select('link')
+      .eq('id', taskId)
+      .maybeSingle()
+    const currentLink = currentOutput?.link || null
+
+    // 2. Clear the link in Supabase
+    const { error: clearErr } = await supabase
+      .from('task_output')
+      .update({ link: '' })
+      .eq('id', taskId)
+    if (clearErr) throw new Error(clearErr.message)
+
+    // 3. Delete the Drive file (fire-and-forget)
+    if (currentLink) {
+      deleteOutputFile(currentLink).catch((e) =>
+        console.warn('[deleteOutput] Could not delete Drive file:', e.message)
+      )
+    }
+
+    // 4. Reset approval flags back to pre-submission state
+    await supabase
+      .from('task_approval')
+      .update({ unit_head: false, revision_comment: null, revised_at: null })
+      .eq('id', taskId)
+
+    // 5. Dismiss pending reviewer notifications
+    await supabase
+      .from('task_revision')
+      .update({ is_read: true })
+      .eq('task_id', taskId)
+      .eq('is_read', false)
+
+    // 6. Defensive: clear revision flag
+    await supabase
+      .from('task_profile')
+      .update({ revision: false })
+      .eq('id', taskId)
+
     await fetchTasks()
   }
 
@@ -746,12 +837,10 @@ export const taskStore = defineStore('tasks', () => {
 
     if (spawnedTaskId) {
       try {
-        // ── REASSIGN: direct update on the known spawned task id ─────────────
-
         const { data, error } = await supabase
           .from('task')
           .update({ assignee: assigneeId })
-          .eq('source_subtask_id', Number(spawnedTaskId)) // This one took me a whole day to find out that this is the fking culprit
+          .eq('source_subtask_id', Number(spawnedTaskId))
 
         if (error) throw new Error('Failed to reassign: ' + error.message)
 
@@ -766,7 +855,6 @@ export const taskStore = defineStore('tasks', () => {
 
     } else {
       try {
-        // ── FIRST ASSIGN: fetch subtask details then create spawned task ──────
         const { data: subtaskRow } = await supabase
           .from('task')
           .select(`
@@ -850,5 +938,7 @@ export const taskStore = defineStore('tasks', () => {
     approveTask, requestRevision, resubmitTask, fetchRevisions,
     fetchUnitMembers, deleteTasks, assignSubtask,
     fetchTaskById,
+    // new
+    editOutput, deleteOutput,
   }
 })
