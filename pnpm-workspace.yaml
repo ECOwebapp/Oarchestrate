@@ -3,6 +3,7 @@ packages:
 
 onlyBuiltDependencies:
   - core-js
+  - esbuild
   - vue-demi
 
 overrides:

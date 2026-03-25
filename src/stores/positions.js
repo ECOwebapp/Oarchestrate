@@ -10,7 +10,6 @@ export const usePosStore = defineStore('pos', () => {
     const auth = useAuthStore()
 
     const fetchPos = async () => {
-
         try {
             const { data: posRows, error: posErr } = await supabase
                 .from('position_name')
@@ -19,7 +18,7 @@ export const usePosStore = defineStore('pos', () => {
             if (posErr) throw posErr
 
             position.value = (posRows || [])
-                .filter(p => p.name !== 'Admin' )
+                .filter(p => p.name !== 'Admin')
                 .map(p => ({
                     id: p.id,
                     name: p.pos_name
@@ -30,47 +29,44 @@ export const usePosStore = defineStore('pos', () => {
         }
     }
 
-    const fetchRoles = async() => {
-        try{
+    const fetchRoles = async () => {
+        try {
             const { data, error } = await supabase.rpc('get_roles')
 
             if (error) throw error
 
             roles.value = data
-        } catch(e) {
+        } catch (e) {
             console.log('Failed to fetch roles: ', e)
-        } finally {
-            // console.log(roles.value)
         }
     }
 
-    const fetchMemberPos = async() => {
-        try{
+    // Queries the raw `position` table (not the view) so ALL rows per user
+    // are returned — users with multiple positions are fully represented.
+    const fetchMemberPos = async () => {
+        try {
             const { data: posRows, error: posErr } = await supabase
-                .from('position_of_members')
+                .from('position')
                 .select('user_id, pos_id, unit_id')
 
-            if(posErr) throw posErr
+            if (posErr) throw posErr
 
-            memberPos.value = (posRows || [])
-                .map(p => ({
-                    user_id: p.user_id,
-                    pos_id: p.pos_id,
-                    unit_id: p.unit_id
-                }))
+            memberPos.value = (posRows || []).map(p => ({
+                user_id: p.user_id,
+                pos_id:  p.pos_id,
+                unit_id: p.unit_id,
+            }))
 
-                // console.log(memberPos.value)
-
-        } catch (e){
+        } catch (e) {
             console.log('Error: ', e)
         }
     }
 
-    const changeMemberRoles = async({ member }) => {
+    const changeMemberRoles = async ({ member }) => {
         try {
             const { data: updateRow, error: updateErr, status } = await supabase.rpc('promotion', {
                 target_user_id: member.user_id,
-                target_pos_id: member.pos_id,
+                target_pos_id:  member.pos_id,
                 target_unit_id: member.unit_id
             })
 
@@ -85,21 +81,21 @@ export const usePosStore = defineStore('pos', () => {
         }
     }
 
-    const addUserPos = async(user) => {
+    const addUserPos = async (user) => {
         try {
             const { data, error, status } = await supabase
                 .from('position')
-                .insert({user_id: auth.userID, pos_id: user.position, unit_id: user.unit})
+                .insert({ user_id: auth.userID, pos_id: user.position, unit_id: user.unit })
 
             if (error) throw error
             await auth.fetchUserData(auth.user)
             return status
-        } catch(e) {
+        } catch (e) {
             console.log('Error adding position: ', e)
         }
     }
 
-    const updateUserPos = async(user, old_pos) => {
+    const updateUserPos = async (user, old_pos) => {
         try {
             const { data, error, status } = await supabase
                 .from('position')
@@ -107,39 +103,37 @@ export const usePosStore = defineStore('pos', () => {
                 .eq('user_id', auth.userID)
                 .eq('pos_id', old_pos)
 
-                if(error) throw error
-                await auth.fetchUserData(auth.user)
-
-                return status
-        } catch(e) {
+            if (error) throw error
+            await auth.fetchUserData(auth.user)
+            return status
+        } catch (e) {
             console.log('Error updating position: ', e)
         }
     }
 
-    const deleteUserPos = async(user) => {
+    const deleteUserPos = async (user) => {
         try {
             const { data, error, status } = await supabase
                 .from('position')
                 .delete()
                 .eq('pos_id', user.position)
-                
-                if(error) throw error
-                await auth.fetchUserData(auth.user)
 
-                return status
+            if (error) throw error
+            await auth.fetchUserData(auth.user)
+            return status
         } catch (e) {
             console.log('Error deleting position: ', e)
         }
     }
 
-    return { 
-        position, 
-        roles, 
-        fetchPos, 
-        fetchRoles, 
-        memberPos, 
-        fetchMemberPos, 
-        changeMemberRoles, 
+    return {
+        position,
+        roles,
+        fetchPos,
+        fetchRoles,
+        memberPos,
+        fetchMemberPos,
+        changeMemberRoles,
         addUserPos,
         updateUserPos,
         deleteUserPos

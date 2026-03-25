@@ -36,7 +36,11 @@ const loadOwnTasks = async () => {
       task_profile ( title, description, task_type_ref:task_type(task_type) ),
       task_approval ( unit_head, director, revision_comment ),
       task_duration ( created, deadline ),
-      task_output   ( link )
+      task_output   ( link ),
+      subtasks:task!parent_id (
+        id,
+        task_profile ( title, description )
+      )
     `)
     .is('parent_id', null)
     .eq('assignee', uid)
@@ -50,10 +54,16 @@ const loadOwnTasks = async () => {
     startDate:  t.task_duration?.created    || null,
     endDate:    t.task_duration?.deadline   || null,
     outputLink: t.task_output?.link         || null,
+    subtaskNames: (t.subtasks || []).map(s => s.task_profile?.title || '').filter(Boolean),
   }))
 }
 
-watch(() => props.show, (val) => { if (val) loadOwnTasks() }, { immediate: true })
+watch(() => props.show, (val) => {
+  if (val) {
+    loadOwnTasks()
+    loadUnitHead()
+  }
+}, { immediate: true })
 
 function printReport() {
   const prev = document.title
@@ -100,6 +110,61 @@ const emptyMessage = computed(() => {
   }
   return ''
 })
+
+// Fetch unit head for the user's unit
+const userUnitId = computed(() => {
+  const positions = auth.positions || []
+  const pos = positions.find(p => p.unit_id != null)
+  return pos?.unit_id ?? null
+})
+
+const userUnitName = computed(() => {
+  const positions = auth.positions || []
+  const pos = positions.find(p => p.unit_id != null)
+  return pos?.unit_name || ''
+})
+
+const unitHeadInfo = ref({ name: '', title: '' })
+
+const loadUnitHead = async () => {
+  const unitId = userUnitId.value
+  if (!unitId) {
+    unitHeadInfo.value = { name: '', title: '' }
+    return
+  }
+
+  // Query position_of_members where unit_id matches and pos_id = 4 (Unit Head)
+  const { data: headRows, error } = await supabase
+    .from('position_of_members')
+    .select('user_id')
+    .eq('unit_id', unitId)
+    .eq('pos_id', 4)
+    .limit(1)
+
+  if (error || !headRows?.length) {
+    unitHeadInfo.value = { name: '', title: '' }
+    return
+  }
+
+  const headUserId = headRows[0].user_id
+
+  // Fetch the head's profile
+  const { data: profile, error: profileError } = await supabase
+    .from('user_profile')
+    .select('fname, lname')
+    .eq('user_id', headUserId)
+    .single()
+
+  if (profileError || !profile) {
+    unitHeadInfo.value = { name: '', title: '' }
+    return
+  }
+
+  unitHeadInfo.value = {
+    name: `${profile.fname || ''} ${profile.lname || ''}`.trim().toUpperCase(),
+    title: `Head, ${userUnitName.value}`
+  }
+}
 
 const approvedTasksInPeriod = computed(() => {
 
@@ -151,22 +216,38 @@ const reportRows = computed(() => {
     return 'Pending'
   }
 
-  const rows = approvedTasksInPeriod.value
-    .map((t, i) => ({
-      date:    fmt(t.startDate || t.from),
-      ppa:     t.name || '',
-      activity:t.description || t.type || t.name || '',
-      no:      i + 1,
-      remarks: remarkOf(t),
-      link:    t.outputLink || null,
-    }))
+  const rows = []
+
+  approvedTasksInPeriod.value.forEach((t) => {
+    const activities = (t.subtaskNames && t.subtaskNames.length) ? t.subtaskNames : ['']
+    activities.forEach((subtaskName) => {
+      rows.push({
+        date:        fmt(t.startDate || t.from),
+        ppa:         t.name || '',
+        activity:    subtaskName || '',
+        description: t.description || '',
+        no:          '',
+        remarks:     remarkOf(t),
+        link:        t.outputLink || '',
+      })
+    })
+  })
+
+  rows.forEach((row, i) => {
+    row.no = i + 1
+  })
 
   // Pad to at least 12 rows so the table doesn't look empty
   while (rows.length < 12) {
-    rows.push({ date: '', ppa: '', activity: '', no: '', remarks: '', link: null })
+    rows.push({ date: '', ppa: '', activity: '', description: '', no: '', remarks: '', link: '' })
   }
   return rows
 })
+
+const normalizeOutputLink = (value) => {
+  if (!value) return ''
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`
+}
 </script>
 
 <template>
@@ -211,10 +292,11 @@ const reportRows = computed(() => {
             <tr class="bg-green-800 text-white text-[9px] uppercase tracking-normal">
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:5%">No.</th>
               <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:10%">Date</th>
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:24%">PPAs</th>
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:30%">Activity</th>
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:10%">Remarks</th>
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:21%">Drive Link</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:20%">PPAs</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:14%">Activity</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:22%">Description</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:12%">Remarks</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:17%">Drive Link</th>
             </tr>
           </thead>
           <tbody>
@@ -223,9 +305,19 @@ const reportRows = computed(() => {
               <td class="border border-gray-300 px-2 py-1 text-gray-600 whitespace-nowrap">{{ row.date }}</td>
               <td class="border border-gray-300 px-2 py-1 text-gray-600 break-words">{{ row.ppa }}</td>
               <td class="border border-gray-300 px-2 py-1 text-gray-600 break-words">{{ row.activity }}</td>
+              <td class="border border-gray-300 px-2 py-1 text-gray-600 break-words">{{ row.description }}</td>
               <td class="border border-gray-300 px-2 py-1 text-center text-gray-600">{{ row.remarks }}</td>
               <td class="border border-gray-300 px-2 py-1 text-center">
-                <span v-if="row.link" class="text-[9px] text-gray-700 break-all">{{ row.link }}</span>
+                <a
+                  v-if="row.link"
+                  :href="normalizeOutputLink(row.link)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-[9px] text-green-800 underline break-all hover:text-green-700"
+                >
+                  {{ row.link }}
+                </a>
+                <span v-else class="text-[9px] text-gray-300">—</span>
               </td>
             </tr>
           </tbody>
@@ -246,8 +338,8 @@ const reportRows = computed(() => {
           <div>
             <p class="mb-6 text-gray-400 font-semibold uppercase tracking-wide text-[10px]">Recommending Approval:</p>
             <div class="border-t border-gray-400 pt-1">
-              <p class="font-bold text-gray-800 uppercase text-[11px]">Ar. Derwin T. Gumban</p>
-              <p class="text-gray-500">Head, Planning and Design Unit</p>
+              <p class="font-bold text-gray-800 uppercase text-[11px]">{{ unitHeadInfo.name || '—' }}</p>
+              <p class="text-gray-500">{{ unitHeadInfo.title || 'Unit Head' }}</p>
             </div>
           </div>
 

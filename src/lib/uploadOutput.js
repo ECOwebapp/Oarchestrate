@@ -1,4 +1,4 @@
-const UPLOAD_URL = import.meta.env.VITE_UPLOAD_URL || 'http://localhost:3000/api/upload-to-drive'
+const UPLOAD_URL = import.meta.env.VITE_UPLOAD_URL || '/api/upload-to-drive'
 
 export async function uploadOutputFile({ file, userName, onProgress }) {
   if (!file) throw new Error('No file provided.')
@@ -35,4 +35,25 @@ export async function uploadOutputFile({ file, userName, onProgress }) {
     xhr.onerror = () => reject(new Error('Network error during upload'))
     xhr.send(formData)
   })
+}
+
+export async function deleteOutputFile(fileUrl) {
+  if (!fileUrl) return
+ 
+  const res = await fetch(UPLOAD_URL, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fileUrl }),
+  })
+ 
+  if (!res.ok) {
+    let msg = `Delete failed (${res.status})`
+    try {
+      const data = await res.json()
+      if (data.detail) msg += `: ${data.detail}`
+    } catch { /* ignore */ }
+    throw new Error(msg)
+  }
+ 
+  return res.json()
 }

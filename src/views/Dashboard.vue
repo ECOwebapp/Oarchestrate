@@ -15,6 +15,8 @@ const selectedMonth  = ref(new Date().getMonth())
 const selectedYear   = ref(new Date().getFullYear())
 const MONTHS_FULL    = ['January','February','March','April','May','June',
                         'July','August','September','October','November','December']
+const MONTHS_SHORT   = ['Jan','Feb','Mar','Apr','May','Jun',
+                        'Jul','Aug','Sep','Oct','Nov','Dec']
 const isCurrentMonth = computed(() =>
   selectedMonth.value === new Date().getMonth() &&
   selectedYear.value  === new Date().getFullYear()
@@ -148,7 +150,7 @@ const onAssignSubtask = (data) => {
     urgent:       false,
     design:       false,
   }
-  selectedTask.value = null   // close TaskDetail first
+  selectedTask.value = null
   showAddTask.value  = true
 }
 
@@ -157,6 +159,7 @@ const onCloseAddTask = () => {
   preFillData.value = null
 }
 </script>
+
 <template>
   <div class="director-dash flex flex-col w-full h-full overflow-hidden bg-gray-50">
 
@@ -174,15 +177,15 @@ const onCloseAddTask = () => {
     <div v-else class="flex flex-col flex-1 min-h-0">
 
       <!-- Top bar -->
-      <div class="flex items-center justify-between px-5 py-3 bg-white border-b border-gray-100 flex-shrink-0 fade-in">
-        <div>
-          <p class="text-xs text-gray-400 uppercase tracking-widest">
+      <div class="flex items-center justify-between gap-2 px-3 sm:px-5 py-2.5 sm:py-3 bg-white border-b border-gray-100 flex-shrink-0 fade-in flex-wrap">
+        <div class="min-w-0">
+          <p class="text-[10px] sm:text-xs text-gray-400 uppercase tracking-widest truncate">
             {{ auth.isDirector ? 'Director' : auth.isUnitHead ? 'Unit Head' : 'Member' }}
-            <span v-if="auth.isUnitHead && auth.unitName" class="ml-2 font-normal text-green-700">
+            <span v-if="auth.isUnitHead && auth.unitName" class="ml-1 sm:ml-2 font-normal text-green-700">
               ({{ auth.unitName }}, #{{ auth.unitId }})
             </span>
           </p>
-          <p class="text-base font-bold text-gray-800">
+          <p class="text-sm sm:text-base font-bold text-gray-800 truncate">
             {{ auth.isDirector ? 'Tasks Awaiting Your Approval'
               : auth.isUnitHead ? 'Unit Dashboard'
               : 'My Tasks' }}
@@ -191,25 +194,27 @@ const onCloseAddTask = () => {
 
         <!-- Month navigator (director + unit head) -->
         <div v-if="auth.isDirector || auth.isUnitHead"
-          class="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-xl px-2 py-1">
+          class="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-xl px-1.5 sm:px-2 py-1 flex-shrink-0">
           <button @click="prevMonth"
-            class="w-7 h-7 rounded-lg hover:bg-gray-200 transition-colors text-gray-500 text-lg leading-none flex items-center justify-center">
+            class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg hover:bg-gray-200 transition-colors text-gray-500 text-base sm:text-lg leading-none flex items-center justify-center">
             ‹
           </button>
-          <span class="text-sm font-semibold text-gray-700 w-36 text-center select-none">
-            {{ MONTHS_FULL[selectedMonth] }} {{ selectedYear }}
+          <!-- Short month label on mobile, full on sm+ -->
+          <span class="text-xs sm:text-sm font-semibold text-gray-700 w-24 sm:w-36 text-center select-none">
+            <span class="sm:hidden">{{ MONTHS_SHORT[selectedMonth] }} {{ selectedYear }}</span>
+            <span class="hidden sm:inline">{{ MONTHS_FULL[selectedMonth] }} {{ selectedYear }}</span>
           </span>
           <button @click="nextMonth" :disabled="isCurrentMonth"
-            class="w-7 h-7 rounded-lg hover:bg-gray-200 transition-colors text-gray-500 text-lg leading-none flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed">
+            class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg hover:bg-gray-200 transition-colors text-gray-500 text-base sm:text-lg leading-none flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed">
             ›
           </button>
         </div>
 
         <!-- Member: revision alert -->
         <div v-else-if="memberRevisions.length"
-          class="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-1.5">
-          <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"/>
-          <span class="text-xs font-bold text-orange-700">
+          class="flex items-center gap-1.5 sm:gap-2 bg-orange-50 border border-orange-200 rounded-xl px-2.5 sm:px-3 py-1 sm:py-1.5 flex-shrink-0">
+          <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse flex-shrink-0"/>
+          <span class="text-[10px] sm:text-xs font-bold text-orange-700 whitespace-nowrap">
             {{ memberRevisions.length }} revision{{ memberRevisions.length > 1 ? 's' : '' }} needed
           </span>
         </div>
@@ -217,15 +222,16 @@ const onCloseAddTask = () => {
 
       <!-- Scrollable body -->
       <div class="flex-1 min-h-0 overflow-y-auto">
-        <div class="p-4 md:p-6 flex flex-col gap-6">
+        <div class="p-3 sm:p-4 md:p-6 flex flex-col gap-4 sm:gap-6">
 
           <!-- ── Summary row ── -->
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
 
-            <!-- Donut -->
-            <div class="col-span-2 lg:col-span-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col items-center slide-up" style="animation-delay:0ms">
-              <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3 self-start">Monthly Overview</p>
-              <svg :width="CX*2" :height="CY*2" :viewBox="`0 0 ${CX*2} ${CY*2}`" class="overflow-visible">
+            <!-- Donut — full width on mobile, 2-col span on sm, 1-col on xl -->
+            <div class="col-span-2 sm:col-span-1 xl:col-span-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-4 flex flex-col items-center slide-up" style="animation-delay:0ms">
+              <p class="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-gray-400 mb-2 sm:mb-3 self-start">Monthly Overview</p>
+              <!-- Responsive donut: smaller on mobile -->
+              <svg class="w-24 h-24 sm:w-28 sm:h-28 overflow-visible" :viewBox="`0 0 ${CX*2} ${CY*2}`" >
                 <circle :cx="CX" :cy="CY" :r="R" fill="none" stroke="#f3f4f6" stroke-width="12"/>
                 <g :transform="`rotate(-90 ${CX} ${CY})`">
                   <circle
@@ -244,76 +250,76 @@ const onCloseAddTask = () => {
                   {{ auth.isMember ? 'tasks' : 'pending' }}
                 </text>
               </svg>
-              <div class="flex flex-col gap-1.5 w-full mt-3 px-1">
+              <div class="flex flex-col gap-1 sm:gap-1.5 w-full mt-2 sm:mt-3 px-0 sm:px-1">
                 <div v-for="seg in activeDonut" :key="seg.label" class="flex items-center justify-between text-xs">
-                  <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full" :style="`background:${seg.color}`"/>
-                    <span class="text-gray-500">{{ seg.label }}</span>
+                  <div class="flex items-center gap-1.5 sm:gap-2">
+                    <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full flex-shrink-0" :style="`background:${seg.color}`"/>
+                    <span class="text-gray-500 text-[10px] sm:text-xs">{{ seg.label }}</span>
                   </div>
-                  <span class="font-bold text-gray-800">{{ seg.value }}</span>
+                  <span class="font-bold text-gray-800 text-[10px] sm:text-xs">{{ seg.value }}</span>
                 </div>
               </div>
             </div>
 
             <!-- Stat card 1 -->
-            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col justify-between slide-up" style="animation-delay:60ms">
-              <div class="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center mb-4">
-                <svg viewBox="0 0 24 24" class="w-5 h-5 fill-green-700">
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-5 flex flex-col justify-between slide-up" style="animation-delay:60ms">
+              <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-green-100 flex items-center justify-center mb-3 sm:mb-4">
+                <svg viewBox="0 0 24 24" class="w-4 h-4 sm:w-5 sm:h-5 fill-green-700">
                   <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9l2 2 4-4"/>
                 </svg>
               </div>
               <div>
-                <p class="text-4xl font-black text-gray-900 tabular-nums">{{ activeRegular.length }}</p>
-                <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Regular Tasks</p>
+                <p class="text-3xl sm:text-4xl font-black text-gray-900 tabular-nums">{{ activeRegular.length }}</p>
+                <p class="text-[10px] sm:text-xs text-gray-400 uppercase tracking-widest mt-1">Regular Tasks</p>
               </div>
-              <p class="text-xs text-gray-400 mt-3 flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
+              <p class="text-[10px] sm:text-xs text-gray-400 mt-2 sm:mt-3 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"/>
                 {{ activeRegular.filter(t=>t.urgent).length }} urgent priority
               </p>
             </div>
 
             <!-- Stat card 2 -->
-            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col justify-between slide-up" style="animation-delay:120ms">
-              <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center mb-4">
-                <svg viewBox="0 0 24 24" class="w-5 h-5 fill-amber-700">
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-5 flex flex-col justify-between slide-up" style="animation-delay:120ms">
+              <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-100 flex items-center justify-center mb-3 sm:mb-4">
+                <svg viewBox="0 0 24 24" class="w-4 h-4 sm:w-5 sm:h-5 fill-amber-700">
                   <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                 </svg>
               </div>
               <div>
-                <p class="text-4xl font-black text-gray-900 tabular-nums">{{ activeInsertion.length }}</p>
-                <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Insertion Tasks</p>
+                <p class="text-3xl sm:text-4xl font-black text-gray-900 tabular-nums">{{ activeInsertion.length }}</p>
+                <p class="text-[10px] sm:text-xs text-gray-400 uppercase tracking-widest mt-1">Insertion Tasks</p>
               </div>
-              <p class="text-xs text-gray-400 mt-3 flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
+              <p class="text-[10px] sm:text-xs text-gray-400 mt-2 sm:mt-3 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"/>
                 {{ activeInsertion.filter(t=>t.urgent).length }} urgent priority
               </p>
             </div>
 
             <!-- Stat card 3 -->
-            <div class="bg-white rounded-2xl border shadow-sm p-5 flex flex-col justify-between slide-up"
+            <div class="bg-white rounded-2xl border shadow-sm p-3 sm:p-5 flex flex-col justify-between slide-up"
               :class="auth.isMember ? 'border-orange-100' : 'border-red-100'"
               style="animation-delay:180ms">
-              <div class="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
+              <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center mb-3 sm:mb-4"
                 :class="auth.isMember ? 'bg-orange-100' : 'bg-red-100'">
-                <svg v-if="!auth.isMember" viewBox="0 0 24 24" class="w-5 h-5 fill-red-700">
+                <svg v-if="!auth.isMember" viewBox="0 0 24 24" class="w-4 h-4 sm:w-5 sm:h-5 fill-red-700">
                   <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                 </svg>
-                <svg v-else viewBox="0 0 24 24" class="w-5 h-5 fill-orange-700">
+                <svg v-else viewBox="0 0 24 24" class="w-4 h-4 sm:w-5 sm:h-5 fill-orange-700">
                   <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                 </svg>
               </div>
               <div>
-                <p class="text-4xl font-black tabular-nums"
+                <p class="text-3xl sm:text-4xl font-black tabular-nums"
                   :class="auth.isMember ? 'text-orange-700' : 'text-red-700'">
                   {{ auth.isMember ? memberRevisions.length : activePending.filter(t=>t.urgent).length }}
                 </p>
-                <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">
+                <p class="text-[10px] sm:text-xs text-gray-400 uppercase tracking-widest mt-1">
                   {{ auth.isMember ? 'Revisions Needed' : 'Urgent Tasks' }}
                 </p>
               </div>
-              <p class="text-xs mt-3 flex items-center gap-1.5"
+              <p class="text-[10px] sm:text-xs mt-2 sm:mt-3 flex items-center gap-1.5"
                 :class="auth.isMember ? 'text-orange-400' : 'text-red-400'">
-                <span class="w-2 h-2 rounded-full animate-pulse"
+                <span class="w-2 h-2 rounded-full animate-pulse flex-shrink-0"
                   :class="auth.isMember ? 'bg-orange-500' : 'bg-red-500'"/>
                 {{ auth.isMember ? 'Action required' : 'Needs priority review' }}
               </p>
@@ -322,23 +328,23 @@ const onCloseAddTask = () => {
 
           <!-- ── Regular Tasks ── -->
           <section class="slide-up" style="animation-delay:220ms">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-xs font-extrabold uppercase tracking-[0.15em] text-gray-500">
+            <div class="flex items-center justify-between mb-2 sm:mb-3 gap-2">
+              <h2 class="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.15em] text-gray-500 truncate">
                 {{ auth.isUnitHead ? 'Regular — Awaiting Review' : 'Regular Tasks' }}
               </h2>
-              <span class="text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-2.5 py-0.5">
+              <span class="text-[10px] sm:text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-2 sm:px-2.5 py-0.5 flex-shrink-0 whitespace-nowrap">
                 {{ activeRegular.length }} pending
               </span>
             </div>
 
             <div v-if="activeRegular.length === 0"
-              class="bg-white border border-dashed border-gray-200 rounded-2xl p-10 text-center">
-              <p class="text-sm text-gray-400">
+              class="bg-white border border-dashed border-gray-200 rounded-2xl p-8 sm:p-10 text-center">
+              <p class="text-xs sm:text-sm text-gray-400">
                 No regular tasks pending{{ auth.isDirector || auth.isUnitHead ? ` for ${MONTHS_FULL[selectedMonth]}` : '' }}.
               </p>
             </div>
 
-            <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3">
               <TaskCard
                 v-for="task in activeRegular" :key="task.id"
                 :task="task"
@@ -349,23 +355,23 @@ const onCloseAddTask = () => {
 
           <!-- ── Insertion Tasks ── -->
           <section class="slide-up pb-4" style="animation-delay:260ms">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-xs font-extrabold uppercase tracking-[0.15em] text-gray-500">
+            <div class="flex items-center justify-between mb-2 sm:mb-3 gap-2">
+              <h2 class="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.15em] text-gray-500 truncate">
                 {{ auth.isUnitHead ? 'Insertion — Awaiting Review' : 'Insertion Tasks' }}
               </h2>
-              <span class="text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-2.5 py-0.5">
+              <span class="text-[10px] sm:text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-2 sm:px-2.5 py-0.5 flex-shrink-0 whitespace-nowrap">
                 {{ activeInsertion.length }} pending
               </span>
             </div>
 
             <div v-if="activeInsertion.length === 0"
-              class="bg-white border border-dashed border-gray-200 rounded-2xl p-10 text-center">
-              <p class="text-sm text-gray-400">
+              class="bg-white border border-dashed border-gray-200 rounded-2xl p-8 sm:p-10 text-center">
+              <p class="text-xs sm:text-sm text-gray-400">
                 No insertion tasks pending{{ auth.isDirector || auth.isUnitHead ? ` for ${MONTHS_FULL[selectedMonth]}` : '' }}.
               </p>
             </div>
 
-            <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3">
               <TaskCard
                 v-for="task in activeInsertion" :key="task.id"
                 :task="task"
@@ -376,13 +382,13 @@ const onCloseAddTask = () => {
 
           <!-- ── Unit Head: Own Tasks ── -->
           <section v-if="auth.isUnitHead && uhOwn.length" class="slide-up pb-4" style="animation-delay:300ms">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-xs font-extrabold uppercase tracking-[0.15em] text-gray-500">Your Own Tasks</h2>
-              <span class="text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-2.5 py-0.5">
+            <div class="flex items-center justify-between mb-2 sm:mb-3 gap-2">
+              <h2 class="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.15em] text-gray-500">Your Own Tasks</h2>
+              <span class="text-[10px] sm:text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-2 sm:px-2.5 py-0.5 flex-shrink-0">
                 {{ uhOwn.length }}
               </span>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3">
               <TaskCard
                 v-for="task in uhOwn.slice().sort((a,b)=>(b.urgent?1:0)-(a.urgent?1:0))" :key="task.id"
                 :task="task"
@@ -409,7 +415,7 @@ const onCloseAddTask = () => {
     <!-- ══ ADD TASK MODAL (Unit Head subtask assign) ══ -->
     <Transition name="modal">
       <div v-if="showAddTask"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-3 sm:px-4"
         @click.self="onCloseAddTask">
         <AddTask @close="onCloseAddTask" :design="false" :pre-fill="preFillData" />
       </div>

@@ -26,7 +26,30 @@ const showDeleteConfirm = ref(false)
 const isDeleting        = ref(false)
 const deleteError       = ref('')
 
-const tasks = computed(() => store.tasks.filter(t => t.design === false))
+const tasks = computed(() => {
+  // if (auth.isDirector) {
+  //   return store.tasks.filter(t => {
+  //     // 1. Core requirement: Must not be marked as 'design'
+  //     const isNotDesigned = !t.design;
+
+  //     const isParentTask = !t.parentId
+
+  //     // 2. The Exception: 
+  //     // Show it if the Unit Head approved it (true) 
+  //     // OR if the task type is 'Insertion' (typeId === 2)
+  //     const isVisibleToDirector = t.unitHead || t.typeId === 2;
+
+  //     return isNotDesigned;
+  //   });
+  // }
+  
+  // Default filter for everyone else
+
+
+  return store.tasks.filter(t => !t.design);
+});
+
+console.log(tasks.value)
 
 const activeUnitId = computed(() => {
   const headRole = auth.positions?.find(p => p.pos_id === 4)
@@ -165,10 +188,13 @@ const onAssignSubtask = (data) => {
     description:  data.subtask.description || '',
     assignee:     data.assignedMemberId,
     assigneeName: data.assignedMemberName,
+    subtaskId:    data.subtask.id,
+    parentTask:   data.parentTask,
     type:         1,
     endDate:      data.parentTask?.to || null,
     urgent:       false,
     design:       false,
+    action:       data.action || ''
   }
   addTask.value = true
 }
@@ -190,7 +216,7 @@ const onCloseAddTask = () => {
         v-if="!selectionMode && (auth.isDirector || auth.isUnitHead || auth.isMember)"
         @click="addTask = true"
         class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl
-               hover:bg-green-800 active:scale-95 transition-all text-sm flex-shrink-0">
+               hover:bg-green-800 active:scale-95 transition-all text-sm flex-shrink-0 hover:cursor-pointer">
         <Icons :icon="'add'" />
         <span class="hidden sm:inline">Add Task</span>
       </button>

@@ -50,6 +50,24 @@
 
     const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
+    const activeUnitHeadId = computed(() => {
+      const headRole = (auth.positions || []).find(p => Number(p.pos_id) === 4)
+      return headRole?.unit_id ?? null
+    })
+
+    const analyticsTasks = computed(() => {
+      if (auth.isDirector) return store.tasks
+
+      // Unit Head analytics should only show staff/tasks from their own unit.
+      if (auth.isUnitHead && activeUnitHeadId.value) {
+        return store.tasks.filter(
+          t => Number(t.assigneeUnitId) === Number(activeUnitHeadId.value)
+        )
+      }
+
+      return store.tasks.filter(t => t.assignee === auth.userID)
+    })
+
     // ── Helpers ────────────────────────────────────────────────
     // Use the deadline (user-set) to bucket tasks, fall back to creation date
     const taskMonth = (t) => {
@@ -71,7 +89,7 @@
     const STATUS_COLORS = { Approved: '#16a34a', Submitted: '#0ea5e9', Pending: '#eab308', Revision: '#ea580c' }
     const barCounts = computed(() => {
       const counts = { Approved: 0, Submitted: 0, Pending: 0, Revision: 0 }
-      store.tasks.forEach(t => {
+      analyticsTasks.value.forEach(t => {
         const s = statusOf(t)
         if (s in counts) counts[s]++
       })
@@ -102,10 +120,10 @@
     })
 
     // ── Pie Chart: raw counts ──────────────────────────────────
-    const pieHasData = computed(() => store.tasks.length > 0)
+    const pieHasData = computed(() => analyticsTasks.value.length > 0)
     const pieData = computed(() => {
       const counts = { Approved: 0, Submitted: 0, Pending: 0, Revision: 0 }
-      store.tasks.forEach(t => {
+      analyticsTasks.value.forEach(t => {
         const s = statusOf(t)
         if (s in counts) counts[s]++
       })
@@ -154,7 +172,7 @@
     const lineRaw = computed(() => {
       const counts = Array(12).fill(0)
       const yr = new Date().getFullYear()
-      store.tasks.filter(t => t.director && taskYear(t) === yr)
+      analyticsTasks.value.filter(t => t.director && taskYear(t) === yr)
         .forEach(t => { const m = taskMonth(t); if (m >= 0) counts[m]++ })
       return counts
     })
@@ -177,7 +195,7 @@
       const def = { Submitted: '#0ea5e9', Pending: '#eab308', Revision: '#ea580c' }
       const buckets = {}
       Object.keys(def).forEach(k => { buckets[k] = Array(12).fill(0) })
-      store.tasks.filter(t => taskYear(t) === yr).forEach(t => {
+      analyticsTasks.value.filter(t => taskYear(t) === yr).forEach(t => {
         const m = taskMonth(t); if (m < 0) return
         const s = statusOf(t); if (s in buckets) buckets[s][m]++
       })
@@ -204,7 +222,7 @@
     </script>
 
     <template>
-    <div class="flex h-full w-full flex-col gap-4 overflow-auto bg-gray-50 p-3 sm:p-4 lg:flex-row">
+    <div class="flex h-full min-h-0 w-full flex-col gap-4 overflow-y-auto overflow-x-hidden bg-gray-50 p-3 sm:p-4 lg:flex-row lg:overflow-hidden">
 
         <!-- ── Left: Accomplishment Report Generator ── -->
       <div class="w-full rounded-xl bg-white p-4 shadow-sm sm:p-5 lg:h-full lg:w-64 lg:flex lg:flex-col lg:overflow-hidden">
@@ -248,10 +266,10 @@
         </div>
 
         <!-- ── Right: 2×2 Chart Grid ── -->
-        <div class="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
+        <div class="grid w-full grid-cols-1 gap-4 md:min-h-0 md:flex-1 md:grid-cols-2 md:grid-rows-2 md:overflow-hidden">
 
         <!-- Bar Chart: Completion Rate -->
-        <div class="relative flex min-h-[280px] flex-col rounded-xl bg-white p-4 shadow-sm sm:min-h-[320px]">
+        <div class="relative flex min-h-[260px] flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0">
             <div class="mb-2 flex items-start justify-between gap-3">
               <h3 class="text-xs font-semibold text-gray-700 sm:text-sm">Completion Rate</h3>
               <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer" @click="openModal('bar')">
@@ -283,7 +301,7 @@
         </div>
 
         <!-- Pie Chart: Task Distribution -->
-        <div class="relative flex min-h-[280px] flex-col rounded-xl bg-white p-4 shadow-sm sm:min-h-[320px]">
+        <div class="relative flex min-h-[260px] flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0">
             <div class="mb-2 flex items-start justify-between gap-3">
               <h3 class="text-xs font-semibold text-gray-700 sm:text-sm">Task Distribution</h3>
               <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer" @click="openModal('pie')">
@@ -323,7 +341,7 @@
         </div>
 
         <!-- Line Chart: Completed tasks trend monthly -->
-        <div class="relative flex min-h-[280px] flex-col rounded-xl bg-white p-4 shadow-sm sm:min-h-[320px]">
+        <div class="relative flex min-h-[260px] flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0">
             <div class="mb-2 flex items-start justify-between gap-3">
               <h3 class="text-xs font-semibold text-gray-700 sm:text-sm">Approved tasks trend monthly</h3>
               <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer" @click="openModal('line')">
@@ -352,7 +370,7 @@
         </div>
 
             <!-- Area Chart: Submitted, Pending & Revision Monthly Trend -->
-        <div class="relative flex min-h-[280px] flex-col rounded-xl bg-white p-4 shadow-sm sm:min-h-[320px]">
+        <div class="relative flex min-h-[260px] flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0">
             <div class="mb-2 flex items-start justify-between gap-3">
               <h3 class="text-xs font-semibold text-gray-700 sm:text-sm">Submitted, Pending & Revision Monthly Trend</h3>
               <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer" @click="openModal('area')">
