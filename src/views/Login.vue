@@ -150,7 +150,7 @@ const handleSubmit = async () => {
               :class="errors.password ? 'border-red-400' : 'border-gray-300'"
             />
             <button type="button" @click="showPassword = !showPassword"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
+              class="hover:cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
               <svg v-if="!showPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-5 h-5">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
               </svg>
@@ -167,7 +167,7 @@ const handleSubmit = async () => {
         <!-- Remember me -->
         <div class="flex items-center gap-2">
           <input id="remember" v-model="form.rememberMe" type="checkbox"
-            class="w-4 h-4 rounded accent-green-700 cursor-pointer" />
+            class="w-4 h-4 rounded accent-green-700 hover:cursor-pointer" />
           <label for="remember" class="text-sm text-gray-600 cursor-pointer select-none">
             Remember me
           </label>
@@ -183,7 +183,7 @@ const handleSubmit = async () => {
 
         <!-- Sign In button -->
         <button type="submit" :disabled="loading"
-          class="w-full py-3 rounded-lg bg-green-800 hover:bg-green-900 active:scale-95 text-white font-semibold tracking-wide shadow-md transition-all duration-150 text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100">
+          class="w-full hover:cursor-pointer py-3 rounded-lg bg-green-800 hover:bg-green-900 active:scale-95 text-white font-semibold tracking-wide shadow-md transition-all duration-150 text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100">
           <svg v-if="loading" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
             <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round"/>
