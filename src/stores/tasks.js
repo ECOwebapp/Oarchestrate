@@ -141,6 +141,19 @@ export const taskStore = defineStore('tasks', () => {
     director: !!t.task_approval?.director,
     revisionComment: t.task_approval?.revision_comment || '',
     revisedAt: t.task_approval?.revised_at || null,
+    overdue: (() => {
+      const dl = t.task_duration?.deadline ? new Date(t.task_duration.deadline) : null
+      if (!dl || t.task_approval?.director) return false
+      dl.setHours(23, 59, 59, 999)
+      return dl < new Date()
+    })(),
+    overdueDays: (() => {
+      const dl = t.task_duration?.deadline ? new Date(t.task_duration.deadline) : null
+      if (!dl || t.task_approval?.director) return 0
+      dl.setHours(23, 59, 59, 999)
+      const diff = new Date() - dl
+      return diff > 0 ? Math.ceil(diff / 86400000) : 0
+    })(),
     design: !!t.design,
     isSelfAssigned: t.assigner === t.assignee,
     sourceSubtaskId: t.source_subtask_id || null,
