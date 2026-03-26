@@ -17,11 +17,13 @@ const fmt = (d) => d
 
 const statusCls = (task) => {
   if (task.director) return 'bg-green-100 text-green-800'
+  if (task.overdue)  return 'bg-red-100 text-red-800'
   if (task.unitHead) return 'bg-amber-100 text-amber-800'
   return 'bg-gray-100 text-gray-600'
 }
 const statusLabel = (task) => {
   if (task.director) return 'Approved'
+  if (task.overdue)  return 'Overdue'
   if (task.unitHead) return 'Pending Director'
   return 'Pending Unit Head'
 }

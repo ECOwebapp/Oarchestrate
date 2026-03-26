@@ -28,6 +28,7 @@ const progress = computed(() => {
 
 const statusLabel = computed(() => {
   if (props.task?.director)   return { label: 'Approved',               cls: 'bg-green-100 text-green-800'  }
+  if (props.task?.overdue)    return { label: 'Overdue',                cls: 'bg-red-100 text-red-800'      }
   if (props.task?.unitHead)   return { label: 'Pending',                cls: 'bg-amber-100 text-amber-800'  }
   if (props.task?.revision)   return { label: 'Needs Revision',         cls: 'bg-orange-100 text-orange-700'}
   if ((props.task?.assigneeIsOffice || props.task?.isSelfAssigned) && props.task?.outputLink)

@@ -60,7 +60,7 @@ const activeUnitId = computed(() => {
 onMounted(() => store.fetchTasks())
 
 const filterOpts = computed(() => {
-  const base = ['All', 'Regular', 'Insertion', 'Urgent', 'Revision']
+  const base = ['All', 'Regular', 'Insertion', 'Urgent', 'Revision', 'Overdue']
   if (auth.isDirector || auth.isUnitHead) base.push('Pending', 'Approved')
   return base
 })
@@ -82,8 +82,9 @@ const filtered = computed(() => {
       if (f === 'revision') return t.revision
       if (f === 'regular') return t.type?.toLowerCase() === 'regular'
       if (f === 'insertion') return t.type?.toLowerCase() === 'insertion'
-      if (f === 'pending') return !t.director
-      if (f === 'approved') return t.director
+      if (f === 'overdue')   return !!t.overdue
+      if (f === 'pending')   return !t.director
+      if (f === 'approved')  return t.director
       return true
     })
   }
@@ -95,6 +96,15 @@ const filtered = computed(() => {
     list = [...list].sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0))
   else
     list = [...list].sort((a, b) => new Date(b.from) - new Date(a.from))
+
+  // Always bubble overdue tasks to the top. Within overdue tasks, sort by days overdue (most overdue first).
+  list = list.sort((a, b) => {
+    const oa = a.overdue ? 1 : 0
+    const ob = b.overdue ? 1 : 0
+    if (oa !== ob) return ob - oa
+    if (oa && ob) return (b.overdueDays || 0) - (a.overdueDays || 0)
+    return 0
+  })
   return list
 })
 
