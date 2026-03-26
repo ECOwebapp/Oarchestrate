@@ -131,9 +131,16 @@ const orgData = computed(() => {
     }));
   };
 
-  const officeMembers = consolidateMembers(3).filter((u) => u.title !== "Director")
-  const officeHead = officeMembers.find((u) => u.name.includes("JOKO J. SACO")) || officeMembers[0] || null
-  const officeTeam = officeMembers.filter((u) => !officeHead || u.id !== officeHead.id)
+  const officeMembers = consolidateMembers(3).filter(
+    (u) => u.title !== "Director",
+  );
+  const officeHead =
+    officeMembers.find((u) => u.name.includes("JOKO J. SACO")) ||
+    officeMembers[0] ||
+    null;
+  const officeTeam = officeMembers.filter(
+    (u) => !officeHead || u.id !== officeHead.id,
+  );
 
   return {
     // 1. Static Top Level (Not in DB)
@@ -219,8 +226,13 @@ const openUnitStructureModal = (unitKey) => {
     unitStructureModalData.value = {
       title: "Office Staff Functional Structure",
       sections: [
-        ...(orgData.value.officeStaff.head ? [{ heading: "Unit Head", items: [orgData.value.officeStaff.head] }] : []),
-        { heading: "Office Staff Members", items: orgData.value.officeStaff.members },
+        ...(orgData.value.officeStaff.head
+          ? [{ heading: "Unit Head", items: [orgData.value.officeStaff.head] }]
+          : []),
+        {
+          heading: "Office Staff Members",
+          items: orgData.value.officeStaff.members,
+        },
       ],
     };
   } else if (unitKey === "piu") {
