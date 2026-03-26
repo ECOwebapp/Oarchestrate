@@ -145,7 +145,7 @@ onUnmounted(() => {
               </span>
             </div>
             <button @click="toggle" class="w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100
-                   text-gray-400 hover:text-gray-600 transition-colors text-base">×</button>
+                   text-gray-400 hover:text-gray-600 transition-colors text-base hover:cursor-pointer">×</button>
           </div>
 
           <!-- List -->
@@ -315,7 +315,7 @@ onUnmounted(() => {
       </Transition>
 
       <!-- ── Bell button ── -->
-      <button ref="bell" @click="toggle" class="relative w-12 h-12 rounded-2xl shadow-lg flex items-center justify-center
+      <button ref="bell" @click="toggle" class="relative w-12 h-12 rounded-2xl shadow-lg flex items-center justify-center hover:cursor-pointer
              active:scale-95 transition-all duration-200" :class="open
               ? 'bg-green-900 shadow-green-900/30'
               : 'bg-green-800 hover:bg-green-900 shadow-green-800/30'">

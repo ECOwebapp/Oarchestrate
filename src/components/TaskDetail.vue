@@ -121,7 +121,33 @@ const filteredRevisions = computed(() => {
   })
 })
 
-console.log(filteredRevisions)
+const getRoles = (userId) => {
+  // 1. Find the specific membership record for this user
+  const membership = posStore.memberPos.find(m => m.user_id === userId)
+
+  if (!membership) return 'No Position'
+
+  // 2. Priority check for Director/Unit Head strings
+  if (membership.pos_id === 1) return 'Director'
+  if (membership.pos_id === 4) return 'Unit Head'
+
+  // 3. Fallback: Find the original name from your position definitions
+  // Assuming posStore.positions contains [{id: 2, pos_name: 'Architect'}, ...]
+  const originalPos = posStore.position.find(p => p.id === membership.pos_id)
+
+  return originalPos ? originalPos.pos_name : ''
+}
+
+// In your component or Store
+const avatarMap = computed(() => {
+  return memberStore.members.reduce((acc, m) => {
+    acc[m.id] = m.avatar_url
+    return acc
+  }, {})
+})
+
+// Then your function becomes instant:
+const getAvatarUrl = (userId) => avatarMap.value[userId]
 
 watch(() => props.task?.id, () => {
   outputUrl.value = props.task?.outputLink || ''
@@ -141,7 +167,7 @@ watch(tab, async (val) => {
 })
 
 const unreadCount = computed(() =>
-  revisions.value.filter(r => r.to_user === auth.user?.id && !r.is_read).length
+  filteredRevisions.value.filter(r => r.to_user === auth.user?.id && !r.is_read).length
 )
 
 // ── Subtask display helpers ──────────────────────────────────────────────────
@@ -419,7 +445,7 @@ const resubmit = async () => {
       <div class="flex border-b border-gray-100 px-6 sm:px-8 flex-shrink-0 gap-1">
         <button v-for="t in ['detail', 'comments']" :key="t" @click="tab = t"
           class="relative pb-3 px-1 mr-4 text-sm font-semibold capitalize transition-colors"
-          :class="tab === t ? 'text-green-900' : 'text-gray-400 hover:text-gray-600'">
+          :class="tab === t ? 'text-green-900' : 'text-gray-400 hover:text-gray-600 hover:cursor-pointer'">
           {{ t === 'comments' ? 'Comments' : 'Details' }}
           <span v-if="t === 'comments' && unreadCount"
             class="ml-1.5 px-1.5 text-[10px] font-bold rounded-full bg-red-500 text-white align-top py-0.5">
@@ -814,7 +840,7 @@ const resubmit = async () => {
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="#15803d" stroke-width="3" stroke-linecap="round" />
               </svg>
             </div>
-            <div v-else-if="!revisions.length"
+            <div v-else-if="!filteredRevisions.length"
               class="flex flex-col items-center justify-center py-14 text-center text-gray-400">
               <!-- MDI Comment Outline icon -->
               <svg viewBox="0 0 24 24" class="w-12 h-12 mb-3 opacity-20" fill="currentColor">
@@ -828,10 +854,16 @@ const resubmit = async () => {
             <template v-else>
               <div v-for="rev in filteredRevisions" :key="rev.id" class="flex gap-3"
                 :class="rev.from_user === auth.user?.id ? 'flex-row-reverse' : ''">
-                <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center
-                            text-xs font-bold text-white self-end mb-1"
-                  :class="rev.role === 'director' ? 'bg-green-900' : 'bg-amber-600'">
-                  {{ (rev.fromName || '?')[0].toUpperCase() }}
+                <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center 
+            text-[10px] font-bold text-white self-end mb-1 overflow-hidden"
+                  :class="getRoles(rev.from_user) === 'Director' ? 'bg-green-900' : 'bg-amber-600'">
+
+                  <img v-if="getAvatarUrl(rev.from_user)" :src="getAvatarUrl(rev.from_user)"
+                    class="w-full h-full object-cover" />
+
+                  <span v-else>
+                    {{ (rev.fromName || '?')[0].toUpperCase() }}
+                  </span>
                 </div>
                 <div class="max-w-[72%] min-w-0 space-y-1"
                   :class="rev.from_user === auth.user?.id ? 'items-end flex flex-col' : ''">
@@ -845,8 +877,8 @@ const resubmit = async () => {
                       }) }}
                     </span>
                     <span class="text-[10px] px-1.5 py-0.5 rounded-full font-bold"
-                      :class="rev.role === 'director' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-700'">
-                      {{ rev.role === 'director' ? 'Director' : 'Unit Head' }}
+                      :class="getRoles(rev.from_user)?.toLowerCase() === 'director' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-700'">
+                      {{ getRoles(rev.from_user) }}
                     </span>
                   </div>
                   <div class="rounded-2xl px-4 py-2.5 text-sm leading-relaxed break-words" :class="rev.from_user === auth.user?.id
@@ -895,7 +927,7 @@ const resubmit = async () => {
             </div>
             <button @click="resubmit" :disabled="acting === 'resubmit' || !resubmitFile" class="w-full h-9 rounded-xl bg-orange-600 text-white text-xs font-bold
                      hover:bg-orange-500 disabled:opacity-40 transition-all active:scale-95
-                     flex items-center justify-center gap-1.5">
+                     flex items-center justify-center gap-1.5 hover:cursor-pointer disabled:cursor-not-allowed">
               <svg v-if="acting === 'resubmit'" class="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
@@ -910,13 +942,14 @@ const resubmit = async () => {
       <div class="flex gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 flex-shrink-0 bg-white">
         <template v-if="canApproveAsUnitHead">
           <button @click="requestRevision" :disabled="acting !== '' || !canRequestRevision"
-            :title="!revisionComment.trim() ? 'Write revision notes above first' : ''" class="flex-1 h-11 rounded-xl border-2 border-amber-400 text-amber-600 font-bold text-sm
-                   hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
+            :title="!revisionComment.trim() ? 'Write revision notes above first' : ''"
+            class="flex-1 h-11 rounded-xl border-2 border-amber-400 text-amber-600 font-bold text-sm
+                   hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 hover:cursor-pointer">
             {{ acting === 'revise' ? 'Sending…' : 'Request Revision' }}
           </button>
           <button @click="approve" :disabled="acting !== ''" class="flex-1 h-11 rounded-xl bg-green-950 text-white font-bold text-sm
                    hover:bg-green-800 disabled:opacity-40 transition-all active:scale-95
-                   flex items-center justify-center gap-2">
+                   flex items-center justify-center gap-2 hover:cursor-pointer">
             <svg v-if="acting === 'approve'" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
               <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
@@ -926,13 +959,14 @@ const resubmit = async () => {
         </template>
         <template v-else-if="canApproveAsDirector">
           <button @click="requestRevision" :disabled="acting !== '' || !canRequestRevision"
-            :title="!revisionComment.trim() ? 'Write revision notes above first' : ''" class="flex-1 h-11 rounded-xl border-2 border-amber-400 text-amber-600 font-bold text-sm
-                   hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
+            :title="!revisionComment.trim() ? 'Write revision notes above first' : ''"
+            class="flex-1 h-11 rounded-xl border-2 border-amber-400 text-amber-600 font-bold text-sm
+                   hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 hover:cursor-pointer">
             {{ acting === 'revise' ? 'Sending…' : 'Send for Revision' }}
           </button>
           <button @click="approve" :disabled="acting !== ''" class="flex-1 h-11 rounded-xl bg-green-950 text-white font-bold text-sm
                    hover:bg-green-800 disabled:opacity-40 transition-all active:scale-95
-                   flex items-center justify-center gap-2">
+                   flex items-center justify-center gap-2 hover:cursor-pointer">
             <svg v-if="acting === 'approve'" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
               <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
@@ -952,7 +986,7 @@ const resubmit = async () => {
         </template>
         <template v-else>
           <button @click="emit('close')" class="flex-1 h-11 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm
-                   hover:border-green-800 hover:text-green-800 transition-colors active:scale-95">
+                   hover:border-green-800 hover:text-green-800 transition-colors active:scale-95 hover:cursor-pointer">
             Close
           </button>
         </template>
