@@ -41,3 +41,4 @@ __screenshots__/
 .env
 .vercel
 src/lib/service-account.json
+*.patch
