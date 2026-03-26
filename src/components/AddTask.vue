@@ -454,7 +454,7 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="#166534" stroke-width="3" stroke-linecap="round" />
               </svg>
               <span class="text-xs text-gray-500">Uploading <span class="font-medium text-gray-700">{{ uploadedFileName
-                  }}</span>…</span>
+              }}</span>…</span>
             </template>
 
             <!-- Success state -->
