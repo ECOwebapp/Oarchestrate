@@ -105,6 +105,24 @@ const loadRevisions = async () => {
   chatBottom.value?.scrollIntoView({ behavior: 'smooth' })
 }
 
+const filteredRevisions = computed(() => {
+  const currentUserId = auth.user?.id
+  const assignerId = props.task?.assigner
+  const assigneeId = props.task?.assignee
+
+  // Determine who the "other person" in this private thread should be
+  const otherPartyId = currentUserId === assignerId ? assigneeId : assignerId
+
+  return revisions.value.filter(rev => {
+    const sentByMeToOther = rev.from_user === currentUserId && rev.to_user === otherPartyId
+    const receivedFromOther = rev.from_user === otherPartyId && rev.to_user === currentUserId
+
+    return sentByMeToOther || receivedFromOther
+  })
+})
+
+console.log(filteredRevisions)
+
 watch(() => props.task?.id, () => {
   outputUrl.value = props.task?.outputLink || ''
   newOutputUrl.value = ''
@@ -808,7 +826,7 @@ const resubmit = async () => {
               </p>
             </div>
             <template v-else>
-              <div v-for="rev in revisions" :key="rev.id" class="flex gap-3"
+              <div v-for="rev in filteredRevisions" :key="rev.id" class="flex gap-3"
                 :class="rev.from_user === auth.user?.id ? 'flex-row-reverse' : ''">
                 <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center
                             text-xs font-bold text-white self-end mb-1"

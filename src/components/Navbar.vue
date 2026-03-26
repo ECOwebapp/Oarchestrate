@@ -76,7 +76,7 @@ const version = '0.1 alpha'
       :class="expanded ? 'w-60' : 'w-[68px]'" @mouseenter="expanded = true" @mouseleave="expanded = false">
       <NavInner :nav-names="navNames" :get-path="getPath" :is-active="isActive" :auth-store="authStore"
         :expanded="expanded" :version="version" :formatted-positions="formattedPositions"
-        :formatted-units="formattedUnits" @logout="authStore.logout(router)" />
+        :formatted-units="formattedUnits" @logout="async() => await authStore.logout(router)" />
     </nav>
   </div>
 

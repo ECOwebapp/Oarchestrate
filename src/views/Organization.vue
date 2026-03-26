@@ -148,7 +148,8 @@ const orgData = computed(() => {
       juniorDrafts: pduAll.filter(u => u.title.toLowerCase().includes('junior'))
     },
 
-    officeStaff: officeAll.filter(u => u.title !== 'Director'),
+    officeStaff: consolidateMembers(3).filter(u =>
+        u.title !== 'Director'),
 
     piu: {
       head: getHead(2),

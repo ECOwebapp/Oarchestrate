@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { usePosStore } from './positions'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
@@ -13,6 +14,7 @@ export const taskStore = defineStore('tasks', () => {
   const nameMap = ref({})
   const unitIdMap = ref({})
   const unitMembers = ref([])
+  const positions = usePosStore()
 
   // ── Name resolver ───────────────────────────────────────────────────────────
   const resolveNames = async (uids) => {
@@ -248,7 +250,7 @@ export const taskStore = defineStore('tasks', () => {
           .order('id', { ascending: false })
         if (error) throw error
 
-        console.log(rows)
+        // console.log(rows)
 
         const allUserIds = [...new Set((rows || []).flatMap(t => [
           t.assigner, t.assignee,
@@ -309,31 +311,31 @@ export const taskStore = defineStore('tasks', () => {
   }
 
   // ── FETCH SINGLE TASK BY ID ─────────────────────────────────────────────────
-const fetchTaskById = async (taskId) => {
-  const { data, error } = await supabase
-    .from('task')
-    .select(TASK_SELECT)
-    .eq('id', taskId)
-    .maybeSingle()
+  const fetchTaskById = async (taskId) => {
+    const { data, error } = await supabase
+      .from('task')
+      .select(TASK_SELECT)
+      .eq('id', taskId)
+      .maybeSingle()
 
-  if (error) throw new Error(error.message)
-  if (!data) throw new Error('Task not found.')
+    if (error) throw new Error(error.message)
+    if (!data) throw new Error('Task not found.')
 
-  const allUserIds = [
-    data.assigner, data.assignee,
-    ...(data.subtasks || []).map(s => s.assignee),
-    ...(data.subtasks || []).map(s => s.assigner),
-  ].filter(Boolean)
+    const allUserIds = [
+      data.assigner, data.assignee,
+      ...(data.subtasks || []).map(s => s.assignee),
+      ...(data.subtasks || []).map(s => s.assigner),
+    ].filter(Boolean)
 
-  const allSubtaskIds = (data.subtasks || []).map(s => s.id)
-  const extraSpawnedRows = await fetchSpawnedForSubtasks(allSubtaskIds)
-  const extraAssigneeIds = extraSpawnedRows.map(r => r.assignee).filter(Boolean)
+    const allSubtaskIds = (data.subtasks || []).map(s => s.id)
+    const extraSpawnedRows = await fetchSpawnedForSubtasks(allSubtaskIds)
+    const extraAssigneeIds = extraSpawnedRows.map(r => r.assignee).filter(Boolean)
 
-  await resolveNames([...new Set([...allUserIds, ...extraAssigneeIds])])
+    await resolveNames([...new Set([...allUserIds, ...extraAssigneeIds])])
 
-  const spawnedMap = buildSpawnedMap([data, ...extraSpawnedRows])
-  return mapRow(data, spawnedMap)
-}
+    const spawnedMap = buildSpawnedMap([data, ...extraSpawnedRows])
+    return mapRow(data, spawnedMap)
+  }
 
   // ── NOTIFICATION HELPER ─────────────────────────────────────────────────────
   // Uses position_of_members directly (not the position table) to find Unit
@@ -343,9 +345,9 @@ const fetchTaskById = async (taskId) => {
     await resolveUnitIds([assigneeId])
     const assigneeIsOffice = isOfficeUser(assigneeId)
     const assigneeUnitId = getAssigneeUnitId(assigneeId)
+    const directorId = await getDirectorId()
 
     if (assigneeIsOffice || isSelfAssigned) {
-      const directorId = await getDirectorId()
       if (directorId) {
         // Only insert if no unread notification already exists
         const { data: existing } = await supabase
@@ -362,7 +364,7 @@ const fetchTaskById = async (taskId) => {
             from_user: fromUserId,
             to_user: directorId,
             role: 'director',
-            comment: message || 'Output submitted — awaiting your approval.',
+            comment: message || 'To Director: Output submitted — awaiting your approval.',
             is_read: false,
           })
         }
@@ -381,6 +383,13 @@ const fetchTaskById = async (taskId) => {
 
       const uhIds = [...new Set((uhRows || []).map(r => r.user_id))]
 
+      const allUnitHeads = positions.memberPos
+        .filter(link => link.pos_id === 4)
+        .map(link => link.user_id)
+
+      // 2. Check if the current sender is in that list
+      const isSenderAUnitHead = allUnitHeads.includes(fromUserId)
+
       for (const uhId of uhIds) {
         // Only insert if no unread notification already exists for this UH
         const { data: existing } = await supabase
@@ -391,13 +400,24 @@ const fetchTaskById = async (taskId) => {
           .eq('is_read', false)
           .maybeSingle()
 
+        console.log('I should\'ve been called once: ', uhId)
+
         if (!existing) {
           await supabase.from('task_revision').insert({
             task_id: taskId,
             from_user: fromUserId,
             to_user: uhId,
             role: 'unit_head',
-            comment: message || 'Output submitted — awaiting your review.',
+            comment: message || 'From Unit Head: Output submitted — awaiting your review.',
+            is_read: false,
+          })
+        } else if (!existing && isSenderAUnitHead) {
+          await supabase.from('task_revision').insert({
+            task_id: taskId,
+            from_user: fromUserId,
+            to_user: directorId,
+            role: 'unit_head',
+            comment: message || 'From Unit Head: Output submitted — awaiting your review.',
             is_read: false,
           })
         }
@@ -803,17 +823,17 @@ const fetchTaskById = async (taskId) => {
       try {
         await resolveNames([assigneeId])
         await fetchTasks()
-      } catch(e) {
+      } catch (e) {
         console.log('Error fetching tasks: ', e)
       }
     }
   }
 
   return {
-  tasks, loading, nameMap, unitMembers,
-  fetchTasks, addTasks, submitOutput,
-  approveTask, requestRevision, resubmitTask, fetchRevisions,
-  fetchUnitMembers, deleteTasks, assignSubtask,
-  fetchTaskById,
-}
+    tasks, loading, nameMap, unitMembers,
+    fetchTasks, addTasks, submitOutput,
+    approveTask, requestRevision, resubmitTask, fetchRevisions,
+    fetchUnitMembers, deleteTasks, assignSubtask,
+    fetchTaskById,
+  }
 })

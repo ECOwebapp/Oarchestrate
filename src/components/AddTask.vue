@@ -272,12 +272,12 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
 
     <!-- ── BulkAddTask modal overlay ─────────────────────────────────────────── -->
     <Teleport to="body">
-      <Transition enter-active-class="transition-opacity duration-200" enter-from-class="opacity-0"
+      <Transition @after-leave="emit('close')" enter-active-class="transition-opacity duration-200" enter-from-class="opacity-0"
         enter-to-class="opacity-100" leave-active-class="transition-opacity duration-150" leave-from-class="opacity-100"
         leave-to-class="opacity-0">
         <div v-if="showBulk" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4"
           @click.self="showBulk = false">
-          <BulkAddTask @close="showBulk = false; emit('close')" />
+          <BulkAddTask @close="showBulk = false" />
         </div>
       </Transition>
     </Teleport>
@@ -293,7 +293,7 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
       <div class="flex items-center gap-2">
         <button v-if="auth.isDirector && !preFill" @click="showBulk = true" class="flex items-center gap-1.5 text-xs font-semibold text-green-800
                  border border-green-800 rounded-lg px-3 py-1.5
-                 hover:bg-green-50 active:scale-95 transition-all">
+                 hover:bg-green-50 hover:cursor-pointer active:scale-95 transition-all">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M4 6h16M4 10h16M4 14h8M4 18h8M17 14v6M14 17h6" />
@@ -301,7 +301,7 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
           Bulk Add
         </button>
 
-        <button @click="emit('close')" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">×</button>
+        <button @click="emit('close')" class="hover:cursor-pointer text-gray-400 hover:text-gray-700 text-2xl leading-none">×</button>
       </div>
     </div>
 
@@ -344,9 +344,9 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
           <label class="block text-sm font-semibold text-gray-700 mb-1">
             Type <span class="text-red-500">*</span>
           </label>
-          <select v-model="newTask.type" class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
+          <select v-model="newTask.type" class="hover:cursor-pointer w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
                    focus:outline-none focus:border-green-800 bg-white">
-            <option value="" disabled hidden>Select type</option>
+            <option value="" disabled hidden>Select task type</option>
             <option v-for="t in typeOptions" :key="t.id" :value="t.id">{{ t.label }}</option>
           </select>
         </div>
@@ -355,7 +355,7 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
             Deadline <span class="text-red-500">*</span>
           </label>
           <input v-model="newTask.endDate" type="date" class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
-                   focus:outline-none focus:border-green-800 transition-colors" />
+                   focus:outline-none focus:border-green-800 transition-colors hover:cursor-pointer" />
         </div>
       </div>
 
@@ -372,8 +372,8 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
 
         <template v-else>
           <select v-model="newTask.assignee" class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
-                   focus:outline-none focus:border-green-800 bg-white">
-            <option value="" disabled hidden>Select member</option>
+                   focus:outline-none focus:border-green-800 bg-white hover:cursor-pointer">
+            <option :value="null" disabled hidden>Select assignee...</option>
             <option v-for="m in assignableMembers" :key="m.id" :value="m.id">
               {{ memberLabel(m) }}{{ m.isSelf ? ' (You)' : '' }}
             </option>
@@ -451,7 +451,7 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="#166534" stroke-width="3" stroke-linecap="round" />
               </svg>
               <span class="text-xs text-gray-500">Uploading <span class="font-medium text-gray-700">{{ uploadedFileName
-                  }}</span>…</span>
+              }}</span>…</span>
             </template>
 
             <!-- Success state -->
@@ -515,11 +515,11 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
       <!-- ── end Output block ────────────────────────────────────────────────── -->
 
       <!-- Sub-tasks (Director only, not when pre-filling a subtask) -->
-      <div v-if="auth.isDirector && !preFill">
+      <div v-if="auth.isDirector && !preFill && newTask.type === 1">
         <div class="flex items-center justify-between mb-2">
           <label class="text-sm font-semibold text-gray-700">Sub-tasks</label>
           <button type="button" @click="addSubTask"
-            class="flex items-center gap-1 text-xs font-bold text-green-800 hover:text-green-600">
+            class="flex items-center gap-1 text-xs font-bold text-green-800 hover:text-green-600 hover:cursor-pointer">
             <Icons :icon="'add'" class="w-3 h-3" /> Add
           </button>
         </div>
@@ -529,15 +529,15 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
             <textarea v-model="item.text" rows="1" maxlength="200" :placeholder="`Sub-task ${i + 1}…`" class="flex-1 border-2 border-gray-200 rounded-lg px-2 py-1.5 text-sm resize-none
                      focus:outline-none focus:border-green-800 transition-colors" />
             <button type="button" @click="removeSubTask(i)"
-              class="text-gray-300 hover:text-red-400 mt-1.5 flex-shrink-0 text-lg leading-none">×</button>
+              class="text-gray-300 hover:text-red-400 mt-1.5 flex-shrink-0 text-lg leading-none hover:cursor-pointer">×</button>
           </div>
         </div>
       </div>
 
       <!-- Urgent -->
-      <div class="flex items-center gap-3">
-        <input v-model="newTask.urgent" type="checkbox" id="urgent" class="w-4 h-4 accent-red-700" />
-        <label for="urgent" class="text-sm font-semibold text-red-700">Mark as Urgent</label>
+      <div class="flex items-center gap-2">
+        <input v-model="newTask.urgent" type="checkbox" id="urgent" class="w-4 h-4 accent-red-700 hover:cursor-pointer" />
+        <label for="urgent" class="text-sm font-semibold text-red-700 hover:cursor-pointer">Mark as Urgent</label>
       </div>
 
       <!-- Approval flow note -->
@@ -573,12 +573,12 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
     <!-- Footer -->
     <div class="flex gap-3 px-7 py-4 border-t border-gray-100">
       <button type="button" @click="emit('close')" class="flex-1 h-11 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm
-               hover:border-green-800 hover:text-green-800 transition-colors">
+               hover:border-green-800 hover:text-green-800 hover:cursor-pointer transition-colors">
         Cancel
       </button>
       <button @click="submitForm" :disabled="loading || uploadLoading" class="flex-1 h-11 rounded-xl bg-green-950 text-white font-semibold text-sm
                hover:bg-green-800 active:scale-95 transition-all
-               disabled:opacity-50 disabled:cursor-not-allowed
+               disabled:opacity-50 disabled:cursor-not-allowed hover:cursor-pointer
                flex items-center justify-center gap-2">
         <svg v-if="loading" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
