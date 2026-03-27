@@ -4,9 +4,11 @@ import ChartTasks from '@/components/ChartTasks.vue'
 import GridTasks from '@/components/GridTasks.vue'
 import Icons from '@/components/Icons.vue'
 import TableTasks from '@/components/TableTasks.vue'
+import Loading from '@/components/Loading.vue'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 
 const store = taskStore()
 const auth = useAuthStore()
@@ -15,6 +17,7 @@ const addTask = ref(false)
 const search = ref('')
 const filter = ref('All')
 const sortBy = ref('Recently Assigned')
+const loading = storeToRefs(store)?.loading
 
 // ── Only Directors and Unit Heads can select / delete ──────────────────────
 const canDelete = computed(() => auth.isDirector || auth.isUnitHead)
@@ -48,8 +51,6 @@ const tasks = computed(() => {
 
   return store.tasks.filter(t => !t.design);
 });
-
-console.log(tasks.value)
 
 const activeUnitId = computed(() => {
   const headRole = auth.positions?.find(p => p.pos_id === 4)
@@ -207,7 +208,10 @@ const onCloseAddTask = () => {
 
 <template>
   <div class="flex flex-col h-full min-h-0">
-    <div class="flex flex-col h-full min-h-0">
+
+    <Loading v-if="loading" :message="'Loading tasks from the source...'" />
+
+    <div v-else class="flex flex-col h-full min-h-0">
 
       <!-- ── Toolbar ── -->
       <div class="flex flex-wrap items-center gap-3 px-4 sm:px-6 lg:px-10 py-4 flex-shrink-0">

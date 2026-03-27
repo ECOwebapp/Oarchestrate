@@ -4,20 +4,28 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useMemberStore } from '@/stores/member';
 import { useNotifStore } from '@/stores/useNotifStore';
 import { usePosStore } from '@/stores/positions';
+import { useUnitStore } from '@/stores/unit';
 
 // 1. Use storeToRefs to keep the properties reactive
 const memberStore = useMemberStore()
 const notifStore = useNotifStore()
 const posStore = usePosStore()
+const unitStore = useUnitStore()
 const { members } = storeToRefs(memberStore)
-const { position, roles, memberPos } = storeToRefs(posStore)
+const { roles, memberPos } = storeToRefs(posStore)
+const unit = storeToRefs(unitStore)?.unit
 const selectedMember = ref([null])
 const loading = ref({
     update: false,
     delete: false
 })
 
-onMounted(async() => await posStore.fetchRoles())
+onMounted(async () => {
+    await Promise.all([
+        posStore.fetchRoles(), 
+        unitStore.fetchUnit()
+    ])
+})
 
 const pendingMembers = computed(() => {
     // 1. Create the list of expected notification IDs (e.g., ["reg-uuid1", "reg-uuid2"])
@@ -41,23 +49,44 @@ const changePosMembers = ref({
 
 const deleteMember = ref({ user_id: null })
 
-const availableRoles = computed(() => {
-    const selectedUserId = changePosMembers.value.user_id;
+watch(() => changePosMembers.value.user_id, (userId) => {
+    changePosMembers.value.pos_id = changePosMembers.value.unit_id = null
 
-    // 1. If no ID is selected, return all position
-    if (!selectedUserId) return roles.value;
+    if(!userId) return
+
+    const isExecutive = memberPos.value.find(p => 
+        String(p.user_id).trim() === String(userId).trim() && 
+        [1, 4].includes(Number(p.pos_id))
+    )
+
+    if(isExecutive) {
+        changePosMembers.value.pos_id = isExecutive?.pos_id
+        changePosMembers.value.unit_id = isExecutive?.unit_id
+    }
+})
+
+const availableUnit = computed(() => {
+    
+    const selectedUserId = changePosMembers.value.user_id;
+    const selectedPosId = changePosMembers.value.pos_id
+
+    // 1. If no ID is selected, return all unit
+    if (!selectedUserId && selectedPosId) return unit.value;
 
     // 2. Find the user, forcing both IDs to String and trimming whitespace
     const currentMember = memberPos.value.find(p => {
-        return String(p.user_id).trim() === String(selectedUserId).trim();
+        const isTargetUser = String(p.user_id).trim() === String(selectedUserId).trim();
+        const isUnitHead = [1].includes(Number(p.pos_id));
+
+        return isTargetUser && isUnitHead;
     });
 
     // 3. If member not found in the position list, return all position
-    if (!currentMember) return roles.value;
+    if (!currentMember) return unit.value;
 
     // 4. Filter out the current position ID (also forcing string comparison)
-    return roles.value.filter(r => {
-        return String(r.pos_id) !== String(currentMember.pos_id);
+    return unit.value.filter(u => {
+        return String(u.id).trim() !== String(currentMember.unit_id).trim();
     });
 });
 
@@ -66,8 +95,6 @@ const submitChangeRole = async () => {
     try {
         loading.value.update = true
 
-        changePosMembers.value.unit_id = memberPos.value.find(p => p.user_id === changePosMembers.value.user_id)?.unit_id || null;
-
         const response = await posStore.changeMemberRoles({ member: { ...changePosMembers.value } })
         if (response === 200) console.log(response)
     } catch (e) {
@@ -75,7 +102,8 @@ const submitChangeRole = async () => {
     } finally {
         changePosMembers.value = {
             user_id: null,
-            pos_id: null
+            pos_id: null,
+            unit_id: null
         }
         loading.value.update = false
     }
@@ -160,16 +188,27 @@ const removeMember = async () => {
                                     member.fname }} {{
                                         member.middle_initial }} {{ member.lname }}</option>
                             </select>
-                            <p class="text-xs text-red-500 mt-1">* Not 2 members at the same time</p>
                         </div>
 
-                        <div>
+                        <div v-if="changePosMembers.user_id">
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Position:</label>
                             <select v-model="changePosMembers.pos_id"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-700 disabled:opacity-50"
                                 :disabled="loading?.update">
                                 <option disabled selected :value="null">-- Select position --</option>
-                                <option v-for="role in availableRoles" :key="role.pos_id" :value="role.pos_id">{{ role.pos_name }}
+                                <option v-for="role in roles" :key="role.pos_id" :value="role.pos_id">{{
+                                    role.pos_name }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div v-if="changePosMembers.pos_id === 4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Unit:</label>
+                            <select v-model="changePosMembers.unit_id"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-700 disabled:opacity-50"
+                                :disabled="loading?.update">
+                                <option disabled selected :value="null">-- Select Unit --</option>
+                                <option v-for="unit in availableUnit" :key="unit.id" :value="unit.id">{{ unit.name }}
                                 </option>
                             </select>
                         </div>
@@ -197,7 +236,7 @@ const removeMember = async () => {
                             <select v-model="deleteMember.user_id"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-700 disabled:opacity-50"
                                 :disabled="loading?.delete">
-                                <option disabled selected value="">-- Select a member --</option>
+                                <option disabled selected :value="null">-- Select a member --</option>
                                 <option v-for="member in normalMembers" :key="member.id" :value="member.id">{{
                                     member.fname }} {{
                                         member.middle_initial }} {{ member.lname }}</option>

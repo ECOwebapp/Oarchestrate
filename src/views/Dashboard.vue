@@ -1,5 +1,6 @@
 <script setup vapor>
 import AddTask from '@/components/AddTask.vue'
+import Loading from '@/components/Loading.vue'
 import TaskCard from '@/components/TaskCard.vue'
 import TaskDetail from '@/components/TaskDetail.vue'
 import { supabase } from '@/lib/supabaseClient'
@@ -169,13 +170,8 @@ const onCloseAddTask = () => {
 }
 </script>
 <template>
-  <div v-if="loading" class="flex flex-col items-center justify-center gap-5 w-full h-screen overflow-hidden">
-    <!-- <Icons class=" text-grey-500/50 text-lg" :icon="'spin'" /> -->
+  <Loading v-if="loading" :message="'A moment...'" />
 
-    <div class="w-30 h-30 animate-spin bg-[url('/images/csu_seal.png')] bg-cover bg-center no-repeat" />
-
-    <p class="animate-pulse text-gray-500/90 text-sm">Loading dashboard...</p>
-  </div>
 
   <div v-else class="director-dash flex flex-col w-full h-full overflow-hidden bg-gray-50">
 

@@ -1,14 +1,17 @@
 <script setup vapor>
 import { ref, onMounted, onUnmounted, h, computed } from "vue";
+import Loading from "@/components/Loading.vue";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { usePosStore } from "@/stores/positions";
 import { useMemberStore } from "@/stores/member";
+import { storeToRefs } from "pinia";
 import ManageMembership from "@/components/ManageMembership.vue";
 import OrgCard from "@/components/OrgCard.vue"; // Adjust path as needed
 
 const role = useAuthStore().isDirector;
 const positions = usePosStore();
 const members = useMemberStore();
+const loading = storeToRefs(members)?.loading
 
 const zoomLevel = ref(1);
 
@@ -24,7 +27,9 @@ const handleWheel = (event) => {
   }
 };
 
-onMounted(() => {
+onMounted(async() => {
+  await positions.fetchPos()
+  await positions.fetchMemberPos()
   window.addEventListener("wheel", handleWheel, { passive: false });
 });
 
@@ -267,6 +272,7 @@ const sz = {
   <div
     class="flex-1 w-full h-full overflow-hidden min-h-0 relative opacity-80 bg-[url('/images/csu-background.png')] bg-cover bg-center"
   >
+
     <div
       v-if="!showManagement"
       class="relative z-10 flex flex-col items-center w-full h-full"
@@ -303,6 +309,8 @@ const sz = {
           Manage Membership
         </button>
       </div>
+
+      <Loading v-if="loading" :message="'Loading organization chart...'" />
 
       <div class="w-full flex-1 min-h-0 overflow-auto">
         <div class="w-max min-w-full flex justify-center px-2 pt-3 pb-5">
@@ -689,7 +697,7 @@ const sz = {
           </div>
           <button
             @click="selectedProfile = null"
-            class="bg-[#003300] text-white px-6 py-2 rounded-full text-sm font-bold shadow-md hover:bg-green-900 transition-colors"
+            class="bg-[#003300] hover:cursor-pointer text-white px-6 py-2 rounded-full text-sm font-bold shadow-md hover:bg-green-900 transition-colors"
           >
             Close
           </button>

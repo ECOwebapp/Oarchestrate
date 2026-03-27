@@ -41,6 +41,7 @@ const routes = [
   {
     path: '/',
     component: Main,
+    redirect: { name: 'Dashboard' },
     meta: { requiresAuth: true },
     children: [
       {
@@ -97,48 +98,38 @@ const router = createRouter({
 
 export const isPageLoading = ref(false)
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
   const tasks = taskStore()
   const members = useMemberStore()
-  const fetchPos = usePosStore()
-
+  
   isPageLoading.value = true
-  next()
 
-  await fetchPos.fetchPos()
-  await fetchPos.fetchMemberPos()
-
-  if (to.meta.requiresTasks && tasks.tasks.length === 0) {
-    await tasks.fetchTasks()
-  }
-
-  if(to.meta.requireMembers) {
-    await members.fetchMembers()
-  }
-
-  // Wait for init() to finish if app just loaded
+  // 1. Run initialization first (Security Priority)
   if (!auth.initialized) await auth.init()
-
   const loggedIn = auth.isLoggedIn
 
-  // 1. Logged-in users can't visit guest-only pages
-  if (to.meta.guestOnly && loggedIn) {
-    return { name: 'Dashboard' }
+  // 2. Security Gates (Instant Returns)
+  if (to.meta.guestOnly && loggedIn) return { name: 'Dashboard' }
+  if (to.meta.requiresAuth && !loggedIn) return { name: 'Login' }
+
+  // 3. PERFORMANCE BOOST: Parallel Data Fetching
+  // Instead of awaiting one by one, start them all at once!
+  const loaders = []
+  if (to.meta.requiresTasks && tasks.tasks.length === 0) loaders.push(tasks.fetchTasks())
+  if (to.meta.requireMembers && members.members.length === 0) loaders.push(members.fetchMembers())
+  
+  // Wait for all data requirements to finish together
+  await Promise.all(loaders)
+
+  // 4. Final Verification
+  if (to.meta.requiresAuth && auth.accountStatus !== 2) {
+    await auth.logout()
+    return { name: 'Login' }
   }
 
-  // 2. Protected pages require an active session
-  if (to.meta.requiresAuth) {
-    if (!loggedIn) return { name: 'Login' }
-
-    // 3. Re-verify account_status on every protected navigation.
-    //    Catches users who were denied after already logging in.
-    const status = auth.accountStatus
-    if (status && status !== 2) {
-      await auth.logout(router)
-      return false  // navigation already handled by logout()
-    }
-  }
+  // If we get here, navigation is allowed and data is READY
+  isPageLoading.value = false
 })
 
 router.afterEach(() => {

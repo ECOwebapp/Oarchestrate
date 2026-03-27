@@ -26,7 +26,7 @@ onMounted(async () => {
 
         <video ref="videoRef" src="../../public/images/CSU-LOGO-ANIMATION.mp4" loop muted playsinline class="w-50 h-50 animate-spin" />
 
-        <p class="animate-pulse text-gray-500/90 text-sm">Generating from the source...</p>
+        <p class="animate-pulse text-gray-500/90 text-sm">Oarchestrating the system. Please standby...</p>
     </div>
     <div v-else class="flex flex-row w-full h-screen overflow-hidden">
 

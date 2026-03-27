@@ -30,9 +30,9 @@ const handleOpen = (task) => {
 
     <div v-else class="mask-y-from-95% mask-y-to-97% h-full overflow-y-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4
            justify-items-stretch px-4 sm:px-6 lg:px-10 py-6 gap-4">
-      <TaskCard v-for="task in props.tasks" :key="task.id" :task="task" :selectable="props.selectable"
+      <TaskCard v-for="(task, index) in props.tasks" :key="task.id" :task="task" :selectable="props.selectable"
         :selected="props.selectedIds.has(task.id)" :is-deletable="props.isDeletable(task)" @open="handleOpen"
-        @toggle-select="emit('toggle-select', $event)" />
+        @toggle-select="emit('toggle-select', $event)" :style="{ animationDelay: `${index * 0.03}s` }" />
     </div>
 
     <Teleport to="body">

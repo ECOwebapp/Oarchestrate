@@ -54,12 +54,13 @@ const handleRowClick = (task) => {
           <td :colspan="selectable ? 8 : 7"
             class="text-center py-16 text-gray-400 text-sm">No tasks found</td>
         </tr>
-        <tr v-for="task in tasks" :key="task.id"
-          class="border-b border-gray-100 transition-colors"
+        <tr v-for="(task, index) in tasks" :key="task.id"
+          class="border-b border-gray-100 transition-colors animate-slide-up"
           :class="[
             selectedIds.has(task.id) ? 'bg-green-50' : 'hover:bg-gray-50',
             selectable && isDeletable(task) ? 'cursor-pointer' : '',
           ]"
+          :style="{ animationDelay: `${index * 0.04}s` }"
           @click="handleRowClick(task)">
 
           <!-- Checkbox cell -->

@@ -189,8 +189,10 @@ async function uploadFile(event) {
     // fullName from authStore e.g. "Juan D. Dela Cruz" → becomes the Drive folder name
     formData.append('userName', auth.fullName)
 
-    const res = await fetch('/api/upload', { method: 'POST', body: formData })
-    const data = await res.json()
+    const [res, data] = await Promise.all([
+      fetch('/api/upload', { method: 'POST', body: formData }),
+      res.json()
+    ])
 
     if (!res.ok || !data.success) throw new Error(data.error || 'Upload failed')
 
@@ -272,9 +274,9 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
 
     <!-- ── BulkAddTask modal overlay ─────────────────────────────────────────── -->
     <Teleport to="body">
-      <Transition @after-leave="emit('close')" enter-active-class="transition-opacity duration-200" enter-from-class="opacity-0"
-        enter-to-class="opacity-100" leave-active-class="transition-opacity duration-150" leave-from-class="opacity-100"
-        leave-to-class="opacity-0">
+      <Transition @after-leave="emit('close')" enter-active-class="transition-opacity duration-200"
+        enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition-opacity duration-150"
+        leave-from-class="opacity-100" leave-to-class="opacity-0">
         <div v-if="showBulk" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4"
           @click.self="showBulk = false">
           <BulkAddTask @close="showBulk = false" />
@@ -301,7 +303,8 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
           Bulk Add
         </button>
 
-        <button @click="emit('close')" class="hover:cursor-pointer text-gray-400 hover:text-gray-700 text-2xl leading-none">×</button>
+        <button @click="emit('close')"
+          class="hover:cursor-pointer text-gray-400 hover:text-gray-700 text-2xl leading-none">×</button>
       </div>
     </div>
 
@@ -451,7 +454,7 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="#166534" stroke-width="3" stroke-linecap="round" />
               </svg>
               <span class="text-xs text-gray-500">Uploading <span class="font-medium text-gray-700">{{ uploadedFileName
-              }}</span>…</span>
+                  }}</span>…</span>
             </template>
 
             <!-- Success state -->
@@ -536,7 +539,8 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
 
       <!-- Urgent -->
       <div class="flex items-center gap-2">
-        <input v-model="newTask.urgent" type="checkbox" id="urgent" class="w-4 h-4 accent-red-700 hover:cursor-pointer" />
+        <input v-model="newTask.urgent" type="checkbox" id="urgent"
+          class="w-4 h-4 accent-red-700 hover:cursor-pointer" />
         <label for="urgent" class="text-sm font-semibold text-red-700 hover:cursor-pointer">Mark as Urgent</label>
       </div>
 
