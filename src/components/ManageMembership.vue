@@ -219,10 +219,6 @@ const removeMember = async () => {
                                     member.fname }} {{
                                         member.middle_initial }} {{ member.lname }}</option>
                             </select>
-                            <p v-if="changePosMembers.user_id" class="mt-2 text-xs text-gray-600">
-                                Current unit(s): <span class="font-semibold text-gray-800">{{ selectedMemberUnitLabel }}</span>
-                            </p>
-                            <p class="text-xs text-red-500 mt-1">* Not 2 members at the same time</p>
                         </div>
 
                         <div v-if="changePosMembers.user_id">

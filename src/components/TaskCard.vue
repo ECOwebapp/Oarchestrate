@@ -72,7 +72,7 @@ const handleCheckboxClick = (e) => {
     @click="handleClick"
     class="hover:cursor-pointer relative flex flex-col rounded-2xl py-3 px-3 sm:px-4 overflow-hidden bg-white shadow-lg
            hover:shadow-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 group
-           h-full min-h-[160px] sm:min-h-[176px]"
+           animate-slide-up h-full min-h-[160px] sm:min-h-[176px]"
     :class="[
       cardClass,
       selected ? 'ring-2 ring-green-600 ring-offset-1' : '',
