@@ -37,14 +37,14 @@ const avatarFontSize = computed(() => props.expanded ? '64px' : '32px')
       <div class="relative z-10 flex flex-col items-center w-full pb-4 px-3">
         <div :style="avatarContainerStyle"
           class="flex items-center justify-center transition-all duration-300 shadow-xl border-white/30 border-[2px] overflow-hidden">
-          <img v-if="authStore.avatarUrl" :src="authStore.avatarUrl" alt="User avatar"
-            class="w-full h-full object-cover block" />
+          <img v-if="authStore.avatarUrl" :src="authStore.avatarUrl" @error="(e) => { e.target.style.display = 'none'; authStore.avatarUrl = null;
+          }" class="w-full h-full object-cover block" />
 
           <span v-else :style="{
             fontSize: avatarFontSize,
             transition: 'font-size 0.3s ease'
           }" class="text-white font-bold tracking-wider drop-shadow-md select-none">
-            {{ authStore.initials ?? '?' }}
+            {{ authStore.initials || '?' }}
           </span>
         </div>
 
