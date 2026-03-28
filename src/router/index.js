@@ -86,7 +86,7 @@ const routes = [
   // ── Fallback ──
   {
     path: '/:pathMatch(.*)*',
-    redirect: { name: 'Login' },
+    redirect: { name: 'Hero' },
   },
 ]
 
@@ -111,7 +111,7 @@ router.beforeEach(async (to) => {
 
   // 2. Security Gates (Instant Returns)
   if (to.meta.guestOnly && loggedIn) return { name: 'Dashboard' }
-  if (to.meta.requiresAuth && !loggedIn) return { name: 'Login' }
+  if (to.meta.requiresAuth && !loggedIn) return { name: 'Hero' }
 
   // 3. PERFORMANCE BOOST: Parallel Data Fetching
   // Instead of awaiting one by one, start them all at once!
@@ -124,7 +124,7 @@ router.beforeEach(async (to) => {
 
   // 4. Final Verification
   if (to.meta.requiresAuth && auth.accountStatus !== 2) {
-    await auth.logout()
+    await auth.logout(router)
     return { name: 'Login' }
   }
 

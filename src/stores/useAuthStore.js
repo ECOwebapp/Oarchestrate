@@ -73,6 +73,48 @@ export const useAuthStore = defineStore('auth', () => {
     return positions?.value.some(p => p.unit_id === 3) ?? false
   })
 
+  const login = async (form) => {
+    try {
+      const internalEmail = `${form?.idNumber.trim().toLowerCase().replace(/[^a-z0-9]/g, '-')}@carsu.edu.ph`
+
+      // Sign in directly — no email lookup needed
+      const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
+        email: internalEmail,
+        password: form?.password,
+      })
+
+      if(authErr) return authErr
+
+      const userId = authData.user?.id
+
+      // 3. Check account_status
+      const { data: statusData } = await supabase
+        .from('account_status')
+        .select('status_id, notes')
+        .eq('user_id', userId)
+        .single()
+
+      const status = statusData || {}
+
+      if (status?.status_id === 1) {
+        // Sign them back out — don't let them in yet
+        await supabase.auth.signOut()
+        return status
+      }
+
+      else if (status?.status_id === 3) {
+        await supabase.auth.signOut()
+        return status
+      } else {
+        const authUser = {id: userId}
+        const response = await fetchUserData(authUser, true)
+        if (response) return status
+      }
+    } catch (e) {
+      console.log('Failed to login: ', e)
+    }
+  }
+
   // ── Fetch user data ──
   // force=true bypasses the early-return guard (used after profile save)
   async function fetchUserData(authUser, force = false) {
@@ -124,11 +166,10 @@ export const useAuthStore = defineStore('auth', () => {
       ? `${raw.split('?')[0]}?t=${Date.now()}`
       : null
 
-    console.log('isDirector ->', isDirector.value)
-    console.log('isUnitHead ->', isUnitHead.value)
-    console.log('isUnitMember ->', isMember.value)
-    console.log('isOffice ->', isOffice.value)
-    console.log(positions.value)
+    // console.log('isDirector ->', isDirector.value)
+    // console.log('isUnitHead ->', isUnitHead.value)
+    // console.log('isUnitMember ->', isMember.value)
+    // console.log('isOffice ->', isOffice.value)
 
     loading.value = false
     initialized.value = true
@@ -138,7 +179,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function init() {
     if (initialized.value && user.value) return;
-    
+
     loading.value = true
 
     console.log('Init ->', loading.value)
@@ -160,7 +201,8 @@ export const useAuthStore = defineStore('auth', () => {
         user.value = session.user
         await fetchUserData(session.user)
       }
-      if (event === 'SIGNED_OUT') {
+      else if (event === 'SIGNED_OUT') {
+        console.log('signed out')
         $reset()
       }
     })
@@ -174,21 +216,21 @@ export const useAuthStore = defineStore('auth', () => {
         .eq('user_id', userID.value)
         .select()
 
-         if(error) throw error
+      if (error) throw error
 
-         await fetchUserData(user.value)
+      await fetchUserData(user.value)
 
-         return status
-    } catch(e) {
+      return status
+    } catch (e) {
       console.log('Error updating profile: ', e)
     }
   }
 
   // ── Upload avatar to Supabase Storage ──
-const uploadAvatar = async (userId, imageFile) => {
+  const uploadAvatar = async (userId, imageFile) => {
     if (!imageFile) {
-        console.log('[avatar] No new image staged, skipping upload.')
-        return null
+      console.log('[avatar] No new image staged, skipping upload.')
+      return null
     }
 
     console.log('[avatar] Starting upload for user:', userId)
@@ -199,33 +241,33 @@ const uploadAvatar = async (userId, imageFile) => {
     console.log('[avatar] Uploading to path:', filePath)
 
     const { data, error } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, imageFile, {
-            upsert: true,
-            contentType: imageFile.type,
-        })
+      .from('avatars')
+      .upload(filePath, imageFile, {
+        upsert: true,
+        contentType: imageFile.type,
+      })
 
     if (error) {
-        console.error('[avatar] Upload failed:', error.message, error)
-        throw new Error(`Avatar upload failed: ${error.message}`)
+      console.error('[avatar] Upload failed:', error.message, error)
+      throw new Error(`Avatar upload failed: ${error.message}`)
     }
 
     console.log('[avatar] Upload success:', data)
 
     const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath)
+      .from('avatars')
+      .getPublicUrl(filePath)
 
     // Add timestamp to bust browser cache (same filename = stale cache)
     const bustUrl = `${urlData.publicUrl}?t=${Date.now()}`
     console.log('[avatar] Public URL:', bustUrl)
     return bustUrl
-}
+  }
 
   async function logout(router) {
     await supabase.auth.signOut()
     $reset()
-    router.push('/login')
+    router.replace({ name: 'Login' })
   }
 
   function $reset() {
@@ -241,7 +283,7 @@ const uploadAvatar = async (userId, imageFile) => {
   return {
     user, userID, profile, positions, accountStatus, loading, initialized,
     isLoggedIn, fullName, initials, avatarColor, avatarUrl, // ← avatarUrl added
-    isDirector, isUnitHead, isMember, isAdmin, isOffice,
+    isDirector, isUnitHead, isMember, isAdmin, isOffice, login,
     init, listenToAuthChanges, fetchUserData, logout, $reset, editProfile, uploadAvatar
   }
 })

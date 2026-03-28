@@ -64,7 +64,7 @@ const version = '0.1 alpha'
       <nav v-if="mobileOpen"
         class="xl:hidden fixed left-0 top-0 bottom-0 z-50 w-68 flex flex-col drop-shadow-2xl bg-[url('/images/csu-background.png')] bg-center bg-cover no-repeat">
         <NavInner :nav-names="navNames" :get-path="getPath" :is-active="isActive" :auth-store="authStore"
-          :expanded="true" :version="version" @logout="authStore.logout(router)"
+          :expanded="true" :version="version" @logout="async() => await authStore.logout(router)"
           :formatted-positions="formattedPositions" :formatted-units="formattedUnits" @navigate="closeDrawer" />
       </nav>
     </Transition>

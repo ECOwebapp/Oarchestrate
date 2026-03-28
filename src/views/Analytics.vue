@@ -22,13 +22,13 @@
     const showUnitPicker = ref(false)
     const showIndividualPicker = ref(false)
     const unitMonth = ref(new Date().getMonth() + 1)
-    const unitYear  = ref(new Date().getFullYear())
+    const unitYear = ref(new Date().getFullYear())
     const unitDateFrom = ref('')
-    const unitDateTo   = ref('')
-    const indivMonth   = ref(new Date().getMonth() + 1)
-    const indivYear    = ref(new Date().getFullYear())
+    const unitDateTo = ref('')
+    const indivMonth = ref(new Date().getMonth() + 1)
+    const indivYear = ref(new Date().getFullYear())
     const indivDateFrom = ref('')
-    const indivDateTo   = ref('')
+    const indivDateTo = ref('')
 
     const onGenerateUnitReport = ({ dateFrom, dateTo, month, year }) => {
       unitDateFrom.value = dateFrom
@@ -173,7 +173,7 @@
 
     // ── Area Chart: per-status counts by month ─────────────────
     const areaSeriesData = computed(() => {
-      const yr  = new Date().getFullYear()
+      const yr = new Date().getFullYear()
       const def = { Submitted: '#0ea5e9', Pending: '#eab308', Revision: '#ea580c' }
       const buckets = {}
       Object.keys(def).forEach(k => { buckets[k] = Array(12).fill(0) })
@@ -203,218 +203,236 @@
     )
 </script>
 
-    <template>
-    <div class="flex h-full min-h-0 w-full flex-col gap-4 overflow-y-auto overflow-x-hidden bg-gray-50 p-3 sm:p-4 lg:flex-row lg:overflow-hidden">
+<template>
+  <div class=" overflow-auto">
+    <div
+      class="flex h-full min-h-0 w-full flex-col gap-4 overflow-y-auto overflow-x-hidden bg-gray-50 p-3 sm:p-4 lg:flex-row lg:overflow-hidden">
 
-        <!-- ── Left: Accomplishment Report Generator ── -->
-      <div class="w-full rounded-xl bg-white p-4 shadow-sm sm:p-5 lg:h-full lg:w-64 lg:flex lg:flex-col lg:overflow-hidden">
+      <!-- ── Left: Accomplishment Report Generator ── -->
+      <div
+        class="w-full rounded-xl bg-white p-4 shadow-sm sm:p-5 lg:h-full lg:w-64 lg:flex lg:flex-col lg:overflow-hidden">
         <div class="flex-shrink-0">
-            <h2 class="text-base font-extrabold text-gray-900 leading-snug mb-3">
-              Accomplishment<br />Report Generator
-            </h2>
-            <p class="text-xs text-gray-600 leading-relaxed">
-              The Accomplishment Report is a track record that contains all tasks you performed.
-              This is the proof of your activity within the organisation.
-            </p>
-          </div>
-
-        <div class="flex-1 overflow-y-auto lg:overflow-hidden">
-            <p class="text-xs font-semibold text-gray-700 mb-1">Note:</p>
-            <ul class="text-xs text-gray-600 space-y-2 list-disc list-outside pl-4">
-          <li>Approved = approved by Director, Submitted = waiting Director approval, Pending = not yet submitted, Revision = returned for changes.</li>
-            <li>Individual Report shows only your own approved tasks. Directors should use Unit Report to review Submitted, Pending, and Revision items across units.</li>
-            <li>It doesn't include the signature of your Division Chief.</li>
-            </ul>
-          </div>
-
-        <div class="mt-4 flex flex-col gap-2 lg:mt-auto lg:flex-shrink-0">
-            <button
-          class="flex w-full items-center justify-center gap-2 rounded-lg bg-green-950 px-3 py-3 text-xs font-semibold text-white shadow-sm transition-all cursor-pointer hover:bg-green-800 active:scale-95"
-            @click="showUnitPicker = true">
-            <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-            </svg>
-            Unit Report
-            </button>
-            <button
-            class="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-green-950 bg-white px-3 py-3 text-xs font-semibold text-green-950 shadow-sm transition-all cursor-pointer hover:bg-green-50 active:scale-95"
-            @click="showIndividualPicker = true">
-            <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-            </svg>
-            Individual Report
-            </button>
-          </div>
+          <h2 class="text-base font-extrabold text-gray-900 leading-snug mb-3">
+            Accomplishment<br />Report Generator
+          </h2>
+          <p class="text-xs text-gray-600 leading-relaxed">
+            The Accomplishment Report is a track record that contains all tasks you performed.
+            This is the proof of your activity within the organisation.
+          </p>
         </div>
 
-        <!-- ── Right: 2×2 Chart Grid ── -->
-        <div class="grid w-full grid-cols-1 gap-4 md:min-h-0 md:flex-1 md:grid-cols-2 md:grid-rows-2 md:overflow-hidden">
+        <div class="flex-1 overflow-y-auto lg:overflow-hidden">
+          <p class="text-xs font-semibold text-gray-700 mb-1">Note:</p>
+          <ul class="text-xs text-gray-600 space-y-2 list-disc list-outside pl-4">
+            <li>Approved = approved by Director, Submitted = waiting Director approval, Pending = not yet submitted,
+              Revision = returned for changes.</li>
+            <li>Individual Report shows only your own approved tasks. Directors should use Unit Report to review
+              Submitted, Pending, and Revision items across units.</li>
+            <li>It doesn't include the signature of your Division Chief.</li>
+          </ul>
+        </div>
+
+        <div class="mt-4 flex flex-col gap-2 lg:mt-auto lg:flex-shrink-0">
+          <button
+            class="flex w-full items-center justify-center gap-2 rounded-lg bg-green-950 px-3 py-3 text-xs font-semibold text-white shadow-sm transition-all cursor-pointer hover:bg-green-800 active:scale-95"
+            @click="showUnitPicker = true">
+            <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+            Unit Report
+          </button>
+          <button
+            class="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-green-950 bg-white px-3 py-3 text-xs font-semibold text-green-950 shadow-sm transition-all cursor-pointer hover:bg-green-50 active:scale-95"
+            @click="showIndividualPicker = true">
+            <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            Individual Report
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Right: 2×2 Chart Grid ── -->
+      <div class="grid w-full grid-cols-1 gap-4 md:min-h-0 md:flex-1 md:grid-cols-2 md:grid-rows-2 md:overflow-hidden">
 
         <!-- Bar Chart: Completion Rate -->
         <div class="relative flex min-h-[260px] flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0">
-            <div class="mb-2 flex items-start justify-between gap-3">
-              <h3 class="text-xs font-semibold text-gray-700 sm:text-sm">Completion Rate</h3>
-              <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer" @click="openModal('bar')">
-                <Icons icon="fullscreen" class="w-4 h-4" />
-              </button>
-            </div>
-            <div class="min-h-0 flex-1 overflow-hidden">
-            <svg viewBox="0 0 500 245" class="w-full h-full">
-                <!-- Axes -->
-                <line x1="40" y1="10" x2="40" y2="200" stroke="#d1d5db" stroke-width="1" />
-                <line x1="40" y1="200" x2="490" y2="200" stroke="#d1d5db" stroke-width="1" />
-                <!-- Grid lines (dynamic) -->
-                <line v-for="t in barTickPos.slice(1)" :key="'bg' + t.v" x1="40" :y1="t.y" x2="490" :y2="t.y"
-                  stroke="#f3f4f6" stroke-width="1" />
-                <!-- Y labels (dynamic) -->
-                <text v-for="t in barTickPos" :key="'by' + t.v" x="35" :y="t.y + 3" text-anchor="end" font-size="9"
-                  fill="#9ca3af">{{ t.v }}</text>
-                <!-- Bars -->
-                <rect v-for="b in barRects" :key="b.label" :x="b.x" :y="b.y" :width="b.barW" :height="b.height"
-                  :fill="b.color" rx="2" />
-                <!-- Count label above each bar -->
-                <text v-for="b in barRects" :key="'cnt' + b.label" :x="b.cx" :y="b.count > 0 ? b.y - 5 : 196"
-                  text-anchor="middle" font-size="9" font-weight="600" fill="#374151">{{ b.count }}</text>
-                <!-- X labels -->
-                <text v-for="b in barRects" :key="'lbl' + b.label" :x="b.cx" y="217" text-anchor="middle" font-size="9"
-                  fill="#6b7280">{{ b.label }}</text>
-                <!-- X axis title -->
-                <text x="265" y="234" text-anchor="middle" font-size="10" font-weight="bold" fill="#374151">Tasks</text>
-              </svg>
-            </div>
+          <div class="mb-2 flex items-start justify-between gap-3">
+            <h3 class="text-xs font-semibold text-gray-700 sm:text-sm">Completion Rate</h3>
+            <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer"
+              @click="openModal('bar')">
+              <Icons icon="fullscreen" class="w-4 h-4" />
+            </button>
           </div>
+          <div class="min-h-0 flex-1 overflow-hidden">
+            <svg viewBox="0 0 500 245" class="w-full h-full">
+              <!-- Axes -->
+              <line x1="40" y1="10" x2="40" y2="200" stroke="#d1d5db" stroke-width="1" />
+              <line x1="40" y1="200" x2="490" y2="200" stroke="#d1d5db" stroke-width="1" />
+              <!-- Grid lines (dynamic) -->
+              <line v-for="t in barTickPos.slice(1)" :key="'bg' + t.v" x1="40" :y1="t.y" x2="490" :y2="t.y"
+                stroke="#f3f4f6" stroke-width="1" />
+              <!-- Y labels (dynamic) -->
+              <text v-for="t in barTickPos" :key="'by' + t.v" x="35" :y="t.y + 3" text-anchor="end" font-size="9"
+                fill="#9ca3af">{{ t.v }}</text>
+              <!-- Bars -->
+              <rect v-for="b in barRects" :key="b.label" :x="b.x" :y="b.y" :width="b.barW" :height="b.height"
+                :fill="b.color" rx="2" />
+              <!-- Count label above each bar -->
+              <text v-for="b in barRects" :key="'cnt' + b.label" :x="b.cx" :y="b.count > 0 ? b.y - 5 : 196"
+                text-anchor="middle" font-size="9" font-weight="600" fill="#374151">{{ b.count }}</text>
+              <!-- X labels -->
+              <text v-for="b in barRects" :key="'lbl' + b.label" :x="b.cx" y="217" text-anchor="middle" font-size="9"
+                fill="#6b7280">{{ b.label }}</text>
+              <!-- X axis title -->
+              <text x="265" y="234" text-anchor="middle" font-size="10" font-weight="bold" fill="#374151">Tasks</text>
+            </svg>
+          </div>
+        </div>
 
         <!-- Pie Chart: Task Distribution -->
         <div class="relative flex min-h-[260px] flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0">
-            <div class="mb-2 flex items-start justify-between gap-3">
-              <h3 class="text-xs font-semibold text-gray-700 sm:text-sm">Task Distribution</h3>
-              <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer" @click="openModal('pie')">
-                <Icons icon="fullscreen" class="w-4 h-4" />
-              </button>
-            </div>
-            <div class="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
+          <div class="mb-2 flex items-start justify-between gap-3">
+            <h3 class="text-xs font-semibold text-gray-700 sm:text-sm">Task Distribution</h3>
+            <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer"
+              @click="openModal('pie')">
+              <Icons icon="fullscreen" class="w-4 h-4" />
+            </button>
+          </div>
+          <div class="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
             <svg viewBox="0 0 200 200" class="h-full max-h-44 w-full max-w-[220px] flex-shrink-0 sm:max-h-52">
-                <!-- Empty state: gray circle with 0% -->
-                <circle v-if="!pieHasData" cx="100" cy="100" r="80" fill="#e5e7eb" />
-                <text v-if="!pieHasData" x="100" y="107" text-anchor="middle" font-size="14" fill="#9ca3af">0%</text>
-                <!-- Real segments -->
-                <template v-for="seg in pieSegments" :key="seg.label">
-                  <circle v-if="seg.isFull" :cx="seg.cx" :cy="seg.cy" :r="seg.r" :fill="seg.color" />
-                  <path v-else :d="seg.path" :fill="seg.color" stroke="white" stroke-width="1.5" />
-                </template>
-                <template v-for="seg in pieSegments" :key="'v'+seg.label">
-                  <text v-if="seg.count > 0" :x="seg.lx" :y="seg.ly - 4" text-anchor="middle" font-size="9"
-                    font-weight="bold" fill="white" class="pointer-events-none">
-                    {{ seg.count }}
-                  </text>
-                </template>
-                <template v-for="seg in pieSegments" :key="'p'+seg.label">
-                  <text v-if="seg.count > 0" :x="seg.lx" :y="seg.ly + 6" text-anchor="middle" font-size="8" fill="white"
-                    class="pointer-events-none">
-                    ({{ seg.pct }}%)
-                  </text>
-                </template>
+              <!-- Empty state: gray circle with 0% -->
+              <circle v-if="!pieHasData" cx="100" cy="100" r="80" fill="#e5e7eb" />
+              <text v-if="!pieHasData" x="100" y="107" text-anchor="middle" font-size="14" fill="#9ca3af">0%</text>
+              <!-- Real segments -->
+              <template v-for="seg in pieSegments" :key="seg.label">
+                <circle v-if="seg.isFull" :cx="seg.cx" :cy="seg.cy" :r="seg.r" :fill="seg.color" />
+                <path v-else :d="seg.path" :fill="seg.color" stroke="white" stroke-width="1.5" />
+              </template>
+              <template v-for="seg in pieSegments" :key="'v'+seg.label">
+                <text v-if="seg.count > 0" :x="seg.lx" :y="seg.ly - 4" text-anchor="middle" font-size="9"
+                  font-weight="bold" fill="white" class="pointer-events-none">
+                  {{ seg.count }}
+                </text>
+              </template>
+              <template v-for="seg in pieSegments" :key="'p'+seg.label">
+                <text v-if="seg.count > 0" :x="seg.lx" :y="seg.ly + 6" text-anchor="middle" font-size="8" fill="white"
+                  class="pointer-events-none">
+                  ({{ seg.pct }}%)
+                </text>
+              </template>
             </svg>
             <div class="flex w-full flex-col gap-2 sm:w-auto sm:gap-2.5">
               <div v-for="d in pieData" :key="d.label" class="flex items-center gap-2 text-xs text-gray-700 sm:text-sm">
                 <span class="w-3 h-3 rounded-sm flex-shrink-0" :style="{ background: d.color }"></span>
                 {{ d.label }}
-                </div>
               </div>
             </div>
           </div>
+        </div>
 
         <!-- Line Chart: Completed tasks trend monthly -->
         <div class="relative flex min-h-[260px] flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0">
-            <div class="mb-2 flex items-start justify-between gap-3">
-              <h3 class="text-xs font-semibold text-gray-700 sm:text-sm">Approved tasks trend monthly</h3>
-              <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer" @click="openModal('line')">
-                <Icons icon="fullscreen" class="w-4 h-4" />
-              </button>
-            </div>
-            <div class="min-h-0 flex-1 overflow-hidden">
+          <div class="mb-2 flex items-start justify-between gap-3">
+            <h3 class="text-xs font-semibold text-gray-700 sm:text-sm">Approved tasks trend monthly</h3>
+            <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer"
+              @click="openModal('line')">
+              <Icons icon="fullscreen" class="w-4 h-4" />
+            </button>
+          </div>
+          <div class="min-h-0 flex-1 overflow-hidden">
             <svg viewBox="0 0 500 215" class="w-full h-full">
-                <!-- Axes -->
-                <line x1="35" y1="10" x2="35" y2="185" stroke="#d1d5db" stroke-width="1" />
-                <line x1="35" y1="185" x2="495" y2="185" stroke="#d1d5db" stroke-width="1" />
-                <!-- Grid lines (dynamic) -->
-                <line v-for="t in lineTickPos.slice(1)" :key="'lg' + t.v" x1="35" :y1="t.y" x2="495" :y2="t.y"
-                  stroke="#f3f4f6" stroke-width="1" />
-                <!-- Y labels (dynamic) -->
-                <text v-for="t in lineTickPos" :key="'ly' + t.v" x="30" :y="t.y + 3" text-anchor="end" font-size="8"
-                  fill="#9ca3af">{{ t.v }}</text>
-                <!-- Line -->
-                <polyline :points="linePolyline" fill="none" stroke="#16a34a" stroke-width="2" />
-                <!-- Dots -->
-                <circle v-for="(p, i) in linePoints" :key="i" :cx="p.x" :cy="p.y" r="3" fill="#16a34a" stroke="#16a34a"
-                  stroke-width="2" fill-opacity="0.35" />
-                <!-- X labels -->
-                <text v-for="(m, i) in monthLabels" :key="m" :x="35 + (i / 11) * 455" y="200" text-anchor="middle"
-                  font-size="8" fill="#6b7280">{{ m }}</text>
-              </svg>
-            </div>
+              <!-- Axes -->
+              <line x1="35" y1="10" x2="35" y2="185" stroke="#d1d5db" stroke-width="1" />
+              <line x1="35" y1="185" x2="495" y2="185" stroke="#d1d5db" stroke-width="1" />
+              <!-- Grid lines (dynamic) -->
+              <line v-for="t in lineTickPos.slice(1)" :key="'lg' + t.v" x1="35" :y1="t.y" x2="495" :y2="t.y"
+                stroke="#f3f4f6" stroke-width="1" />
+              <!-- Y labels (dynamic) -->
+              <text v-for="t in lineTickPos" :key="'ly' + t.v" x="30" :y="t.y + 3" text-anchor="end" font-size="8"
+                fill="#9ca3af">{{ t.v }}</text>
+              <!-- Line -->
+              <polyline :points="linePolyline" fill="none" stroke="#16a34a" stroke-width="2" />
+              <!-- Dots -->
+              <circle v-for="(p, i) in linePoints" :key="i" :cx="p.x" :cy="p.y" r="3" fill="#16a34a" stroke="#16a34a"
+                stroke-width="2" fill-opacity="0.35" />
+              <!-- X labels -->
+              <text v-for="(m, i) in monthLabels" :key="m" :x="35 + (i / 11) * 455" y="200" text-anchor="middle"
+                font-size="8" fill="#6b7280">{{ m }}</text>
+            </svg>
           </div>
-
-            <!-- Area Chart: Submitted, Pending & Revision Monthly Trend -->
-        <div class="relative flex min-h-[260px] flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0">
-            <div class="mb-2 flex items-start justify-between gap-3">
-              <h3 class="text-xs font-semibold text-gray-700 sm:text-sm">Submitted, Pending & Revision Monthly Trend</h3>
-              <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer" @click="openModal('area')">
-                <Icons icon="fullscreen" class="w-4 h-4" />
-              </button>
-            </div>
-            <div class="min-h-0 flex-1 overflow-hidden">
-            <svg viewBox="0 0 500 200" class="w-full h-full">
-                <!-- Axes -->
-                <line x1="35" y1="10" x2="35" y2="175" stroke="#d1d5db" stroke-width="1" />
-                <line x1="35" y1="175" x2="495" y2="175" stroke="#d1d5db" stroke-width="1" />
-                <!-- Grid lines (dynamic) -->
-                <line v-for="t in areaTickPos.slice(1)" :key="'ag' + t.v" x1="35" :y1="t.y" x2="495" :y2="t.y"
-                  stroke="#f3f4f6" stroke-width="1" />
-                <!-- Y labels (dynamic) -->
-                <text v-for="t in areaTickPos" :key="'ay' + t.v" x="30" :y="t.y + 3" text-anchor="end" font-size="8"
-                  fill="#9ca3af">{{ t.v }}</text>
-                <!-- Area fills -->
-                <path v-for="s in areaSeries" :key="'a' + s.key" :d="s.areaPath" :fill="s.color" fill-opacity="0.22" />
-                <!-- Lines on top -->
-                <path v-for="s in areaSeries" :key="'l' + s.key" :d="s.linePath" fill="none" :stroke="s.color"
-                  stroke-width="2" stroke-opacity="0.35" />
-                <!-- Dots -->
-                <template v-for="s in areaSeries" :key="'d'+s.key">
-                  <circle v-for="(p, i) in s.pts" :key="i" :cx="p.x" :cy="p.y" r="3" fill="white" :stroke="s.color"
-                    stroke-width="1.5" stroke-opacity="0.35" />
-                </template>
-                <!-- X labels -->
-                <text v-for="(m, i) in monthLabels" :key="m" :x="35 + (i / 11) * 455" y="190" text-anchor="middle"
-                  font-size="8" fill="#6b7280">{{ m }}</text>
-              </svg>
-            </div>
-            <!-- Legend -->
-            <div class="mt-1 flex flex-wrap justify-center gap-3 pb-1 text-xs text-gray-700 sm:gap-4">
-            <div v-for="s in areaSeriesData" :key="s.key" class="flex items-center gap-1.5">
-                <span class="w-5 h-2.5 rounded-sm flex-shrink-0" :style="{ background: s.color }"></span>
-                {{ s.key }}
-              </div>
-            </div>
-          </div>
-
         </div>
+
+        <!-- Area Chart: Submitted, Pending & Revision Monthly Trend -->
+        <div class="relative flex min-h-[260px] flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0">
+          <div class="mb-2 flex items-start justify-between gap-3">
+            <h3 class="text-xs font-semibold text-gray-700 sm:text-sm">Submitted, Pending & Revision Monthly Trend
+            </h3>
+            <button class="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer"
+              @click="openModal('area')">
+              <Icons icon="fullscreen" class="w-4 h-4" />
+            </button>
+          </div>
+          <div class="min-h-0 flex-1 overflow-hidden">
+            <svg viewBox="0 0 500 200" class="w-full h-full">
+              <!-- Axes -->
+              <line x1="35" y1="10" x2="35" y2="175" stroke="#d1d5db" stroke-width="1" />
+              <line x1="35" y1="175" x2="495" y2="175" stroke="#d1d5db" stroke-width="1" />
+              <!-- Grid lines (dynamic) -->
+              <line v-for="t in areaTickPos.slice(1)" :key="'ag' + t.v" x1="35" :y1="t.y" x2="495" :y2="t.y"
+                stroke="#f3f4f6" stroke-width="1" />
+              <!-- Y labels (dynamic) -->
+              <text v-for="t in areaTickPos" :key="'ay' + t.v" x="30" :y="t.y + 3" text-anchor="end" font-size="8"
+                fill="#9ca3af">{{ t.v }}</text>
+              <!-- Area fills -->
+              <path v-for="s in areaSeries" :key="'a' + s.key" :d="s.areaPath" :fill="s.color" fill-opacity="0.22" />
+              <!-- Lines on top -->
+              <path v-for="s in areaSeries" :key="'l' + s.key" :d="s.linePath" fill="none" :stroke="s.color"
+                stroke-width="2" stroke-opacity="0.35" />
+              <!-- Dots -->
+              <template v-for="s in areaSeries" :key="'d'+s.key">
+                <circle v-for="(p, i) in s.pts" :key="i" :cx="p.x" :cy="p.y" r="3" fill="white" :stroke="s.color"
+                  stroke-width="1.5" stroke-opacity="0.35" />
+              </template>
+              <!-- X labels -->
+              <text v-for="(m, i) in monthLabels" :key="m" :x="35 + (i / 11) * 455" y="190" text-anchor="middle"
+                font-size="8" fill="#6b7280">{{ m }}</text>
+            </svg>
+          </div>
+          <!-- Legend -->
+          <div class="mt-1 flex flex-wrap justify-center gap-3 pb-1 text-xs text-gray-700 sm:gap-4">
+            <div v-for="s in areaSeriesData" :key="s.key" class="flex items-center gap-1.5">
+              <span class="w-5 h-2.5 rounded-sm flex-shrink-0" :style="{ background: s.color }"></span>
+              {{ s.key }}
+            </div>
+          </div>
+        </div>
+
       </div>
+    </div>
 
     <!-- ── Accomplishment Report Modals ── -->
-    <ReportPicker v-if="showUnitPicker" title="Generate Unit Report" :payroll="true"
-        @cancel="showUnitPicker = false"
+    <ReportPicker v-if="showUnitPicker" title="Generate Unit Report" :payroll="true" @cancel="showUnitPicker = false"
       @generate="onGenerateUnitReport" />
     <ReportPicker v-if="showIndividualPicker" title="Generate Individual Report" :payroll="true"
-        @cancel="showIndividualPicker = false"
-        @generate="onGenerateIndividualReport" />
-    <AccomplishmentReport :show="showReport" :month="unitMonth" :year="unitYear" :dateFrom="unitDateFrom" :dateTo="unitDateTo" @close="showReport = false" />
-    <IndividualAccomplishmentReport :show="showIndividualReport" :month="indivMonth" :year="indivYear" :dateFrom="indivDateFrom" :dateTo="indivDateTo" :userName="auth.fullName" @close="showIndividualReport = false" />
+      @cancel="showIndividualPicker = false" @generate="onGenerateIndividualReport" />
+    <AccomplishmentReport :show="showReport" :month="unitMonth" :year="unitYear" :dateFrom="unitDateFrom"
+      :dateTo="unitDateTo" @close="showReport = false" />
+    <IndividualAccomplishmentReport :show="showIndividualReport" :month="indivMonth" :year="indivYear"
+      :dateFrom="indivDateFrom" :dateTo="indivDateTo" :userName="auth.fullName" @close="showIndividualReport = false" />
 
-      <!-- ── Expanded Chart View (component) ── -->
-      <AnalyticsChart :expandedChart="expandedChart" :barRects="barRects" :barData="barData" :pieSegments="pieSegments"
-        :pieData="pieData" :linePolyline="linePolyline" :linePoints="linePoints" :lineRaw="lineRaw"
-        :monthLabels="monthLabels" :areaSeries="areaSeries" :areaSeriesData="areaSeriesData" :barTickPos="barTickPos"
-        :lineTickPos="lineTickPos" :areaTickPos="areaTickPos" @close="closeModal" />
+    <!-- ── Expanded Chart View (component) ── -->
+    <AnalyticsChart :expandedChart="expandedChart" :barRects="barRects" :barData="barData" :pieSegments="pieSegments"
+      :pieData="pieData" :linePolyline="linePolyline" :linePoints="linePoints" :lineRaw="lineRaw"
+      :monthLabels="monthLabels" :areaSeries="areaSeries" :areaSeriesData="areaSeriesData" :barTickPos="barTickPos"
+      :lineTickPos="lineTickPos" :areaTickPos="areaTickPos" @close="closeModal" />
 
-    </template>
+  </div>
+
+</template>

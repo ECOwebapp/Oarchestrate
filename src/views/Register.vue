@@ -63,19 +63,19 @@ onMounted(async () => {
   loadingRegions.value = false
 })
 
-// ── Positions filtered by selected unit ──
-watch(() => form.unitId, async (newUnitId) => {
-  if (!newUnitId) {
-    filteredPositions.value = [];
-    return;
-  }
+// // ── Positions filtered by selected unit ──
+// watch(() => form.unitId, async (newUnitId) => {
+//   if (!newUnitId) {
+//     filteredPositions.value = [];
+//     return;
+//   }
 
-  // Call your store action
-  await unit.fetchUnitPeers(newUnitId);
+//   // Call your store action
+//   await unit.fetchUnitPeers(newUnitId);
 
-  // Assign the results to your local ref
-  filteredPositions.value = unit.posOnUnit;
-}, { immediate: true }); // 'immediate' runs it once on startup too
+//   // Assign the results to your local ref
+//   filteredPositions.value = unit.posOnUnit;
+// }, { immediate: true }); // 'immediate' runs it once on startup too
 
 // ── Reset positionId when unit changes ──
 watch(() => form.unitId, () => {
@@ -231,7 +231,7 @@ const prevStep = () => {
 
 // ── Drop-in replacement for handleRegister in Register.vue ──
 const handleRegister = async () => {
-  if (!validateStep2()) return
+  if (!validateStep3()) return
   loading.value = true
   errors.general = undefined
 
@@ -322,7 +322,6 @@ const handleRegister = async () => {
     showModal.value = true
 
   } catch (e) {
-    console.error('Registration error:', e)
     if (e.message?.toLowerCase().includes('already registered')) {
       errors.idNumber = 'This ID Number is already registered.'
       step.value = 1

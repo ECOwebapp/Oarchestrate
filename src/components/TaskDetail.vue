@@ -5,6 +5,7 @@ import { usePosStore } from '@/stores/positions'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 
 // MDI icon paths
 const mdiLink = 'M3.9,12C3.9,10.29 5.29,8.9 7,8.9H11V7H7A5,5 0 0,0 2,12A5,5 0 0,0 7,17H11V15.1H7C5.29,15.1 3.9,13.71 3.9,12M8,13H16V11H8V13M17,7H13V8.9H17C18.71,8.9 20.1,10.29 20.1,12C20.1,13.71 18.71,15.1 17,15.1H13V17H17A5,5 0 0,0 22,12A5,5 0 0,0 17,7Z'
@@ -28,6 +29,7 @@ const auth = useAuthStore()
 const store = taskStore()
 const memberStore = useMemberStore()
 const posStore = usePosStore()
+const memberPos = storeToRefs(posStore)?.memberPos
 
 const outputUrl = ref(props.task?.outputLink || '')
 const newOutputUrl = ref('')
@@ -51,6 +53,22 @@ const dragOverResub = ref(false)
 const fileInputRef = ref(null)
 const resubInputRef = ref(null)
 const action = ref(null)
+
+const handleOutsideClick = (e) => {
+  if (!e.target.closest('[data-dropdown]')) openDropdownId.value = null
+}
+
+onMounted(async () => {
+  loadRevisions()
+
+  await Promise.all([
+    posStore.fetchMemberPos(),
+    posStore.fetchPos(),
+  ])
+
+  document.addEventListener('click', handleOutsideClick)
+})
+onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 
 // A simple method is best for this use case
 const currentlyAssignedMember = (sub, selectedMember) => {
@@ -99,7 +117,7 @@ const onFilePickResub = (e) => {
 
 const loadRevisions = async () => {
   loadingRevs.value = true
-  revisions.value = await store.fetchRevisions(props.task.id)
+  revisions.value = await store.fetchRevisions(props.task?.id)
   loadingRevs.value = false
   await nextTick()
   chatBottom.value?.scrollIntoView({ behavior: 'smooth' })
@@ -109,34 +127,34 @@ const filteredRevisions = computed(() => {
   const currentUserId = auth.user?.id
   const assignerId = props.task?.assigner
   const assigneeId = props.task?.assignee
-
-  // Determine who the "other person" in this private thread should be
   const otherPartyId = currentUserId === assignerId ? assigneeId : assignerId
 
-  return revisions.value.filter(rev => {
-    const sentByMeToOther = rev.from_user === currentUserId && rev.to_user === otherPartyId
-    const receivedFromOther = rev.from_user === otherPartyId && rev.to_user === currentUserId
+  return revisions.value
+    .filter(rev => {
+      const sentByMeToOther = rev.from_user === currentUserId && rev.to_user === otherPartyId
+      const receivedFromOther = rev.from_user === otherPartyId && rev.to_user === currentUserId
+      return sentByMeToOther || receivedFromOther
+    })
+    .map(rev => {
+      // Perform the lookup once here
+      const membership = memberPos.value.find(m =>
+        String(m.user_id).trim() === String(rev.from_user).trim()
+      );
 
-    return sentByMeToOther || receivedFromOther
-  })
+      // Assign a clean string for the template to use
+      let displayRole = 'Unit Member';
+      if (membership) {
+        const id = Number(membership.pos_id);
+        if (id === 1) displayRole = 'Director';
+        else if (id === 4) displayRole = 'Unit Head';
+      }
+
+      return {
+        ...rev,
+        roleLabel: displayRole
+      }
+    })
 })
-
-const getRoles = (userId) => {
-  // 1. Find the specific membership record for this user
-  const membership = posStore.memberPos.find(m => m.user_id === userId)
-
-  if (!membership) return 'No Position'
-
-  // 2. Priority check for Director/Unit Head strings
-  if (membership.pos_id === 1) return 'Director'
-  if (membership.pos_id === 4) return 'Unit Head'
-
-  // 3. Fallback: Find the original name from your position definitions
-  // Assuming posStore.positions contains [{id: 2, pos_name: 'Architect'}, ...]
-  const originalPos = posStore.position.find(p => p.id === membership.pos_id)
-
-  return originalPos ? originalPos.pos_name : ''
-}
 
 // In your component or Store
 const avatarMap = computed(() => {
@@ -196,7 +214,7 @@ const unitMembersForAssign = computed(() => {
     }
     : null
 
-  const unitRows = (posStore.memberPos || []).filter(p =>
+  const unitRows = (memberPos.value || []).filter(p =>
     p.unit_id === unitId &&
     String(p.user_id) !== String(auth.userID)
   )
@@ -255,23 +273,6 @@ const pickMemberAndAssign = async (sub, member) => {
 
   assigningId.value = null;
 };
-
-const handleOutsideClick = (e) => {
-  if (!e.target.closest('[data-dropdown]')) openDropdownId.value = null
-}
-
-onMounted(async () => {
-  loadRevisions()
-  if (auth.isUnitHead) {
-    await Promise.all([
-      memberStore.fetchMembers(),
-      posStore.fetchMemberPos(),
-      posStore.fetchPos(),
-    ])
-  }
-  document.addEventListener('click', handleOutsideClick)
-})
-onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 
 // ── Capabilities ─────────────────────────────────────────────────────────────
 const canApproveAsUnitHead = computed(() => {
@@ -840,7 +841,7 @@ const resubmit = async () => {
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="#15803d" stroke-width="3" stroke-linecap="round" />
               </svg>
             </div>
-            <div v-else-if="!filteredRevisions.length"
+            <div v-else-if="filteredRevisions.length < 1"
               class="flex flex-col items-center justify-center py-14 text-center text-gray-400">
               <!-- MDI Comment Outline icon -->
               <svg viewBox="0 0 24 24" class="w-12 h-12 mb-3 opacity-20" fill="currentColor">
@@ -856,7 +857,7 @@ const resubmit = async () => {
                 :class="rev.from_user === auth.user?.id ? 'flex-row-reverse' : ''">
                 <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center 
             text-[10px] font-bold text-white self-end mb-1 overflow-hidden"
-                  :class="getRoles(rev.from_user) === 'Director' ? 'bg-green-900' : 'bg-amber-600'">
+                  :class="rev.roleLabel.toLowerCase() === 'director' ? 'bg-green-900' : 'bg-amber-600'">
 
                   <img v-if="getAvatarUrl(rev.from_user)" :src="getAvatarUrl(rev.from_user)"
                     class="w-full h-full object-cover" />
@@ -877,8 +878,8 @@ const resubmit = async () => {
                       }) }}
                     </span>
                     <span class="text-[10px] px-1.5 py-0.5 rounded-full font-bold"
-                      :class="getRoles(rev.from_user)?.toLowerCase() === 'director' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-700'">
-                      {{ getRoles(rev.from_user) }}
+                      :class="rev.roleLabel?.toLowerCase() === 'director' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-700'">
+                      {{ rev.roleLabel }}
                     </span>
                   </div>
                   <div class="rounded-2xl px-4 py-2.5 text-sm leading-relaxed break-words" :class="rev.from_user === auth.user?.id

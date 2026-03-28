@@ -17,8 +17,6 @@ const loadingDropdowns = ref(true)
 
 const props = defineProps(['form', 'errors'])
 
-console.log(props.form)
-
 // ── Load static dropdowns + regions on mount ──
 onMounted(async () => {
   const [r] = await Promise.all([

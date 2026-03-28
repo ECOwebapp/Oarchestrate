@@ -13,7 +13,7 @@ defineProps(['message'])
       <span class="text-sm text-gray-500 tracking-wide">Loading…</span>
     </div> -->
     <div class="flex flex-col items-center justify-center gap-5 w-full h-screen overflow-hidden bg-white">
-      <div class="w-20 h-20 animate-spin bg-[url('/images/csu_seal.png')] bg-cover bg-center no-repeat" />
+      <div class="w-25 h-40 motion-safe:animate-bounce bg-[url('/images/csu_seal.png')] bg-cover bg-center no-repeat" />
 
       <p class="animate-pulse text-gray-500/70 text-sm">{{ message }}</p>
     </div>

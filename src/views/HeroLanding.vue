@@ -479,8 +479,8 @@ const features = [
 
 const developers = [
   { name: 'June Luis Bermudez', initials: 'JL', roleShort: 'Chairperson / Full-Stack', bio: 'Architected the Supabase schema and Vue frontend integration.', gradient: 'linear-gradient(135deg,#14532d,#16a34a)' },
-  { name: 'Austine Rey Manlangit', initials: 'AR', roleShort: '1st VP / Full-Stack', bio: 'Designed user experience using optimized systems.', gradient: 'linear-gradient(135deg,#166534,#ca8a04)' },
-  { name: 'Jacky Barneso', initials: 'J', roleShort: '2nd VP / Back-end', bio: 'Built authentication, RLS policies, and approval logic.', gradient: 'linear-gradient(135deg,#14532d,#ea580c)' },
+  { name: 'Austine Rey Manlangit', initials: 'AR', roleShort: '1st VCP / Full-Stack', bio: 'Designed user experience using optimized systems.', gradient: 'linear-gradient(135deg,#166534,#ca8a04)' },
+  { name: 'Jacky Barneso', initials: 'J', roleShort: '2nd VCP / Back-end', bio: 'Built authentication, RLS policies, and approval logic.', gradient: 'linear-gradient(135deg,#14532d,#ea580c)' },
   { name: 'Nheron Louise Cedro', initials: 'NL', roleShort: 'Member / Back-end', bio: 'Developed task management and dashboard views in Vue.', gradient: 'linear-gradient(135deg,#15803d,#16a34a)' },
   { name: 'Cyrel John Rollo', initials: 'CJ', roleShort: 'Member / QA & Docs', bio: 'Handled testing, documentation, and system deployment.', gradient: 'linear-gradient(135deg,#166534,#d97706)' },
 ]

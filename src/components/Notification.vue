@@ -207,7 +207,7 @@ onUnmounted(() => {
                     </div>
                     <div class="flex gap-2 px-3 pb-3 pt-1">
                       <button @click="notifStore.denyUser(n.userId)" :disabled="isActing(n)"
-                        class="flex-1 py-2 rounded-xl border-2 border-red-200 text-red-600
+                        class="hover:cursor-pointer flex-1 py-2 rounded-xl border-2 border-red-200 text-red-600
                              text-xs font-bold hover:bg-red-50 hover:border-red-300 transition-all
                              disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 active:scale-95">
                         <svg v-if="n.status === 'denying'" class="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
@@ -222,7 +222,7 @@ onUnmounted(() => {
                         {{ n.status === 'denying' ? 'Denying…' : 'Deny' }}
                       </button>
                       <button @click="notifStore.approveUser(n.userId)" :disabled="isActing(n)"
-                        class="flex-1 py-2 rounded-xl bg-green-800 text-white
+                        class="hover:cursor-pointer flex-1 py-2 rounded-xl bg-green-800 text-white
                              text-xs font-bold hover:bg-green-700 transition-all
                              disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 active:scale-95">
                         <svg v-if="n.status === 'approving'" class="animate-spin w-3 h-3" viewBox="0 0 24 24"
@@ -302,7 +302,7 @@ onUnmounted(() => {
 
               <!-- Show more -->
               <div v-if="notifStore.hasMore" class="px-3 pt-1 pb-2">
-                <button @click="notifStore.showMore()" class="w-full py-2 text-xs font-semibold text-gray-500 hover:text-gray-700
+                <button @click="notifStore.showMore()" class="hover:cursor-pointer w-full py-2 text-xs font-semibold text-gray-500 hover:text-gray-700
                        border border-dashed border-gray-200 rounded-xl hover:border-gray-300
                        hover:bg-gray-50 transition-all">
                   Show {{ Math.min(8, notifStore.notifs.length - notifStore.shown) }} more

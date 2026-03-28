@@ -224,7 +224,7 @@ const onCloseAddTask = () => {
 
         <!-- Select toggle — Director & Unit Head only -->
         <button v-if="canDelete" @click="toggleSelectMode"
-          class="flex items-center gap-2 font-bold h-11 px-5 rounded-2xl transition-all text-sm flex-shrink-0" :class="selectionMode
+          class="hover:cursor-pointer flex items-center gap-2 font-bold h-11 px-5 rounded-2xl transition-all text-sm flex-shrink-0" :class="selectionMode
             ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             : 'outline outline-2 outline-green-950 text-green-950 bg-white hover:bg-green-50'">
           <svg v-if="!selectionMode" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -240,7 +240,7 @@ const onCloseAddTask = () => {
 
         <!-- Select All — only in selection mode -->
         <button v-if="selectionMode" @click="toggleSelectAll" :disabled="selectableTasks.length === 0" class="flex items-center gap-2 font-bold h-11 px-4 rounded-2xl transition-all text-sm
-               outline outline-2 outline-green-950 bg-white text-green-950 hover:bg-green-50
+               hover:cursor-pointer outline outline-2 outline-green-950 bg-white text-green-950 hover:bg-green-50
                flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed">
           <div class="w-4 h-4 rounded border-2 flex items-center justify-center transition-all" :class="allVisibleSelected
             ? 'bg-green-700 border-green-700'
@@ -274,7 +274,7 @@ const onCloseAddTask = () => {
         <!-- Delete button — visible only when ≥1 deletable task is selected -->
         <Transition name="fade-slide">
           <button v-if="selectionMode && deletableSelectedCount > 0" @click="showDeleteConfirm = true" class="flex items-center gap-2 h-11 px-5 rounded-2xl font-bold text-sm transition-all
-                 bg-red-700 text-white hover:bg-red-800 active:scale-95 flex-shrink-0">
+                 hover:cursor-pointer bg-red-700 text-white hover:bg-red-800 active:scale-95 flex-shrink-0">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
               <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
             </svg>
@@ -383,11 +383,11 @@ const onCloseAddTask = () => {
             <!-- Actions -->
             <div class="flex gap-3">
               <button @click="cancelDelete" :disabled="isDeleting" class="flex-1 h-11 rounded-xl font-bold text-sm text-gray-700 bg-gray-100
-                   hover:bg-gray-200 transition-all disabled:opacity-50">
+                   hover:bg-gray-200 hover:cursor-pointer transition-all disabled:opacity-50">
                 Cancel
               </button>
               <button @click="deleteTasks" :disabled="isDeleting" class="flex-1 h-11 rounded-xl font-bold text-sm text-white bg-red-700
-                   hover:bg-red-800 active:scale-95 transition-all disabled:opacity-60
+                   hover:bg-red-800 hover:cursor-pointer active:scale-95 transition-all disabled:opacity-60
                    flex items-center justify-center gap-2">
                 <svg v-if="isDeleting" class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
