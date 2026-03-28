@@ -403,7 +403,7 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
           <!-- Mode toggle -->
           <div class="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
             <button type="button" @click="switchMode('file')" :class="[
-              'flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-md transition-all',
+              'hover:cursor-pointer disabled:cursor-not-allowed flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-md transition-all',
               uploadMode === 'file'
                 ? 'bg-white text-green-900 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'

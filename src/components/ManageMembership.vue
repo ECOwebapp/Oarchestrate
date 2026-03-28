@@ -1,4 +1,4 @@
-<script setup vapor>
+<script setup>
 import { storeToRefs } from 'pinia'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useMemberStore } from '@/stores/member';
@@ -13,8 +13,7 @@ const posStore = usePosStore()
 const unitStore = useUnitStore()
 const { members } = storeToRefs(memberStore)
 const { roles, memberPos } = storeToRefs(posStore)
-const unit = storeToRefs(unitStore)?.unit
-const selectedMember = ref([null])
+const { unit } = storeToRefs(unitStore)
 const loading = ref({
     update: false,
     delete: false
@@ -71,7 +70,7 @@ const availableUnit = computed(() => {
     const selectedPosId = changePosMembers.value.pos_id
 
     // 1. If no ID is selected, return all unit
-    if (!selectedUserId && selectedPosId) return unit.value;
+    if (!selectedUserId && selectedPosId) return (unit.value || []);
 
     // 2. Find the user, forcing both IDs to String and trimming whitespace
     const currentMember = memberPos.value.find(p => {
@@ -163,42 +162,44 @@ const removeMember = async () => {
             <h2 class="text-lg font-bold mb-6 text-gray-800">Approve Members</h2>
 
             <div class="space-y-4">
-                <div v-for="(member, i) in pendingMembers" :key="member.id"
-                    class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                            <svg class="w-6 h-6 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
-                                <path
-                                    d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-                            </svg>
+                <div v-if="pendingMembers && pendingMembers.length > 0" class="space-y-4">
+                    <div v-for="member in pendingMembers" :key="member.id"
+                        class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                <svg class="w-6 h-6 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+                                </svg>
+                            </div>
+                            <span class="font-semibold text-gray-700">{{ member.title }}</span>
                         </div>
-                        <span class="font-semibold text-gray-700">{{ member.title }}</span>
-                    </div>
-                    <div class="flex gap-2">
-                        <button @click="notifStore.approveUser(member.userId)" :disabled="isActing(member)"
-                            class="flex justify-center items-center gap-2 px-4 py-1 bg-green-700 text-white text-xs font-bold rounded-lg hover:bg-green-800 transition-colors hover:cursor-pointer disabled:cursor-not-allowed">
-                            <svg v-if="member.status === 'approving'" class="animate-spin w-3 h-3" viewBox="0 0 24 24"
-                                fill="none">
-                                <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
-                                <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3"
-                                    stroke-linecap="round" />
-                            </svg>
-                            {{ member.status === 'approving' ? 'Approving…' : 'Approve' }}
-                        </button>
-                        <button @click="notifStore.denyUser(member.userId)" :disabled="isActing(member)"
-                            class="flex justify-center items-center gap-2 px-4 py-1 border-2 border-red-500 text-red-500 text-xs font-bold rounded-lg hover:bg-red-50 transition-colors">
-                            <svg v-if="member.status === 'denying'" class="animate-spin w-3 h-3" viewBox="0 0 24 24"
-                                fill="none">
-                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-opacity="0.3"
-                                    stroke-width="3" />
-                                <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3"
-                                    stroke-linecap="round" />
-                            </svg>
-                            {{ member.status === 'denying' ? 'Denying…' : 'Deny' }}
-                        </button>
+                        <div class="flex gap-2">
+                            <button @click="notifStore.approveUser(member.userId)" :disabled="isActing(member)"
+                                class="flex justify-center items-center gap-2 px-4 py-1 bg-green-700 text-white text-xs font-bold rounded-lg hover:bg-green-800 transition-colors hover:cursor-pointer disabled:cursor-not-allowed">
+                                <svg v-if="member.status === 'approving'" class="animate-spin w-3 h-3"
+                                    viewBox="0 0 24 24" fill="none">
+                                    <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
+                                    <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3"
+                                        stroke-linecap="round" />
+                                </svg>
+                                {{ member.status === 'approving' ? 'Approving…' : 'Approve' }}
+                            </button>
+                            <button @click="notifStore.denyUser(member.userId)" :disabled="isActing(member)"
+                                class="flex justify-center items-center gap-2 px-4 py-1 border-2 border-red-500 text-red-500 text-xs font-bold rounded-lg hover:bg-red-50 transition-colors">
+                                <svg v-if="member.status === 'denying'" class="animate-spin w-3 h-3" viewBox="0 0 24 24"
+                                    fill="none">
+                                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-opacity="0.3"
+                                        stroke-width="3" />
+                                    <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3"
+                                        stroke-linecap="round" />
+                                </svg>
+                                {{ member.status === 'denying' ? 'Denying…' : 'Deny' }}
+                            </button>
+                        </div>
                     </div>
                 </div>
-                <p v-if="pendingMembers.length === 0" class="text-gray-500 text-center italic">No pending requests.
+                <p v-else class="text-gray-500 text-center italic">No pending requests.
                 </p>
             </div>
         </div>
@@ -216,8 +217,8 @@ const removeMember = async () => {
                                 :disabled="loading?.update">
                                 <option disabled selected :value="null">-- Select a member --</option>
                                 <option v-for="member in normalMembers" :key="member.id" :value="member.id">{{
-                                    member.fname }} {{
-                                        member.middle_initial }} {{ member.lname }}</option>
+                                    `${member.fname}
+                                    ${member.middle_initial || ''} ${member.lname}` }}</option>
                             </select>
                         </div>
 
@@ -269,8 +270,8 @@ const removeMember = async () => {
                                 :disabled="loading?.delete">
                                 <option disabled selected :value="null">-- Select a member --</option>
                                 <option v-for="member in normalMembers" :key="member.id" :value="member.id">{{
-                                    member.fname }} {{
-                                        member.middle_initial }} {{ member.lname }}</option>
+                                    `${member.fname}
+                                    ${member.middle_initial || ''} ${member.lname}` }}</option>
                             </select>
                             <p class="text-xs text-red-500 mt-1">* Not 2 members at the same time</p>
                         </div>

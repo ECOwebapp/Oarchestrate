@@ -892,8 +892,6 @@ export const taskStore = defineStore('tasks', () => {
           .single()
         if (newTaskErr) throw new Error('Failed to create task: ' + newTaskErr.message)
 
-        console.log("assigned")
-
         const id = newTask.id
         const deadline = subtaskRow?.task_duration?.deadline || parentTask?.endDate || null
         const type = subtaskRow?.task_profile?.task_type || parentTask?.typeId || null

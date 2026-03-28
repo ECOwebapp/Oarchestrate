@@ -598,7 +598,7 @@ const confirmDeleteOutput = async () => {
                 <button @click="editingSubmission = true; submitError = ''"
                   class="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-gray-300
                          text-xs font-semibold text-gray-600 hover:border-green-700 hover:text-green-800
-                         hover:bg-green-50 transition-colors">
+                         hover:bg-green-50 transition-colors hover:cursor-pointer disabled:cursor-not-allowed">
                   <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="currentColor">
                     <path :d="mdiPencil" />
                   </svg>
@@ -607,7 +607,7 @@ const confirmDeleteOutput = async () => {
                 <button @click="confirmingDelete = true; submitError = ''"
                   class="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-gray-300
                          text-xs font-semibold text-gray-600 hover:border-red-400 hover:text-red-600
-                         hover:bg-red-50 transition-colors">
+                         hover:bg-red-50 transition-colors hover:cursor-pointer disabled:cursor-not-allowed">
                   <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="currentColor">
                     <path :d="mdiTrashCan" />
                   </svg>
@@ -694,13 +694,13 @@ const confirmDeleteOutput = async () => {
                   <button @click="editingSubmission = false; editFile = null; submitError = ''"
                     :disabled="acting === 'editOutput'"
                     class="flex-1 h-10 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm
-                           hover:border-gray-400 disabled:opacity-40 transition-colors active:scale-95">
+                           hover:border-gray-400 hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 transition-colors active:scale-95">
                     Cancel
                   </button>
                   <button @click="saveEditedOutput" :disabled="acting === 'editOutput' || !editFile"
                     class="flex-1 h-10 rounded-xl bg-green-950 text-white text-sm font-bold
                            hover:bg-green-800 disabled:opacity-40 transition-all active:scale-95
-                           flex items-center justify-center gap-2">
+                           flex items-center justify-center gap-2 hover:cursor-pointer disabled:cursor-not-allowed">
                     <svg v-if="acting === 'editOutput'" class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24"
                       fill="none">
                       <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
@@ -813,7 +813,7 @@ const confirmDeleteOutput = async () => {
               </p>
               <button @click="submitOutput" :disabled="submitting || !uploadFile" class="w-full h-11 rounded-xl bg-green-950 text-white text-sm font-bold
                        hover:bg-green-800 disabled:opacity-40 transition-all active:scale-95
-                       flex items-center justify-center gap-2">
+                       flex items-center justify-center gap-2 hover:cursor-pointer disabled:cursor-not-allowed">
                 <svg v-if="submitting" class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
                   <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
