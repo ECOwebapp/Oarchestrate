@@ -83,6 +83,23 @@ const editingSubmission = ref(false)
 // true  = user clicked "Delete" and we show a confirm prompt
 const confirmingDelete = ref(false)
 
+const handleOutsideClick = (e) => {
+  if (!e.target.closest('[data-dropdown]')) openDropdownId.value = null
+}
+
+onMounted(async () => {
+  loadRevisions()
+
+  await Promise.all([
+    posStore.fetchMemberPos(),
+    posStore.fetchPos(),
+  ])
+
+  document.addEventListener('click', handleOutsideClick)
+})
+onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
+
+// A simple method is best for this use case
 const currentlyAssignedMember = (sub, selectedMember) => {
   if (!sub.spawnedTaskId || !sub.spawnedAssignee) {
     action.value = 'assign'
