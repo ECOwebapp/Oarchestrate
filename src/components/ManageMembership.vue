@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import { storeToRefs } from 'pinia'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useMemberStore } from '@/stores/member';

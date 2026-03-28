@@ -1,4 +1,4 @@
-    <script setup>
+    <script setup vapor>
     import { ref, computed, onMounted } from 'vue'
     import Icons from '@/components/Icons.vue'
     import AnalyticsChart from '@/components/AnalyticsChart.vue'

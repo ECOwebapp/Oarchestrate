@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import { GanttChart } from 'jordium-gantt-vue3'
 import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 import { computed } from 'vue'

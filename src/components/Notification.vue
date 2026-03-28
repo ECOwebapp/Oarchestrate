@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import TaskModal from '@/components/TaskDetail.vue'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'

@@ -1,14 +1,5 @@
-<script setup>
-defineProps({
-  person: {
-    type: Object,
-    required: true,
-  },
-  sz: {
-    type: Object,
-    required: true,
-  },
-});
+<script setup vapor>
+defineProps(['person', 'sz']);
 </script>
 
 <template>

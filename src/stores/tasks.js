@@ -4,8 +4,6 @@ import { usePosStore } from './positions'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-window.supabase = supabase
-
 const OFFICE_UNIT_ID = 3
 
 export const taskStore = defineStore('tasks', () => {

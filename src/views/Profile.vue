@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { onMounted, reactive, ref, computed } from 'vue'

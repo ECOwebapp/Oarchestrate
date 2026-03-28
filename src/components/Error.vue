@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 const props = defineProps(['error'])
 
 </script>
