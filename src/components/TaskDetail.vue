@@ -1125,7 +1125,7 @@ const confirmDeleteOutput = async () => {
             <div class="flex items-center gap-2">
               <input ref="resubInputRef" type="file" class="hidden" @change="onFilePickResub" />
               <button @click="resubInputRef?.click()"
-                class="flex items-center gap-2 h-9 px-3 rounded-xl border-2 border-orange-200
+                class="hover:cursor-pointer disabled:cursor-not-allowed flex items-center gap-2 h-9 px-3 rounded-xl border-2 border-orange-200
                        bg-white text-orange-700 text-xs font-bold hover:border-orange-400 transition-colors flex-shrink-0">
                 <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="currentColor">
                   <path :d="mdiPaperclip" />
