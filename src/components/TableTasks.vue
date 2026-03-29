@@ -7,9 +7,12 @@ const props = defineProps({
   selectable: { type: Boolean, default: false },
   selectedIds: { type: Object, default: () => new Set() },  // Set of selected task ids
   isDeletable: { type: Function, default: () => false },
+  modal: { type: Boolean, default: false }
 })
-const emit = defineEmits(['assignSubtask', 'toggle-select'])
+const emit = defineEmits(['assignSubtask', 'toggle-select', 'open', 'close', 'success'])
 const selected = ref(null)
+const loading = ref(false)
+const success = ref(false)
 
 const fmt = (d) => d
   ? new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: '2-digit' })
@@ -32,6 +35,27 @@ const handleRowClick = (task) => {
   if (props.selectable && props.isDeletable(task)) {
     emit('toggle-select', task)
   }
+}
+
+const handleOpen = (task) => {
+  if (props.selectable) return
+  selected.value = task
+  emit('open')
+}
+
+const handleClose = () => {
+  loading.value = true
+  selected.value = null
+  setTimeout(() => {
+    loading.value = false
+    if(success.value) emit('success')
+    else emit('close')
+  }, 10)
+}
+
+const handleAssign = (event) => {
+  emit('assignSubtask', event); 
+  if(event) success.value = true;
 }
 </script>
 
@@ -93,7 +117,7 @@ const handleRowClick = (task) => {
               <span v-else class="text-gray-300 text-xs">—</span>
             </td>
             <td class="px-4 py-3 text-center" @click.stop>
-              <button :disabled="selectable" @click="selected = task" class="bg-green-950 text-white text-xs font-bold px-3 py-1.5 rounded-xl
+              <button :disabled="selectable" @click="handleOpen(task)" class="bg-green-950 text-white text-xs font-bold px-3 py-1.5 rounded-xl
                      hover:bg-green-800 active:scale-95 transition-all cursor-pointer
                      disabled:opacity-30 disabled:cursor-not-allowed">
                 View
@@ -105,8 +129,8 @@ const handleRowClick = (task) => {
     </div>
 
     <Transition name="modal">
-      <TaskDetail v-if="selected" :task="selected" @close="selected = null"
-        @assignSubtask="emit('assignSubtask', $event)" />
+      <TaskDetail v-if="selected" :task="selected" :loading="loading" @close="handleClose"
+        @assignSubtask="handleAssign" />
     </Transition>
   </div>
 </template>

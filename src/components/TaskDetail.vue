@@ -6,6 +6,8 @@ import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import Icons from './Icons.vue'
+import Loading from './Loading.vue'
 
 // MDI icon paths
 const mdiLink = 'M3.9,12C3.9,10.29 5.29,8.9 7,8.9H11V7H7A5,5 0 0,0 2,12A5,5 0 0,0 7,17H11V15.1H7C5.29,15.1 3.9,13.71 3.9,12M8,13H16V11H8V13M17,7H13V8.9H17C18.71,8.9 20.1,10.29 20.1,12C20.1,13.71 18.71,15.1 17,15.1H13V17H17A5,5 0 0,0 22,12A5,5 0 0,0 17,7Z'
@@ -25,7 +27,7 @@ const mdiRefresh = 'M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 1
 const mdiPencil = 'M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z'
 const mdiTrashCan = 'M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z'
 
-const props = defineProps(['task'])
+const props = defineProps(['task', 'loading'])
 const emit = defineEmits(['close', 'refresh', 'assignSubtask'])
 const auth = useAuthStore()
 const store = taskStore()
@@ -277,17 +279,17 @@ const toggleDropdown = (sub) => {
 const pickMemberAndAssign = async (sub, member) => {
   openDropdownId.value = null;
   assigningId.value = sub.id;
-  currentlyAssignedMember(sub, member)
+  // currentlyAssignedMember(sub, member)
   emit('assignSubtask', {
     subtask: sub,
-    assignedMemberId: member.id,
-    assignedMemberName: [
-      member.fname,
-      member.middle_initial ? member.middle_initial + '.' : '',
-      member.lname
-    ].filter(Boolean).join(' '),
+    // assignedMemberId: member.id,
+    // assignedMemberName: [
+    //   member.fname,
+    //   member.middle_initial ? member.middle_initial + '.' : '',
+    //   member.lname
+    // ].filter(Boolean).join(' '),
     parentTask: props.task,
-    action: action.value
+    // action: action.value
   });
   assigningId.value = null;
 };
@@ -473,7 +475,7 @@ const confirmDeleteOutput = async () => {
 </script>
 
 <template>
-  <div v-if="task" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4"
+  <div v-if="task" class="fixed inset-0 z-100 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4"
     @click.self="emit('close')">
 
     <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl
@@ -962,26 +964,27 @@ const confirmDeleteOutput = async () => {
                     </div>
 
                     <template v-else>
-                      <button @click.stop="toggleDropdown(sub)" class="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg
-                               transition-all active:scale-95"
+                      <button @click.stop="pickMemberAndAssign(sub)" :disabled="!!sub.outputLink" class="hover:cursor-pointer flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg
+                               transition-all active:scale-95 disabled:pointer-events-none group"
                         :class="isSubtaskUnassigned(sub)
                           ? 'bg-green-950 text-white hover:bg-green-800'
-                          : 'border-2 border-green-200 bg-green-50 text-green-800 hover:border-green-400 hover:bg-green-100'">
+                          : 'border-2 border-green-200 bg-green-50 text-green-800 hover:border-green-400 hover:bg-green-100 disabled:bg-gray-50 disabled:border-gray-200 disabled:text-gray-500'">
                         <template v-if="!isSubtaskUnassigned(sub)">
                           <div class="w-4 h-4 rounded-full bg-green-900 text-white text-[9px] font-bold
-                                      flex items-center justify-center uppercase flex-shrink-0">
+                                      flex items-center justify-center uppercase flex-shrink-0 group-disabled:bg-gray-900">
                             {{ (subtaskDisplayName(sub) || '?')[0] }}
                           </div>
                           <span class="truncate max-w-[90px]">{{ subtaskDisplayName(sub) }}</span>
                         </template>
                         <template v-else>Assign</template>
-                        <svg viewBox="0 0 24 24" class="w-3 h-3 flex-shrink-0 transition-transform duration-150"
+                        <!-- <svg viewBox="0 0 24 24" class="w-3 h-3 flex-shrink-0 transition-transform duration-150"
                           :class="openDropdownId === sub.id ? 'rotate-180' : ''" fill="currentColor">
                           <path :d="mdiChevronDown" />
-                        </svg>
+                        </svg> -->
+                        <Icons :icon="'chevronRight'" :icon-class="'w-3 h-3'" />
                       </button>
 
-                      <Transition enter-active-class="transition duration-100 ease-out"
+                      <!-- <Transition enter-active-class="transition duration-100 ease-out"
                         enter-from-class="opacity-0 scale-95 -translate-y-1"
                         enter-to-class="opacity-100 scale-100 translate-y-0"
                         leave-active-class="transition duration-75 ease-in"
@@ -1029,7 +1032,7 @@ const confirmDeleteOutput = async () => {
                             </svg>
                           </button>
                         </div>
-                      </Transition>
+                      </Transition> -->
                     </template>
                   </div>
                 </div>
@@ -1206,8 +1209,8 @@ const confirmDeleteOutput = async () => {
           </div>
         </template>
         <template v-else>
-          <button @click="emit('close')" class="flex-1 h-11 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm
-                   hover:border-green-800 hover:text-green-800 transition-colors active:scale-95 hover:cursor-pointer">
+          <button @click="emit('close')" :disabled="loading" class="flex-1 h-11 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm
+                   hover:border-green-800 hover:text-green-800 transition-colors active:scale-95 hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-50">
             Close
           </button>
         </template>

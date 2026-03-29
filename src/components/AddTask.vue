@@ -6,8 +6,9 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, ref, watch } from 'vue'
 import BulkAddTask from './BulkAddTask.vue'
 import Icons from './Icons.vue'
+import { storeToRefs } from 'pinia'
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'success'])
 const props = defineProps({
   design: { type: Boolean, default: false },
   preFill: { type: Object, default: null },
@@ -17,6 +18,8 @@ const memberStore = useMemberStore()
 const posStore = usePosStore()
 const store = taskStore()
 const auth = useAuthStore()
+
+const { tasks } = storeToRefs(store)
 
 const loading = ref(false)
 const subTasks = ref([{ text: '' }])
@@ -31,7 +34,6 @@ const uploadSuccess = ref(false)
 const uploadError = ref('')
 const uploadedFileName = ref('')
 const fileInputRef = ref(null)
-const action = ref('')
 
 const newTask = ref({
   name: '',
@@ -61,18 +63,14 @@ const applyPreFill = (fill) => {
     name: fill.name || '',
     description: fill.description || '',
     endDate: fill.endDate || null,
-    assignee: fill.assignee || null,
-    subtaskId: fill.subtaskId || null,
+    assignee: fill.subtask.spawnedAssignee || null,
+    subtaskId: fill.subtask.id || null,
     parentTask: fill.parentTask || null,
     type: fill.type || 1,
-    urgent: fill.urgent || false,
-    design: fill.design || false,
+    urgent: tasks.value.find(t => t.sourceSubtaskId === fill.subtask.id)?.urgent || false,
+    design: tasks.value.find(t => t.sourceSubtaskId === fill.subtask.id)?.design || false,
     outputLink: fill.outputLink || '',
   }
-
-  action.value = fill.action || ''
-
-  console.log(newTask.value.subtaskId)
 }
 
 watch(() => props.preFill, (fill) => {
@@ -85,13 +83,32 @@ const DIRECTOR_ASSIGNABLE = new Set(['2', '3', '4', '12'])
 const DIRECTOR_ASSIGNABLE_NR = [2, 3, 4, 12]
 
 // ── Shared helper ─────────────────────────────────────────────────────────────
-const _resolvePosName = (userId, allPositions, preferIds = null) => {
-  const rows = allPositions.filter(p => String(p.user_id) === String(userId))
-  const preferred = preferIds
-    ? rows.find(p => preferIds.map(String).includes(String(p.pos_id)))
-    : rows[0]
-  const row = preferred || rows[0]
-  return posStore.position.find(p => String(p.id) === String(row?.pos_id))?.name || ''
+const _resolvePosName = (userId, allPositions, context = null) => {
+  // 1. Get all raw positions for the user
+  const userRows = allPositions.filter(p => String(p.user_id) === String(userId))
+  if (!userRows.length) return 'No Position'
+
+  let targetRows = []
+
+  // Case A: context is the Director's allowed Position IDs (Array: [2, 3, 4, 12])
+  if (Array.isArray(context)) {
+    const allowedIds = context.map(String)
+    targetRows = userRows.filter(p => allowedIds.includes(String(p.pos_id)))
+  } 
+  // Case B: context is the Unit Head's specific Unit ID (Number or String)
+  else if (context !== null && (typeof context === 'string' || typeof context === 'number')) {
+    targetRows = userRows.filter(p => String(p.unit_id) === String(context))
+  }
+
+  // Fallback: If context filtering yields nothing, use all user rows
+  const finalRows = targetRows.length > 0 ? targetRows : userRows
+
+  // 2. Map to names and join
+  const names = finalRows
+    .map(row => posStore.position.find(p => String(p.id) === String(row?.pos_id))?.name)
+    .filter(Boolean)
+
+  return [...new Set(names)].join(' | ') || 'No Position'
 }
 
 // ── Assignable members ────────────────────────────────────────────────────────
@@ -119,13 +136,24 @@ const assignableMembers = computed(() => {
     const seen = new Set([String(auth.userID)])
     const peerUserIds = [...new Set(
       allPositions
-        .filter(p => p.unit_id === unitId && !seen.has(String(p.user_id)))
+        .filter(p => {
+          const isInUnit = String(p.unit_id) === String(unitId);
+          const isNotSelf = !seen.has(String(p.user_id));
+          
+          // Apply Senior Draftsman filter only if newTask.value.design is true
+          if (newTask.value.design) {
+            const isSeniorDraftsman = Number(p.pos_id) === 6;
+            return isInUnit && isNotSelf && isSeniorDraftsman;
+          }
+
+          return isInUnit && isNotSelf;
+        })
         .map(p => String(p.user_id))
     )]
     const peers = peerUserIds
       .map(uid => {
         const m = allMembers.find(mb => String(mb.id) === uid)
-        return m ? { ...m, pos_name: _resolvePosName(uid, allPositions), isSelf: false } : null
+        return m ? { ...m, pos_name: _resolvePosName(uid, allPositions, unitId), isSelf: false } : null
       })
       .filter(Boolean)
 
@@ -155,11 +183,25 @@ const memberLabel = (u) => {
 }
 
 const selectedAssigneeUnit = computed(() => {
-  if (!newTask.value.assignee) return null
-  const pos = posStore.memberPos.find(p => p.user_id === newTask.value.assignee)
-  if (!pos?.unit_id) return null
-  return auth.positions.find(ap => ap.unit_id === pos.unit_id)?.unit_name || 'Unit ' + pos.unit_id
-})
+  const assigneeId = newTask.value.assignee;
+  if (!assigneeId) return null;
+
+  // 1. Identify the Unit Head's active unit ID
+  const activeUnitId = auth.positions.find(p => p.pos_id === POS_UNIT_HEAD)?.unit_id;
+  if (!activeUnitId) return null;
+
+  // 2. Find the specific row where this assignee belongs to the Unit Head's unit
+  const matchingPos = posStore.memberPos.find(p => 
+    String(p.user_id) === String(assigneeId) && 
+    String(p.unit_id) === String(activeUnitId)
+  );
+
+  if (!matchingPos) return null;
+
+  // 3. Return the Unit Name from the Unit Head's own position records or a fallback
+  return auth.positions.find(ap => String(ap.unit_id) === String(activeUnitId))?.unit_name 
+         || `Unit ${activeUnitId}`;
+});
 
 // ── File upload ───────────────────────────────────────────────────────────────
 function resetUpload() {
@@ -223,19 +265,20 @@ const submitForm = async () => {
     const validSubs = subTasks.value.filter(s => s.text.trim()).map(s => ({ description: s.text }))
     const assigneeId = auth.isMember ? auth.userID : newTask.value.assignee
 
-    console.log(action.value)
-
-    if (action.value === 'reassign') {
+    if (props.preFill && newTask.value.assignee) {
       await store.assignSubtask({
         spawnedTaskId: newTask.value.subtaskId,
-        assigneeId: assigneeId
+        assigneeId: assigneeId,
+        urgent: newTask.value.urgent,
+        design: newTask.value.design
       })
-    } else if (action.value === 'assign') {
+    } else if (props.preFill && !newTask.value.assignee) {
       await store.assignSubtask({
         subtaskId: newTask.value.subtaskId,
         assigneeId: assigneeId,
         parentTask: newTask.value.parentTask,
-
+        urgent: newTask.value.urgent,
+        design: newTask.value.design
       })
     }
 
@@ -255,7 +298,7 @@ const submitForm = async () => {
       })
     }
 
-    emit('close')
+    emit('success')
   } catch (e) {
     console.error('[AddTask] submit error:', e)
     errorMsg.value = e.message || 'Something went wrong. Please try again.'
@@ -454,7 +497,7 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="#166534" stroke-width="3" stroke-linecap="round" />
               </svg>
               <span class="text-xs text-gray-500">Uploading <span class="font-medium text-gray-700">{{ uploadedFileName
-                  }}</span>…</span>
+              }}</span>…</span>
             </template>
 
             <!-- Success state -->
@@ -537,11 +580,20 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
         </div>
       </div>
 
-      <!-- Urgent -->
-      <div class="flex items-center gap-2">
-        <input v-model="newTask.urgent" type="checkbox" id="urgent"
-          class="w-4 h-4 accent-red-700 hover:cursor-pointer" />
-        <label for="urgent" class="text-sm font-semibold text-red-700 hover:cursor-pointer">Mark as Urgent</label>
+      <div class="flex justify-start gap-10">
+        <!-- Urgent -->
+        <div class="flex items-center gap-2">
+          <input v-model="newTask.urgent" type="checkbox" id="urgent"
+            class="w-4 h-4 accent-red-700 hover:cursor-pointer" />
+          <label for="urgent" class="text-sm font-semibold text-red-700 hover:cursor-pointer">Mark as Urgent</label>
+        </div>
+
+        <!-- Mark as Design -->
+        <div v-if="preFill && newTask.type === 1" class="flex items-center gap-2">
+          <input v-model="newTask.design" type="checkbox" id="design"
+            class="w-4 h-4 accent-green-900 hover:cursor-pointer" />
+          <label for="design" class="text-sm font-semibold text-green-900 hover:cursor-pointer">Mark as Design</label>
+        </div>
       </div>
 
       <!-- Approval flow note -->

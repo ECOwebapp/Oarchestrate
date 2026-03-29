@@ -1,25 +1,46 @@
 <script setup vapor>
-import { ref } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import TaskCard from './TaskCard.vue'
 import TaskDetail from './TaskDetail.vue'
+import { taskStore } from '@/stores/tasks';
 
+const task = taskStore()
 const props = defineProps({
   tasks: Array,
   selectable: { type: Boolean, default: false },
   selectedIds: { type: Object, default: () => new Set() },  // Set of selected task ids
   isDeletable: { type: Function, default: () => false },
+  modal: { type: Boolean, default: false }
 })
-const emit = defineEmits(['assignSubtask', 'toggle-select'])
+const emit = defineEmits(['assignSubtask', 'toggle-select', 'open', 'close', 'success'])
 const selected = ref(null)
+const loading = ref(false)
+const success = ref(false)
 
 const handleOpen = (task) => {
   if (props.selectable) return
   selected.value = task
+  emit('open')
+}
+
+const handleClose = () => {
+  loading.value = true
+  selected.value = null
+  setTimeout(() => {
+    loading.value = false
+    if(success.value) emit('success')
+    else emit('close')
+  }, 10)
+}
+
+const handleAssign = (event) => {
+  emit('assignSubtask', event); 
+  if(event) success.value = true;
 }
 </script>
 
 <template>
-  <div class="h-full">
+  <div>
     <div v-if="props.tasks.length === 0" class="flex flex-col items-center justify-center h-full py-20 text-gray-400">
       <svg class="w-12 h-12 mb-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -31,16 +52,18 @@ const handleOpen = (task) => {
     <div v-else class="mask-y-from-95% mask-y-to-97% h-full overflow-y-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4
            justify-items-stretch px-4 sm:px-6 lg:px-10 py-6 gap-4">
       <TaskCard v-for="(task, index) in props.tasks" :key="task.id" :task="task" :selectable="props.selectable"
-        :selected="props.selectedIds.has(task.id)" :is-deletable="props.isDeletable(task)" @open="handleOpen"
+        :selected="props.selectedIds.has(task.id)" :is-deletable="props.isDeletable(task)" @open="handleOpen(task)"
         @toggle-select="emit('toggle-select', $event)" :style="{ animationDelay: `${index * 0.03}s` }" />
     </div>
 
-    <Teleport to="body">
-      <Transition name="modal">
-        <TaskDetail v-if="selected" :task="selected" @close="selected = null"
-          @assignSubtask="emit('assignSubtask', $event)" />
-      </Transition>
-    </Teleport>
+    <template>
+      <Teleport to="#task-detail">
+        <Transition name="modal">
+          <TaskDetail v-if="selected" :key="selected.id" :task="selected" :loading="loading" @close="handleClose"
+            @assignSubtask="handleAssign" />
+        </Transition>
+      </Teleport>
+    </template>
   </div>
 
 </template>

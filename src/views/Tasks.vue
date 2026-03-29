@@ -28,6 +28,7 @@ const selectionMode = ref(false)
 const showDeleteConfirm = ref(false)
 const isDeleting = ref(false)
 const deleteError = ref('')
+const taskDetail = ref(false)
 
 const tasks = computed(() => {
   // if (auth.isDirector) {
@@ -82,9 +83,9 @@ const filtered = computed(() => {
       if (f === 'revision') return t.revision
       if (f === 'regular') return t.type?.toLowerCase() === 'regular'
       if (f === 'insertion') return t.type?.toLowerCase() === 'insertion'
-      if (f === 'overdue')   return !!t.overdue
-      if (f === 'pending')   return !t.director
-      if (f === 'approved')  return t.director
+      if (f === 'overdue') return !!t.overdue
+      if (f === 'pending') return !t.director
+      if (f === 'approved') return t.director
       return true
     })
   }
@@ -197,22 +198,24 @@ const onAssignSubtask = (data) => {
   preFillData.value = {
     name: data.subtask.name,
     description: data.subtask.description || '',
-    assignee: data.assignedMemberId,
-    assigneeName: data.assignedMemberName,
-    subtaskId: data.subtask.id,
+    // assignee: data.assignedMemberId,
+    // assigneeName: data.assignedMemberName,
+    subtask: data.subtask,
     parentTask: data.parentTask,
     type: 1,
     endDate: data.parentTask?.to || null,
-    urgent: false,
-    design: false,
-    action: data.action || ''
+    // action: data.action || ''
   }
   addTask.value = true
 }
 
-const onCloseAddTask = () => {
+const onCloseAddTask = async (success) => {
   addTask.value = false
   preFillData.value = null
+
+  if (success && taskDetail.value === false) {
+    await store.fetchTasks()
+  }
 }
 </script>
 
@@ -325,10 +328,12 @@ const onCloseAddTask = () => {
       <div class="flex-1 overflow-auto bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0">
         <GridTasks v-if="state === 'Grid View'" :tasks="filtered" :selectable="selectionMode"
           :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
-          @assign-subtask="onAssignSubtask" />
+          @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true" @close="taskDetail = false" 
+          @success="() => { taskDetail = false; onCloseAddTask(true); }" />
         <TableTasks v-else-if="state === 'Table View'" :tasks="filtered" :selectable="selectionMode"
           :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
-          @assign-subtask="onAssignSubtask" />
+          @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true"  @close="taskDetail = false"
+          @success="() => { taskDetail = false; onCloseAddTask(true); }" />
         <ChartTasks v-else-if="state === 'Chart View'" :tasks="filtered" />
       </div>
 
@@ -345,11 +350,11 @@ const onCloseAddTask = () => {
     </div>
 
     <!-- ── Add Task Modal ── -->
-    <Teleport to="body">
+    <Teleport to="#add-task">
       <Transition name="modal">
-        <div v-if="addTask" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+        <div v-if="addTask" class="fixed inset-0 z-150 flex items-center justify-center bg-black/50 px-4"
           @click.self="onCloseAddTask">
-          <AddTask @close="onCloseAddTask" :design="false" :pre-fill="preFillData" />
+          <AddTask @close="onCloseAddTask" @success="onCloseAddTask(true)" :design="false" :pre-fill="preFillData" />
         </div>
       </Transition>
     </Teleport>
@@ -357,7 +362,7 @@ const onCloseAddTask = () => {
     <!-- ── Delete Confirm Modal ── -->
     <Teleport to="body">
       <Transition name="modal">
-        <div v-if="showDeleteConfirm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+        <div v-if="showDeleteConfirm" class="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 px-4"
           @click.self="cancelDelete">
           <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm flex flex-col gap-4">
 

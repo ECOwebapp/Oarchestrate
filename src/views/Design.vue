@@ -337,7 +337,7 @@ const onCloseAddTask = () => {
       <Transition name="modal">
         <div v-if="addTask" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
           @click.self="onCloseAddTask">
-          <AddTask @close="onCloseAddTask" :design="false" :pre-fill="preFillData" />
+          <AddTask @close="onCloseAddTask" :design="true" :pre-fill="preFillData" />
         </div>
       </Transition>
     </Teleport>

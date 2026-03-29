@@ -518,7 +518,7 @@ export const taskStore = defineStore('tasks', () => {
       ])
     }
 
-    await fetchTasks()
+    // await fetchTasks()
   }
 
   // ── SUBMIT OUTPUT ───────────────────────────────────────────────────────────
@@ -842,7 +842,7 @@ export const taskStore = defineStore('tasks', () => {
   }
 
   // ── ASSIGN SUBTASK ──────────────────────────────────────────────────────────
-  const assignSubtask = async ({ subtaskId, spawnedTaskId, assigneeId, parentTask }) => {
+  const assignSubtask = async ({ subtaskId = null, spawnedTaskId = null, assigneeId, parentTask = null, design, urgent }) => {
     const auth = useAuthStore()
     const uid = auth.user?.id
 
@@ -852,10 +852,23 @@ export const taskStore = defineStore('tasks', () => {
       try {
         const { data, error } = await supabase
           .from('task')
-          .update({ assignee: assigneeId })
+          .update({ assignee: assigneeId, design: design || false })
           .eq('source_subtask_id', Number(spawnedTaskId))
+          .select('id')
+          .maybeSingle()
+
+          console.log(data.id)
 
         if (error) throw new Error('Failed to reassign: ' + error.message)
+
+          if(urgent) {
+            const { error: profileError } = await supabase
+              .from('task_profile')
+              .update({ urgent: urgent || false})
+              .eq('id', data.id)
+
+              if(profileError) throw profileError
+          }
 
         await supabase.from('subtask_assignment_log').insert({
           subtask_id: spawnedTaskId,
@@ -864,6 +877,8 @@ export const taskStore = defineStore('tasks', () => {
         })
       } catch (e) {
         console.log('Error re-assigning: ', e)
+      } finally {
+        await Promise.all([resolveNames([assigneeId])])
       }
 
     } else {
@@ -886,7 +901,7 @@ export const taskStore = defineStore('tasks', () => {
             assignee: assigneeId,
             parent_id: null,
             source_subtask_id: subtaskId,
-            design: false,
+            design: design || false,
           })
           .select('id')
           .single()
@@ -902,7 +917,7 @@ export const taskStore = defineStore('tasks', () => {
             title: subtaskRow?.task_profile?.title || '',
             description: subtaskRow?.task_profile?.description || '',
             task_type: type,
-            urgent: false,
+            urgent: urgent || false,
             revision: false,
           }),
           supabase.from('task_approval').insert({
@@ -932,13 +947,8 @@ export const taskStore = defineStore('tasks', () => {
         })
       } catch (e) {
         console.log('Error assigning: ', e)
-      }
-
-      try {
-        await resolveNames([assigneeId])
-        await fetchTasks()
-      } catch (e) {
-        console.log('Error fetching tasks: ', e)
+      } finally {
+        await Promise.all([resolveNames([assigneeId])])
       }
     }
   }
