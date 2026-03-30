@@ -1,5 +1,5 @@
 <template>
-  <LoadingScreen :loading="isLoading"/>
+  <LoadingScreen/>
   <div class="app" ref="appRef">
 
     <!-- ─── NAVBAR ─── -->
