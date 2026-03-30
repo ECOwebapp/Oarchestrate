@@ -1,7 +1,8 @@
-<script setup>
+<script setup vapor>
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 
-const props = defineProps(['pageName']);
+const pageName = useRoute().name
 
 const header = {
     dashboard: "View summary of analytics and tasks",
@@ -13,7 +14,7 @@ const header = {
 }
 
 const description = computed(() => {
-    const key = String(props.pageName).toLowerCase();
+    const key = String(pageName).toLowerCase();
     return header[key] || null;
 });
 

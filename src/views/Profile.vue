@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { onMounted, reactive, ref, computed } from 'vue'
@@ -20,6 +20,7 @@ const loadingDropdowns = ref(true)
 const units = useUnitStore()
 const addressStore = useAddressStore()
 const genders = useGenderStore()
+const saveDialog = ref(null)
 
 const infoSection = ref('personal')
 
@@ -135,10 +136,6 @@ onMounted(async () => {
 
       <!-- Navbar -->
       <div class="w-full lg:w-72 lg:flex-shrink-0">
-        <div class="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 text-xs text-emerald-900">
-          <p class="font-bold tracking-wide uppercase">Profile Workspace</p>
-          <p class="mt-1 text-emerald-800">Manage personal, contact, and work details in one place.</p>
-        </div>
         <ul class="flex w-full flex-col gap-2 border-b border-slate-200 pb-4 lg:border-b-0 lg:border-r lg:pr-5 lg:pb-0">
           <li class="flex items-center p-4 block text-sm font-semibold rounded-2xl transition-colors hover:cursor-pointer"
             :class="infoSection === list.toLowerCase() ? 'bg-green-950 text-white shadow-sm' : 'text-slate-800 hover:bg-slate-100'"
@@ -153,7 +150,7 @@ onMounted(async () => {
       <div class="min-w-0 flex-1 overflow-x-hidden">
         <!-- Feedback banners -->
         <Transition name="fade">
-          <div v-if="saveSuccess"
+          <div v-if="saveDialog?.saveSuccess"
             class="mb-5 flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 flex-shrink-0">
               <path d="M4 10l4 4 8-8" stroke-linecap="round" stroke-linejoin="round" />
@@ -162,16 +159,16 @@ onMounted(async () => {
           </div>
         </Transition>
         <Transition name="fade">
-          <div v-if="saveError" class="mb-5 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">
-            {{ saveError }}
+          <div v-if="saveDialog?.saveError" class="mb-5 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">
+            {{ saveDialog?.saveError }}
           </div>
         </Transition>
 
         <!-- Left: Avatar + Upload -->
-        <PersonalInformation v-if="infoSection === 'personal'" />
+        <PersonalInformation v-if="infoSection === 'personal'" ref="saveDialog" />
 
         <!-- Contact Number, Email, Gender -->
-        <ContactInformation v-else-if="infoSection === 'contact'" />
+        <ContactInformation v-else-if="infoSection === 'contact'" ref="saveDialog" />
 
         <!-- Unit -->
         <WorkInformation v-else-if="infoSection === 'work'" :loading-dropdowns="loadingDropdowns" />

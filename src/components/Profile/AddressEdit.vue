@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import { ref, onMounted, watch, computed } from 'vue'
 
 const PSGC = 'https://psgc.gitlab.io/api'
@@ -16,8 +16,6 @@ const loadingBarangays = ref(false)
 const loadingDropdowns = ref(true)
 
 const props = defineProps(['form', 'errors'])
-
-console.log(props.form)
 
 // ── Load static dropdowns + regions on mount ──
 onMounted(async () => {
