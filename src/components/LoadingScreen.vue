@@ -164,7 +164,7 @@
   </Teleport>
 </template>
 
-<script setup>
+<script setup vapor>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 // ── Internal state ─────────────────────────────────────────────

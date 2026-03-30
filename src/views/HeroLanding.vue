@@ -1,5 +1,5 @@
 <template>
-  <LoadingScreen/>
+  <LoadingScreen />
   <div class="app" ref="appRef">
 
     <!-- ─── NAVBAR ─── -->
