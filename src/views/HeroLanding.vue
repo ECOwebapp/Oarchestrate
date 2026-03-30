@@ -12,10 +12,7 @@
       <div class="max-w-6xl mx-auto px-6 flex items-center justify-between">
         <!-- Brand -->
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-green-700 to-green-500 flex items-center justify-center shadow-md shadow-green-200">
-            <svg viewBox="0 0 24 24" class="w-5 h-5 fill-white">
-              <path d="M12 2L14.5 9H22L16 13.5L18.5 20.5L12 16L5.5 20.5L8 13.5L2 9H9.5Z"/>
-            </svg>
+          <div class="w-9 h-13 bg-[url('/images/csu_seal.png')] bg-center bg-cover no-repeat rounded-xl flex items-center justify-center shadow-md shadow-green-200">
           </div>
           <div class="leading-tight">
             <span class="font-display text-green-900 font-bold text-[15px] tracking-tight">CSU</span>
