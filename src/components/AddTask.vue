@@ -94,7 +94,7 @@ const _resolvePosName = (userId, allPositions, context = null) => {
   if (Array.isArray(context)) {
     const allowedIds = context.map(String)
     targetRows = userRows.filter(p => allowedIds.includes(String(p.pos_id)))
-  } 
+  }
   // Case B: context is the Unit Head's specific Unit ID (Number or String)
   else if (context !== null && (typeof context === 'string' || typeof context === 'number')) {
     targetRows = userRows.filter(p => String(p.unit_id) === String(context))
@@ -139,7 +139,7 @@ const assignableMembers = computed(() => {
         .filter(p => {
           const isInUnit = String(p.unit_id) === String(unitId);
           const isNotSelf = !seen.has(String(p.user_id));
-          
+
           // Apply Senior Draftsman filter only if newTask.value.design is true
           if (newTask.value.design) {
             const isSeniorDraftsman = Number(p.pos_id) === 6;
@@ -158,6 +158,28 @@ const assignableMembers = computed(() => {
       .filter(Boolean)
 
     return selfEntry ? [selfEntry, ...peers] : peers
+  }
+
+  if (auth.isSeniorDraftsman) {
+    // 1. Get the Senior Draftsman's unit (assuming pos_id 6 is Senior Draftsman)
+    const unitId = auth.positions.find(p => p.pos_id === 6)?.unit_id ?? null
+
+    // 2. Identify all Junior Draftsmen (pos_id 5) in the same unit
+    const juniorIds = allPositions
+      .filter(p =>
+        Number(p.pos_id) === 5 &&
+        String(p.unit_id) === String(unitId)
+      )
+      .map(p => String(p.user_id))
+
+    // 3. Map them to the member data
+    return allMembers
+      .filter(m => juniorIds.includes(String(m.id)))
+      .map(m => ({
+        ...m,
+        pos_name: 'Junior Draftsman',
+        isSelf: false
+      }))
   }
 
   return allMembers
@@ -191,16 +213,16 @@ const selectedAssigneeUnit = computed(() => {
   if (!activeUnitId) return null;
 
   // 2. Find the specific row where this assignee belongs to the Unit Head's unit
-  const matchingPos = posStore.memberPos.find(p => 
-    String(p.user_id) === String(assigneeId) && 
+  const matchingPos = posStore.memberPos.find(p =>
+    String(p.user_id) === String(assigneeId) &&
     String(p.unit_id) === String(activeUnitId)
   );
 
   if (!matchingPos) return null;
 
   // 3. Return the Unit Name from the Unit Head's own position records or a fallback
-  return auth.positions.find(ap => String(ap.unit_id) === String(activeUnitId))?.unit_name 
-         || `Unit ${activeUnitId}`;
+  return auth.positions.find(ap => String(ap.unit_id) === String(activeUnitId))?.unit_name
+    || `Unit ${activeUnitId}`;
 });
 
 // ── File upload ───────────────────────────────────────────────────────────────
@@ -406,7 +428,7 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
       </div>
 
       <!-- Assignee -->
-      <div v-if="!auth.isMember">
+      <div v-if="!auth.isMember || (auth.isSeniorDraftsman && props.design)">
         <label class="block text-sm font-semibold text-gray-700 mb-1">
           Assign To <span class="text-red-500">*</span>
         </label>
@@ -497,7 +519,7 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="#166534" stroke-width="3" stroke-linecap="round" />
               </svg>
               <span class="text-xs text-gray-500">Uploading <span class="font-medium text-gray-700">{{ uploadedFileName
-              }}</span>…</span>
+                  }}</span>…</span>
             </template>
 
             <!-- Success state -->

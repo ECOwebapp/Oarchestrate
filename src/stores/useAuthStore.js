@@ -73,6 +73,10 @@ export const useAuthStore = defineStore('auth', () => {
     return positions?.value.some(p => p.unit_id === 3) ?? false
   })
 
+  const isSeniorDraftsman = computed(() => {
+    return positions?.value.some(p => p.pos_id === 6)
+  })
+
   const login = async (form) => {
     try {
       const internalEmail = `${form?.idNumber.trim().toLowerCase().replace(/[^a-z0-9]/g, '-')}@carsu.edu.ph`
@@ -283,7 +287,7 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     user, userID, profile, positions, accountStatus, loading, initialized,
     isLoggedIn, fullName, initials, avatarColor, avatarUrl, // ← avatarUrl added
-    isDirector, isUnitHead, isMember, isAdmin, isOffice, login,
+    isDirector, isUnitHead, isMember, isAdmin, isOffice, isSeniorDraftsman, login,
     init, listenToAuthChanges, fetchUserData, logout, $reset, editProfile, uploadAvatar
   }
 })
