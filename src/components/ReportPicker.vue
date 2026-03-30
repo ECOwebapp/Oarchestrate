@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import { ref } from 'vue'
 
 const props = defineProps({

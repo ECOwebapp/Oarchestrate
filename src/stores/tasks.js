@@ -1,10 +1,9 @@
 import { deleteOutputFile } from '@/lib/uploadOutput'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { usePosStore } from './positions'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-
-window.supabase = supabase
 
 const OFFICE_UNIT_ID = 3
 
@@ -14,6 +13,7 @@ export const taskStore = defineStore('tasks', () => {
   const nameMap = ref({})
   const unitIdMap = ref({})
   const unitMembers = ref([])
+  const positions = usePosStore()
 
   // ── Name resolver ───────────────────────────────────────────────────────────
   const resolveNames = async (uids) => {
@@ -141,6 +141,19 @@ export const taskStore = defineStore('tasks', () => {
     director: !!t.task_approval?.director,
     revisionComment: t.task_approval?.revision_comment || '',
     revisedAt: t.task_approval?.revised_at || null,
+    overdue: (() => {
+      const dl = t.task_duration?.deadline ? new Date(t.task_duration.deadline) : null
+      if (!dl || t.task_approval?.director) return false
+      dl.setHours(23, 59, 59, 999)
+      return dl < new Date()
+    })(),
+    overdueDays: (() => {
+      const dl = t.task_duration?.deadline ? new Date(t.task_duration.deadline) : null
+      if (!dl || t.task_approval?.director) return 0
+      dl.setHours(23, 59, 59, 999)
+      const diff = new Date() - dl
+      return diff > 0 ? Math.ceil(diff / 86400000) : 0
+    })(),
     design: !!t.design,
     isSelfAssigned: t.assigner === t.assignee,
     sourceSubtaskId: t.source_subtask_id || null,
@@ -266,7 +279,7 @@ export const taskStore = defineStore('tasks', () => {
           .order('id', { ascending: false })
         if (error) throw error
 
-        console.log(rows)
+        // console.log(rows)
 
         const allUserIds = [...new Set((rows || []).flatMap(t => [
           t.assigner, t.assignee,
@@ -357,9 +370,9 @@ export const taskStore = defineStore('tasks', () => {
     await resolveUnitIds([assigneeId])
     const assigneeIsOffice = isOfficeUser(assigneeId)
     const assigneeUnitId = getAssigneeUnitId(assigneeId)
+    const directorId = await getDirectorId()
 
     if (assigneeIsOffice || isSelfAssigned) {
-      const directorId = await getDirectorId()
       if (directorId) {
         const { data: existing } = await supabase
           .from('task_revision')
@@ -375,7 +388,7 @@ export const taskStore = defineStore('tasks', () => {
             from_user: fromUserId,
             to_user: directorId,
             role: 'director',
-            comment: message || 'Output submitted — awaiting your approval.',
+            comment: message || 'To Director: Output submitted — awaiting your approval.',
             is_read: false,
           })
         }
@@ -393,6 +406,13 @@ export const taskStore = defineStore('tasks', () => {
 
       const uhIds = [...new Set((uhRows || []).map(r => r.user_id))]
 
+      const allUnitHeads = positions.memberPos
+        .filter(link => link.pos_id === 4)
+        .map(link => link.user_id)
+
+      // 2. Check if the current sender is in that list
+      const isSenderAUnitHead = allUnitHeads.includes(fromUserId)
+
       for (const uhId of uhIds) {
         const { data: existing } = await supabase
           .from('task_revision')
@@ -402,13 +422,24 @@ export const taskStore = defineStore('tasks', () => {
           .eq('is_read', false)
           .maybeSingle()
 
+        console.log('I should\'ve been called once: ', uhId)
+
         if (!existing) {
           await supabase.from('task_revision').insert({
             task_id: taskId,
             from_user: fromUserId,
             to_user: uhId,
             role: 'unit_head',
-            comment: message || 'Output submitted — awaiting your review.',
+            comment: message || 'From Unit Head: Output submitted — awaiting your review.',
+            is_read: false,
+          })
+        } else if (!existing && isSenderAUnitHead) {
+          await supabase.from('task_revision').insert({
+            task_id: taskId,
+            from_user: fromUserId,
+            to_user: directorId,
+            role: 'unit_head',
+            comment: message || 'From Unit Head: Output submitted — awaiting your review.',
             is_read: false,
           })
         }
@@ -487,7 +518,7 @@ export const taskStore = defineStore('tasks', () => {
       ])
     }
 
-    await fetchTasks()
+    // await fetchTasks()
   }
 
   // ── SUBMIT OUTPUT ───────────────────────────────────────────────────────────
@@ -811,7 +842,7 @@ export const taskStore = defineStore('tasks', () => {
   }
 
   // ── ASSIGN SUBTASK ──────────────────────────────────────────────────────────
-  const assignSubtask = async ({ subtaskId, spawnedTaskId, assigneeId, parentTask }) => {
+  const assignSubtask = async ({ subtaskId = null, spawnedTaskId = null, assigneeId, parentTask = null, design, urgent }) => {
     const auth = useAuthStore()
     const uid = auth.user?.id
 
@@ -821,10 +852,23 @@ export const taskStore = defineStore('tasks', () => {
       try {
         const { data, error } = await supabase
           .from('task')
-          .update({ assignee: assigneeId })
+          .update({ assignee: assigneeId, design: design || false })
           .eq('source_subtask_id', Number(spawnedTaskId))
+          .select('id')
+          .maybeSingle()
+
+          console.log(data.id)
 
         if (error) throw new Error('Failed to reassign: ' + error.message)
+
+          if(urgent) {
+            const { error: profileError } = await supabase
+              .from('task_profile')
+              .update({ urgent: urgent || false})
+              .eq('id', data.id)
+
+              if(profileError) throw profileError
+          }
 
         await supabase.from('subtask_assignment_log').insert({
           subtask_id: spawnedTaskId,
@@ -833,6 +877,8 @@ export const taskStore = defineStore('tasks', () => {
         })
       } catch (e) {
         console.log('Error re-assigning: ', e)
+      } finally {
+        await Promise.all([resolveNames([assigneeId])])
       }
 
     } else {
@@ -855,13 +901,11 @@ export const taskStore = defineStore('tasks', () => {
             assignee: assigneeId,
             parent_id: null,
             source_subtask_id: subtaskId,
-            design: false,
+            design: design || false,
           })
           .select('id')
           .single()
         if (newTaskErr) throw new Error('Failed to create task: ' + newTaskErr.message)
-
-        console.log("assigned")
 
         const id = newTask.id
         const deadline = subtaskRow?.task_duration?.deadline || parentTask?.endDate || null
@@ -873,7 +917,7 @@ export const taskStore = defineStore('tasks', () => {
             title: subtaskRow?.task_profile?.title || '',
             description: subtaskRow?.task_profile?.description || '',
             task_type: type,
-            urgent: false,
+            urgent: urgent || false,
             revision: false,
           }),
           supabase.from('task_approval').insert({
@@ -903,13 +947,8 @@ export const taskStore = defineStore('tasks', () => {
         })
       } catch (e) {
         console.log('Error assigning: ', e)
-      }
-
-      try {
-        await resolveNames([assigneeId])
-        await fetchTasks()
-      } catch (e) {
-        console.log('Error fetching tasks: ', e)
+      } finally {
+        await Promise.all([resolveNames([assigneeId])])
       }
     }
   }

@@ -1,6 +1,6 @@
 import { useAuthStore } from '@/stores/useAuthStore';
 import { createPinia } from 'pinia';
-import { createApp } from 'vue';
+import { createApp, vaporInteropPlugin } from 'vue';
 import App from './App.vue';
 import router from './router';
 (async () => {
@@ -13,6 +13,7 @@ import router from './router';
   await auth.init()       // restore session — no listener yet
 
   app.use(router)
+  app.use(vaporInteropPlugin)
   app.mount('#app')
 
   // Register AFTER mount so reactive updates from auth events

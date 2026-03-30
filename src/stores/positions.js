@@ -88,7 +88,7 @@ export const usePosStore = defineStore('pos', () => {
                 .insert({ user_id: auth.userID, pos_id: user.position, unit_id: user.unit })
 
             if (error) throw error
-            await auth.fetchUserData(auth.user)
+            await auth.fetchUserData(auth.user, true)
             return status
         } catch (e) {
             console.log('Error adding position: ', e)
@@ -104,7 +104,7 @@ export const usePosStore = defineStore('pos', () => {
                 .eq('pos_id', old_pos)
 
             if (error) throw error
-            await auth.fetchUserData(auth.user)
+            await auth.fetchUserData(auth.user, true)
             return status
         } catch (e) {
             console.log('Error updating position: ', e)
@@ -119,7 +119,7 @@ export const usePosStore = defineStore('pos', () => {
                 .eq('pos_id', user.position)
 
             if (error) throw error
-            await auth.fetchUserData(auth.user)
+            await auth.fetchUserData(auth.user, true)
             return status
         } catch (e) {
             console.log('Error deleting position: ', e)

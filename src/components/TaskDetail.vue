@@ -1,10 +1,13 @@
-<script setup>
+<script setup vapor>
 import { uploadOutputFile } from '@/lib/uploadOutput'
 import { useMemberStore } from '@/stores/member'
 import { usePosStore } from '@/stores/positions'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import Icons from './Icons.vue'
+import Loading from './Loading.vue'
 
 // MDI icon paths
 const mdiLink = 'M3.9,12C3.9,10.29 5.29,8.9 7,8.9H11V7H7A5,5 0 0,0 2,12A5,5 0 0,0 7,17H11V15.1H7C5.29,15.1 3.9,13.71 3.9,12M8,13H16V11H8V13M17,7H13V8.9H17C18.71,8.9 20.1,10.29 20.1,12C20.1,13.71 18.71,15.1 17,15.1H13V17H17A5,5 0 0,0 22,12A5,5 0 0,0 17,7Z'
@@ -24,12 +27,13 @@ const mdiRefresh = 'M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 1
 const mdiPencil = 'M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z'
 const mdiTrashCan = 'M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z'
 
-const props = defineProps(['task'])
+const props = defineProps(['task', 'loading'])
 const emit = defineEmits(['close', 'refresh', 'assignSubtask'])
 const auth = useAuthStore()
 const store = taskStore()
 const memberStore = useMemberStore()
 const posStore = usePosStore()
+const memberPos = storeToRefs(posStore)?.memberPos
 
 const outputUrl = ref(props.task?.outputLink || '')
 const newOutputUrl = ref('')
@@ -57,6 +61,23 @@ const resubInputRef = ref(null)
 const editInputRef = ref(null)
 const action = ref(null)
 
+const handleOutsideClick = (e) => {
+  if (!e.target.closest('[data-dropdown]')) openDropdownId.value = null
+}
+
+onMounted(async () => {
+  loadRevisions()
+
+  await Promise.all([
+    posStore.fetchMemberPos(),
+    posStore.fetchPos(),
+  ])
+
+  document.addEventListener('click', handleOutsideClick)
+})
+onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
+
+// A simple method is best for this use case
 // ── Edit submission UI state ─────────────────────────────────────────────────
 // true  = user clicked "Edit" and we show the replace-file picker
 // false = normal "submitted" view
@@ -64,6 +85,7 @@ const editingSubmission = ref(false)
 // true  = user clicked "Delete" and we show a confirm prompt
 const confirmingDelete = ref(false)
 
+// A simple method is best for this use case
 const currentlyAssignedMember = (sub, selectedMember) => {
   if (!sub.spawnedTaskId || !sub.spawnedAssignee) {
     action.value = 'assign'
@@ -118,11 +140,55 @@ const onFilePickEdit = (e) => {
 
 const loadRevisions = async () => {
   loadingRevs.value = true
-  revisions.value = await store.fetchRevisions(props.task.id)
+  revisions.value = await store.fetchRevisions(props.task?.id)
   loadingRevs.value = false
   await nextTick()
   chatBottom.value?.scrollIntoView({ behavior: 'smooth' })
 }
+
+const filteredRevisions = computed(() => {
+  const currentUserId = auth.user?.id
+  const assignerId = props.task?.assigner
+  const assigneeId = props.task?.assignee
+  const otherPartyId = currentUserId === assignerId ? assigneeId : assignerId
+
+  return revisions.value
+    .filter(rev => {
+      const sentByMeToOther = rev.from_user === currentUserId && rev.to_user === otherPartyId
+      const receivedFromOther = rev.from_user === otherPartyId && rev.to_user === currentUserId
+      return sentByMeToOther || receivedFromOther
+    })
+    .map(rev => {
+      // Perform the lookup once here
+      const membership = memberPos.value.find(m =>
+        String(m.user_id).trim() === String(rev.from_user).trim()
+      );
+
+      // Assign a clean string for the template to use
+      let displayRole = 'Unit Member';
+      if (membership) {
+        const id = Number(membership.pos_id);
+        if (id === 1) displayRole = 'Director';
+        else if (id === 4) displayRole = 'Unit Head';
+      }
+
+      return {
+        ...rev,
+        roleLabel: displayRole
+      }
+    })
+})
+
+// In your component or Store
+const avatarMap = computed(() => {
+  return memberStore.members.reduce((acc, m) => {
+    acc[m.id] = m.avatar_url
+    return acc
+  }, {})
+})
+
+// Then your function becomes instant:
+const getAvatarUrl = (userId) => avatarMap.value[userId]
 
 watch(() => props.task?.id, () => {
   outputUrl.value = props.task?.outputLink || ''
@@ -145,7 +211,7 @@ watch(tab, async (val) => {
 })
 
 const unreadCount = computed(() =>
-  revisions.value.filter(r => r.to_user === auth.user?.id && !r.is_read).length
+  filteredRevisions.value.filter(r => r.to_user === auth.user?.id && !r.is_read).length
 )
 
 // ── Subtask display helpers ──────────────────────────────────────────────────
@@ -174,7 +240,7 @@ const unitMembersForAssign = computed(() => {
     }
     : null
 
-  const unitRows = (posStore.memberPos || []).filter(p =>
+  const unitRows = (memberPos.value || []).filter(p =>
     p.unit_id === unitId &&
     String(p.user_id) !== String(auth.userID)
   )
@@ -213,37 +279,20 @@ const toggleDropdown = (sub) => {
 const pickMemberAndAssign = async (sub, member) => {
   openDropdownId.value = null;
   assigningId.value = sub.id;
-  currentlyAssignedMember(sub, member)
+  // currentlyAssignedMember(sub, member)
   emit('assignSubtask', {
     subtask: sub,
-    assignedMemberId: member.id,
-    assignedMemberName: [
-      member.fname,
-      member.middle_initial ? member.middle_initial + '.' : '',
-      member.lname
-    ].filter(Boolean).join(' '),
+    // assignedMemberId: member.id,
+    // assignedMemberName: [
+    //   member.fname,
+    //   member.middle_initial ? member.middle_initial + '.' : '',
+    //   member.lname
+    // ].filter(Boolean).join(' '),
     parentTask: props.task,
-    action: action.value
+    // action: action.value
   });
   assigningId.value = null;
 };
-
-const handleOutsideClick = (e) => {
-  if (!e.target.closest('[data-dropdown]')) openDropdownId.value = null
-}
-
-onMounted(async () => {
-  loadRevisions()
-  if (auth.isUnitHead) {
-    await Promise.all([
-      memberStore.fetchMembers(),
-      posStore.fetchMemberPos(),
-      posStore.fetchPos(),
-    ])
-  }
-  document.addEventListener('click', handleOutsideClick)
-})
-onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 
 // ── Capabilities ─────────────────────────────────────────────────────────────
 const canApproveAsUnitHead = computed(() => {
@@ -426,7 +475,7 @@ const confirmDeleteOutput = async () => {
 </script>
 
 <template>
-  <div v-if="task" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4"
+  <div v-if="task" class="fixed inset-0 z-100 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4"
     @click.self="emit('close')">
 
     <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl
@@ -471,7 +520,7 @@ const confirmDeleteOutput = async () => {
       <div class="flex border-b border-gray-100 px-6 sm:px-8 flex-shrink-0 gap-1">
         <button v-for="t in ['detail', 'comments']" :key="t" @click="tab = t"
           class="relative pb-3 px-1 mr-4 text-sm font-semibold capitalize transition-colors"
-          :class="tab === t ? 'text-green-900' : 'text-gray-400 hover:text-gray-600'">
+          :class="tab === t ? 'text-green-900' : 'text-gray-400 hover:text-gray-600 hover:cursor-pointer'">
           {{ t === 'comments' ? 'Comments' : 'Details' }}
           <span v-if="t === 'comments' && unreadCount"
             class="ml-1.5 px-1.5 text-[10px] font-bold rounded-full bg-red-500 text-white align-top py-0.5">
@@ -551,7 +600,7 @@ const confirmDeleteOutput = async () => {
                 <button @click="editingSubmission = true; submitError = ''"
                   class="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-gray-300
                          text-xs font-semibold text-gray-600 hover:border-green-700 hover:text-green-800
-                         hover:bg-green-50 transition-colors">
+                         hover:bg-green-50 transition-colors hover:cursor-pointer disabled:cursor-not-allowed">
                   <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="currentColor">
                     <path :d="mdiPencil" />
                   </svg>
@@ -560,7 +609,7 @@ const confirmDeleteOutput = async () => {
                 <button @click="confirmingDelete = true; submitError = ''"
                   class="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-gray-300
                          text-xs font-semibold text-gray-600 hover:border-red-400 hover:text-red-600
-                         hover:bg-red-50 transition-colors">
+                         hover:bg-red-50 transition-colors hover:cursor-pointer disabled:cursor-not-allowed">
                   <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="currentColor">
                     <path :d="mdiTrashCan" />
                   </svg>
@@ -647,13 +696,13 @@ const confirmDeleteOutput = async () => {
                   <button @click="editingSubmission = false; editFile = null; submitError = ''"
                     :disabled="acting === 'editOutput'"
                     class="flex-1 h-10 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm
-                           hover:border-gray-400 disabled:opacity-40 transition-colors active:scale-95">
+                           hover:border-gray-400 hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 transition-colors active:scale-95">
                     Cancel
                   </button>
                   <button @click="saveEditedOutput" :disabled="acting === 'editOutput' || !editFile"
                     class="flex-1 h-10 rounded-xl bg-green-950 text-white text-sm font-bold
                            hover:bg-green-800 disabled:opacity-40 transition-all active:scale-95
-                           flex items-center justify-center gap-2">
+                           flex items-center justify-center gap-2 hover:cursor-pointer disabled:cursor-not-allowed">
                     <svg v-if="acting === 'editOutput'" class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24"
                       fill="none">
                       <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
@@ -766,7 +815,7 @@ const confirmDeleteOutput = async () => {
               </p>
               <button @click="submitOutput" :disabled="submitting || !uploadFile" class="w-full h-11 rounded-xl bg-green-950 text-white text-sm font-bold
                        hover:bg-green-800 disabled:opacity-40 transition-all active:scale-95
-                       flex items-center justify-center gap-2">
+                       flex items-center justify-center gap-2 hover:cursor-pointer disabled:cursor-not-allowed">
                 <svg v-if="submitting" class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
                   <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
@@ -915,26 +964,27 @@ const confirmDeleteOutput = async () => {
                     </div>
 
                     <template v-else>
-                      <button @click.stop="toggleDropdown(sub)" class="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg
-                               transition-all active:scale-95"
+                      <button @click.stop="pickMemberAndAssign(sub)" :disabled="!!sub.outputLink" class="hover:cursor-pointer flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg
+                               transition-all active:scale-95 disabled:pointer-events-none group"
                         :class="isSubtaskUnassigned(sub)
                           ? 'bg-green-950 text-white hover:bg-green-800'
-                          : 'border-2 border-green-200 bg-green-50 text-green-800 hover:border-green-400 hover:bg-green-100'">
+                          : 'border-2 border-green-200 bg-green-50 text-green-800 hover:border-green-400 hover:bg-green-100 disabled:bg-gray-50 disabled:border-gray-200 disabled:text-gray-500'">
                         <template v-if="!isSubtaskUnassigned(sub)">
                           <div class="w-4 h-4 rounded-full bg-green-900 text-white text-[9px] font-bold
-                                      flex items-center justify-center uppercase flex-shrink-0">
+                                      flex items-center justify-center uppercase flex-shrink-0 group-disabled:bg-gray-900">
                             {{ (subtaskDisplayName(sub) || '?')[0] }}
                           </div>
                           <span class="truncate max-w-[90px]">{{ subtaskDisplayName(sub) }}</span>
                         </template>
                         <template v-else>Assign</template>
-                        <svg viewBox="0 0 24 24" class="w-3 h-3 flex-shrink-0 transition-transform duration-150"
+                        <!-- <svg viewBox="0 0 24 24" class="w-3 h-3 flex-shrink-0 transition-transform duration-150"
                           :class="openDropdownId === sub.id ? 'rotate-180' : ''" fill="currentColor">
                           <path :d="mdiChevronDown" />
-                        </svg>
+                        </svg> -->
+                        <Icons :icon="'chevronRight'" :icon-class="'w-3 h-3'" />
                       </button>
 
-                      <Transition enter-active-class="transition duration-100 ease-out"
+                      <!-- <Transition enter-active-class="transition duration-100 ease-out"
                         enter-from-class="opacity-0 scale-95 -translate-y-1"
                         enter-to-class="opacity-100 scale-100 translate-y-0"
                         leave-active-class="transition duration-75 ease-in"
@@ -982,7 +1032,7 @@ const confirmDeleteOutput = async () => {
                             </svg>
                           </button>
                         </div>
-                      </Transition>
+                      </Transition> -->
                     </template>
                   </div>
                 </div>
@@ -1017,7 +1067,7 @@ const confirmDeleteOutput = async () => {
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="#15803d" stroke-width="3" stroke-linecap="round" />
               </svg>
             </div>
-            <div v-else-if="!revisions.length"
+            <div v-else-if="filteredRevisions.length < 1"
               class="flex flex-col items-center justify-center py-14 text-center text-gray-400">
               <svg viewBox="0 0 24 24" class="w-12 h-12 mb-3 opacity-20" fill="currentColor">
                 <path :d="mdiCommentOutline" />
@@ -1028,12 +1078,18 @@ const confirmDeleteOutput = async () => {
               </p>
             </div>
             <template v-else>
-              <div v-for="rev in revisions" :key="rev.id" class="flex gap-3"
+              <div v-for="rev in filteredRevisions" :key="rev.id" class="flex gap-3"
                 :class="rev.from_user === auth.user?.id ? 'flex-row-reverse' : ''">
-                <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center
-                            text-xs font-bold text-white self-end mb-1"
-                  :class="rev.role === 'director' ? 'bg-green-900' : 'bg-amber-600'">
-                  {{ (rev.fromName || '?')[0].toUpperCase() }}
+                <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center 
+            text-[10px] font-bold text-white self-end mb-1 overflow-hidden"
+                  :class="rev.roleLabel.toLowerCase() === 'director' ? 'bg-green-900' : 'bg-amber-600'">
+
+                  <img v-if="getAvatarUrl(rev.from_user)" :src="getAvatarUrl(rev.from_user)"
+                    class="w-full h-full object-cover" />
+
+                  <span v-else>
+                    {{ (rev.fromName || '?')[0].toUpperCase() }}
+                  </span>
                 </div>
                 <div class="max-w-[72%] min-w-0 space-y-1"
                   :class="rev.from_user === auth.user?.id ? 'items-end flex flex-col' : ''">
@@ -1047,8 +1103,8 @@ const confirmDeleteOutput = async () => {
                       }) }}
                     </span>
                     <span class="text-[10px] px-1.5 py-0.5 rounded-full font-bold"
-                      :class="rev.role === 'director' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-700'">
-                      {{ rev.role === 'director' ? 'Director' : 'Unit Head' }}
+                      :class="rev.roleLabel?.toLowerCase() === 'director' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-700'">
+                      {{ rev.roleLabel }}
                     </span>
                   </div>
                   <div class="rounded-2xl px-4 py-2.5 text-sm leading-relaxed break-words" :class="rev.from_user === auth.user?.id
@@ -1072,7 +1128,7 @@ const confirmDeleteOutput = async () => {
             <div class="flex items-center gap-2">
               <input ref="resubInputRef" type="file" class="hidden" @change="onFilePickResub" />
               <button @click="resubInputRef?.click()"
-                class="flex items-center gap-2 h-9 px-3 rounded-xl border-2 border-orange-200
+                class="hover:cursor-pointer disabled:cursor-not-allowed flex items-center gap-2 h-9 px-3 rounded-xl border-2 border-orange-200
                        bg-white text-orange-700 text-xs font-bold hover:border-orange-400 transition-colors flex-shrink-0">
                 <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="currentColor">
                   <path :d="mdiPaperclip" />
@@ -1095,7 +1151,7 @@ const confirmDeleteOutput = async () => {
             </div>
             <button @click="resubmit" :disabled="acting === 'resubmit' || !resubmitFile" class="w-full h-9 rounded-xl bg-orange-600 text-white text-xs font-bold
                      hover:bg-orange-500 disabled:opacity-40 transition-all active:scale-95
-                     flex items-center justify-center gap-1.5">
+                     flex items-center justify-center gap-1.5 hover:cursor-pointer disabled:cursor-not-allowed">
               <svg v-if="acting === 'resubmit'" class="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
@@ -1111,13 +1167,14 @@ const confirmDeleteOutput = async () => {
       <div class="flex gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 flex-shrink-0 bg-white">
         <template v-if="canApproveAsUnitHead">
           <button @click="requestRevision" :disabled="acting !== '' || !canRequestRevision"
-            :title="!revisionComment.trim() ? 'Write revision notes above first' : ''" class="flex-1 h-11 rounded-xl border-2 border-amber-400 text-amber-600 font-bold text-sm
-                   hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
+            :title="!revisionComment.trim() ? 'Write revision notes above first' : ''"
+            class="flex-1 h-11 rounded-xl border-2 border-amber-400 text-amber-600 font-bold text-sm
+                   hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 hover:cursor-pointer">
             {{ acting === 'revise' ? 'Sending…' : 'Request Revision' }}
           </button>
           <button @click="approve" :disabled="acting !== ''" class="flex-1 h-11 rounded-xl bg-green-950 text-white font-bold text-sm
                    hover:bg-green-800 disabled:opacity-40 transition-all active:scale-95
-                   flex items-center justify-center gap-2">
+                   flex items-center justify-center gap-2 hover:cursor-pointer">
             <svg v-if="acting === 'approve'" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
               <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
@@ -1127,13 +1184,14 @@ const confirmDeleteOutput = async () => {
         </template>
         <template v-else-if="canApproveAsDirector">
           <button @click="requestRevision" :disabled="acting !== '' || !canRequestRevision"
-            :title="!revisionComment.trim() ? 'Write revision notes above first' : ''" class="flex-1 h-11 rounded-xl border-2 border-amber-400 text-amber-600 font-bold text-sm
-                   hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
+            :title="!revisionComment.trim() ? 'Write revision notes above first' : ''"
+            class="flex-1 h-11 rounded-xl border-2 border-amber-400 text-amber-600 font-bold text-sm
+                   hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 hover:cursor-pointer">
             {{ acting === 'revise' ? 'Sending…' : 'Send for Revision' }}
           </button>
           <button @click="approve" :disabled="acting !== ''" class="flex-1 h-11 rounded-xl bg-green-950 text-white font-bold text-sm
                    hover:bg-green-800 disabled:opacity-40 transition-all active:scale-95
-                   flex items-center justify-center gap-2">
+                   flex items-center justify-center gap-2 hover:cursor-pointer">
             <svg v-if="acting === 'approve'" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
               <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
@@ -1151,8 +1209,8 @@ const confirmDeleteOutput = async () => {
           </div>
         </template>
         <template v-else>
-          <button @click="emit('close')" class="flex-1 h-11 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm
-                   hover:border-green-800 hover:text-green-800 transition-colors active:scale-95">
+          <button @click="emit('close')" :disabled="loading" class="flex-1 h-11 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm
+                   hover:border-green-800 hover:text-green-800 transition-colors active:scale-95 hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-50">
             Close
           </button>
         </template>

@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import { computed, ref, watch } from 'vue'
 import { supabase } from '@/lib/supabaseClient.js'
 import { useAuthStore } from '@/stores/useAuthStore.js'
@@ -14,6 +14,7 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const auth  = useAuthStore()
+const showRecommendingApproval = computed(() => !auth.isUnitHead)
 const positionLabel = computed(() => {
   const positions = auth.positions || []
   if (!positions.length) return 'Staff'
@@ -61,7 +62,9 @@ const loadOwnTasks = async () => {
 watch(() => props.show, (val) => {
   if (val) {
     loadOwnTasks()
-    loadUnitHead()
+    if (showRecommendingApproval.value) {
+      loadUnitHead()
+    }
   }
 }, { immediate: true })
 
@@ -162,7 +165,7 @@ const loadUnitHead = async () => {
 
   unitHeadInfo.value = {
     name: `${profile.fname || ''} ${profile.lname || ''}`.trim().toUpperCase(),
-    title: `Head, ${userUnitName.value}`
+    title: userUnitName.value ? `Unit Head, ${userUnitName.value}` : 'Unit Head'
   }
 }
 
@@ -324,9 +327,9 @@ const normalizeOutputLink = (value) => {
         </table>
 
         <!-- Footer -->
-        <div class="mt-8 grid grid-cols-1 gap-6 text-xs text-gray-600 sm:grid-cols-3 sm:gap-4">
+        <div class="mt-8 grid grid-cols-1 gap-6 text-xs text-gray-600 sm:grid-cols-3 sm:items-start sm:gap-4">
           <!-- Prepared by -->
-          <div>
+          <div class="sm:min-w-[220px] sm:max-w-[260px]">
             <p class="mb-6 text-gray-400 font-semibold uppercase tracking-wide text-[10px]">Prepared by:</p>
             <div class="border-t border-gray-400 pt-1">
               <p class="font-bold text-gray-800 uppercase text-[11px]">{{ reportName }}</p>
@@ -334,17 +337,21 @@ const normalizeOutputLink = (value) => {
             </div>
           </div>
 
-          <!-- Recommending Approval -->
-          <div>
+          <!-- Recommending Approval (hide when current user is Unit Head) -->
+          <div
+            v-if="showRecommendingApproval"
+            class="sm:max-w-[260px] sm:mx-auto sm:justify-self-center sm:text-left"
+          >
             <p class="mb-6 text-gray-400 font-semibold uppercase tracking-wide text-[10px]">Recommending Approval:</p>
-            <div class="border-t border-gray-400 pt-1">
+            <div class="border-t border-gray-400 pt-1 w-full">
               <p class="font-bold text-gray-800 uppercase text-[11px]">{{ unitHeadInfo.name || '—' }}</p>
               <p class="text-gray-500">{{ unitHeadInfo.title || 'Unit Head' }}</p>
             </div>
           </div>
+          <div v-else class="hidden sm:block"></div>
 
           <!-- Approved by -->
-          <div>
+          <div class="sm:min-w-[220px] sm:max-w-[260px] sm:justify-self-end sm:text-left">
             <p class="mb-6 text-gray-400 font-semibold uppercase tracking-wide text-[10px]">Approved by:</p>
             <div class="border-t border-gray-400 pt-1">
               <p class="font-bold text-gray-800 uppercase text-[11px]">AR. Magichael B. Cloribel</p>

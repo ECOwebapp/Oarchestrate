@@ -1,4 +1,4 @@
-<script setup>
+<script setup vapor>
 import { useMemberStore } from '@/stores/member'
 import { usePosStore } from '@/stores/positions'
 import { taskStore } from '@/stores/tasks'
@@ -6,8 +6,9 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, ref, watch } from 'vue'
 import BulkAddTask from './BulkAddTask.vue'
 import Icons from './Icons.vue'
+import { storeToRefs } from 'pinia'
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'success'])
 const props = defineProps({
   design: { type: Boolean, default: false },
   preFill: { type: Object, default: null },
@@ -18,20 +19,21 @@ const posStore = usePosStore()
 const store = taskStore()
 const auth = useAuthStore()
 
-const loading       = ref(false)
-const subTasks      = ref([{ text: '' }])
-const outputUrl     = ref('')
-const errorMsg      = ref('')
-const showBulk      = ref(false)
+const { tasks } = storeToRefs(store)
+
+const loading = ref(false)
+const subTasks = ref([{ text: '' }])
+const outputUrl = ref('')
+const errorMsg = ref('')
+const showBulk = ref(false)
 
 // ── Upload state ──────────────────────────────────────────────────────────────
-const uploadMode      = ref('link')   // 'link' | 'file'
-const uploadLoading   = ref(false)
-const uploadSuccess   = ref(false)
-const uploadError     = ref('')
+const uploadMode = ref('link')   // 'link' | 'file'
+const uploadLoading = ref(false)
+const uploadSuccess = ref(false)
+const uploadError = ref('')
 const uploadedFileName = ref('')
-const fileInputRef    = ref(null)
-const action          = ref('')
+const fileInputRef = ref(null)
 
 const newTask = ref({
   name: '',
@@ -61,18 +63,14 @@ const applyPreFill = (fill) => {
     name: fill.name || '',
     description: fill.description || '',
     endDate: fill.endDate || null,
-    assignee: fill.assignee || null,
-    subtaskId: fill.subtaskId || null,
+    assignee: fill.subtask.spawnedAssignee || null,
+    subtaskId: fill.subtask.id || null,
     parentTask: fill.parentTask || null,
     type: fill.type || 1,
-    urgent: fill.urgent || false,
-    design: fill.design || false,
+    urgent: tasks.value.find(t => t.sourceSubtaskId === fill.subtask.id)?.urgent || false,
+    design: tasks.value.find(t => t.sourceSubtaskId === fill.subtask.id)?.design || false,
     outputLink: fill.outputLink || '',
   }
-
-  action.value = fill.action || ''
-
-  console.log(newTask.value.subtaskId)
 }
 
 watch(() => props.preFill, (fill) => {
@@ -80,24 +78,43 @@ watch(() => props.preFill, (fill) => {
 })
 
 // ── Position ID constants ─────────────────────────────────────────────────────
-const POS_UNIT_HEAD          = 4
-const DIRECTOR_ASSIGNABLE    = new Set(['2', '3', '4', '12'])
+const POS_UNIT_HEAD = 4
+const DIRECTOR_ASSIGNABLE = new Set(['2', '3', '4', '12'])
 const DIRECTOR_ASSIGNABLE_NR = [2, 3, 4, 12]
 
 // ── Shared helper ─────────────────────────────────────────────────────────────
-const _resolvePosName = (userId, allPositions, preferIds = null) => {
-  const rows = allPositions.filter(p => String(p.user_id) === String(userId))
-  const preferred = preferIds
-    ? rows.find(p => preferIds.map(String).includes(String(p.pos_id)))
-    : rows[0]
-  const row = preferred || rows[0]
-  return posStore.position.find(p => String(p.id) === String(row?.pos_id))?.name || ''
+const _resolvePosName = (userId, allPositions, context = null) => {
+  // 1. Get all raw positions for the user
+  const userRows = allPositions.filter(p => String(p.user_id) === String(userId))
+  if (!userRows.length) return 'No Position'
+
+  let targetRows = []
+
+  // Case A: context is the Director's allowed Position IDs (Array: [2, 3, 4, 12])
+  if (Array.isArray(context)) {
+    const allowedIds = context.map(String)
+    targetRows = userRows.filter(p => allowedIds.includes(String(p.pos_id)))
+  }
+  // Case B: context is the Unit Head's specific Unit ID (Number or String)
+  else if (context !== null && (typeof context === 'string' || typeof context === 'number')) {
+    targetRows = userRows.filter(p => String(p.unit_id) === String(context))
+  }
+
+  // Fallback: If context filtering yields nothing, use all user rows
+  const finalRows = targetRows.length > 0 ? targetRows : userRows
+
+  // 2. Map to names and join
+  const names = finalRows
+    .map(row => posStore.position.find(p => String(p.id) === String(row?.pos_id))?.name)
+    .filter(Boolean)
+
+  return [...new Set(names)].join(' | ') || 'No Position'
 }
 
 // ── Assignable members ────────────────────────────────────────────────────────
 const assignableMembers = computed(() => {
-  const allMembers   = memberStore.members || []
-  const allPositions = posStore.memberPos  || []
+  const allMembers = memberStore.members || []
+  const allPositions = posStore.memberPos || []
 
   if (auth.isDirector) {
     const allowedIds = new Set(
@@ -111,25 +128,58 @@ const assignableMembers = computed(() => {
   }
 
   if (auth.isUnitHead) {
-    const unitId     = auth.positions.find(p => p.pos_id === POS_UNIT_HEAD)?.unit_id ?? null
+    const unitId = auth.positions.find(p => p.pos_id === POS_UNIT_HEAD)?.unit_id ?? null
     const selfMember = allMembers.find(m => String(m.id) === String(auth.userID))
-    const uhPosName  = posStore.position.find(p => p.id === POS_UNIT_HEAD)?.name || 'Unit Head'
-    const selfEntry  = selfMember ? { ...selfMember, pos_name: uhPosName, isSelf: true } : null
+    const uhPosName = posStore.position.find(p => p.id === POS_UNIT_HEAD)?.name || 'Unit Head'
+    const selfEntry = selfMember ? { ...selfMember, pos_name: uhPosName, isSelf: true } : null
 
     const seen = new Set([String(auth.userID)])
     const peerUserIds = [...new Set(
       allPositions
-        .filter(p => p.unit_id === unitId && !seen.has(String(p.user_id)))
+        .filter(p => {
+          const isInUnit = String(p.unit_id) === String(unitId);
+          const isNotSelf = !seen.has(String(p.user_id));
+
+          // Apply Senior Draftsman filter only if newTask.value.design is true
+          if (newTask.value.design) {
+            const isSeniorDraftsman = Number(p.pos_id) === 6;
+            return isInUnit && isNotSelf && isSeniorDraftsman;
+          }
+
+          return isInUnit && isNotSelf;
+        })
         .map(p => String(p.user_id))
     )]
     const peers = peerUserIds
       .map(uid => {
         const m = allMembers.find(mb => String(mb.id) === uid)
-        return m ? { ...m, pos_name: _resolvePosName(uid, allPositions), isSelf: false } : null
+        return m ? { ...m, pos_name: _resolvePosName(uid, allPositions, unitId), isSelf: false } : null
       })
       .filter(Boolean)
 
     return selfEntry ? [selfEntry, ...peers] : peers
+  }
+
+  if (auth.isSeniorDraftsman) {
+    // 1. Get the Senior Draftsman's unit (assuming pos_id 6 is Senior Draftsman)
+    const unitId = auth.positions.find(p => p.pos_id === 6)?.unit_id ?? null
+
+    // 2. Identify all Junior Draftsmen (pos_id 5) in the same unit
+    const juniorIds = allPositions
+      .filter(p =>
+        Number(p.pos_id) === 5 &&
+        String(p.unit_id) === String(unitId)
+      )
+      .map(p => String(p.user_id))
+
+    // 3. Map them to the member data
+    return allMembers
+      .filter(m => juniorIds.includes(String(m.id)))
+      .map(m => ({
+        ...m,
+        pos_name: 'Junior Draftsman',
+        isSelf: false
+      }))
   }
 
   return allMembers
@@ -155,16 +205,30 @@ const memberLabel = (u) => {
 }
 
 const selectedAssigneeUnit = computed(() => {
-  if (!newTask.value.assignee) return null
-  const pos = posStore.memberPos.find(p => p.user_id === newTask.value.assignee)
-  if (!pos?.unit_id) return null
-  return auth.positions.find(ap => ap.unit_id === pos.unit_id)?.unit_name || 'Unit ' + pos.unit_id
-})
+  const assigneeId = newTask.value.assignee;
+  if (!assigneeId) return null;
+
+  // 1. Identify the Unit Head's active unit ID
+  const activeUnitId = auth.positions.find(p => p.pos_id === POS_UNIT_HEAD)?.unit_id;
+  if (!activeUnitId) return null;
+
+  // 2. Find the specific row where this assignee belongs to the Unit Head's unit
+  const matchingPos = posStore.memberPos.find(p =>
+    String(p.user_id) === String(assigneeId) &&
+    String(p.unit_id) === String(activeUnitId)
+  );
+
+  if (!matchingPos) return null;
+
+  // 3. Return the Unit Name from the Unit Head's own position records or a fallback
+  return auth.positions.find(ap => String(ap.unit_id) === String(activeUnitId))?.unit_name
+    || `Unit ${activeUnitId}`;
+});
 
 // ── File upload ───────────────────────────────────────────────────────────────
 function resetUpload() {
-  uploadSuccess.value    = false
-  uploadError.value      = ''
+  uploadSuccess.value = false
+  uploadError.value = ''
   uploadedFileName.value = ''
   if (uploadMode.value === 'file') outputUrl.value = ''
 }
@@ -178,9 +242,9 @@ async function uploadFile(event) {
   const file = event.target.files?.[0]
   if (!file) return
 
-  uploadLoading.value   = true
-  uploadSuccess.value   = false
-  uploadError.value     = ''
+  uploadLoading.value = true
+  uploadSuccess.value = false
+  uploadError.value = ''
   uploadedFileName.value = file.name
 
   try {
@@ -189,18 +253,20 @@ async function uploadFile(event) {
     // fullName from authStore e.g. "Juan D. Dela Cruz" → becomes the Drive folder name
     formData.append('userName', auth.fullName)
 
-    const res  = await fetch('/api/upload', { method: 'POST', body: formData })
-    const data = await res.json()
+    const [res, data] = await Promise.all([
+      fetch('/api/upload', { method: 'POST', body: formData }),
+      res.json()
+    ])
 
     if (!res.ok || !data.success) throw new Error(data.error || 'Upload failed')
 
-    outputUrl.value      = data.fileUrl   // auto-fill the output link
-    uploadSuccess.value  = true
+    outputUrl.value = data.fileUrl   // auto-fill the output link
+    uploadSuccess.value = true
   } catch (err) {
-    uploadError.value    = err.message || 'Upload failed. Please try again.'
+    uploadError.value = err.message || 'Upload failed. Please try again.'
     uploadedFileName.value = ''
   } finally {
-    uploadLoading.value  = false
+    uploadLoading.value = false
     // reset input so re-uploading the same file triggers change again
     if (fileInputRef.value) fileInputRef.value.value = ''
   }
@@ -221,19 +287,20 @@ const submitForm = async () => {
     const validSubs = subTasks.value.filter(s => s.text.trim()).map(s => ({ description: s.text }))
     const assigneeId = auth.isMember ? auth.userID : newTask.value.assignee
 
-    console.log(action.value)
-
-    if (action.value === 'reassign') {
+    if (props.preFill && newTask.value.assignee) {
       await store.assignSubtask({
         spawnedTaskId: newTask.value.subtaskId,
-        assigneeId: assigneeId
+        assigneeId: assigneeId,
+        urgent: newTask.value.urgent,
+        design: newTask.value.design
       })
-    } else if (action.value === 'assign') {
+    } else if (props.preFill && !newTask.value.assignee) {
       await store.assignSubtask({
         subtaskId: newTask.value.subtaskId,
         assigneeId: assigneeId,
         parentTask: newTask.value.parentTask,
-
+        urgent: newTask.value.urgent,
+        design: newTask.value.design
       })
     }
 
@@ -253,7 +320,7 @@ const submitForm = async () => {
       })
     }
 
-    emit('close')
+    emit('success')
   } catch (e) {
     console.error('[AddTask] submit error:', e)
     errorMsg.value = e.message || 'Something went wrong. Please try again.'
@@ -267,26 +334,20 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
 </script>
 
 <template>
-  <!-- ── BulkAddTask modal overlay ─────────────────────────────────────────── -->
-  <Teleport to="body">
-    <Transition
-      enter-active-class="transition-opacity duration-200"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition-opacity duration-150"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0">
-      <div
-        v-if="showBulk"
-        class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4"
-        @click.self="showBulk = false">
-        <BulkAddTask @close="showBulk = false; emit('close')" />
-      </div>
-    </Transition>
-  </Teleport>
-
   <!-- ── Main AddTask card ──────────────────────────────────────────────────── -->
   <div class="bg-white w-full max-w-lg max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+
+    <!-- ── BulkAddTask modal overlay ─────────────────────────────────────────── -->
+    <Teleport to="body">
+      <Transition @after-leave="emit('close')" enter-active-class="transition-opacity duration-200"
+        enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition-opacity duration-150"
+        leave-from-class="opacity-100" leave-to-class="opacity-0">
+        <div v-if="showBulk" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4"
+          @click.self="showBulk = false">
+          <BulkAddTask @close="showBulk = false" />
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- Header -->
     <div class="flex items-center justify-between px-7 py-5 border-b border-gray-100">
@@ -297,21 +358,18 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
       </h2>
 
       <div class="flex items-center gap-2">
-        <button
-          v-if="auth.isDirector && !preFill"
-          @click="showBulk = true"
-          class="flex items-center gap-1.5 text-xs font-semibold text-green-800
+        <button v-if="auth.isDirector && !preFill" @click="showBulk = true" class="flex items-center gap-1.5 text-xs font-semibold text-green-800
                  border border-green-800 rounded-lg px-3 py-1.5
-                 hover:bg-green-50 active:scale-95 transition-all">
+                 hover:bg-green-50 hover:cursor-pointer active:scale-95 transition-all">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M4 6h16M4 10h16M4 14h8M4 18h8M17 14v6M14 17h6"/>
+              d="M4 6h16M4 10h16M4 14h8M4 18h8M17 14v6M14 17h6" />
           </svg>
           Bulk Add
         </button>
 
         <button @click="emit('close')"
-          class="text-gray-400 hover:text-gray-700 text-2xl leading-none">×</button>
+          class="hover:cursor-pointer text-gray-400 hover:text-gray-700 text-2xl leading-none">×</button>
       </div>
     </div>
 
@@ -354,9 +412,9 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
           <label class="block text-sm font-semibold text-gray-700 mb-1">
             Type <span class="text-red-500">*</span>
           </label>
-          <select v-model="newTask.type" class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
+          <select v-model="newTask.type" class="hover:cursor-pointer w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
                    focus:outline-none focus:border-green-800 bg-white">
-            <option value="" disabled hidden>Select type</option>
+            <option value="" disabled hidden>Select task type</option>
             <option v-for="t in typeOptions" :key="t.id" :value="t.id">{{ t.label }}</option>
           </select>
         </div>
@@ -365,12 +423,12 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
             Deadline <span class="text-red-500">*</span>
           </label>
           <input v-model="newTask.endDate" type="date" class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
-                   focus:outline-none focus:border-green-800 transition-colors" />
+                   focus:outline-none focus:border-green-800 transition-colors hover:cursor-pointer" />
         </div>
       </div>
 
       <!-- Assignee -->
-      <div v-if="!auth.isMember">
+      <div v-if="!auth.isMember || (auth.isSeniorDraftsman && props.design)">
         <label class="block text-sm font-semibold text-gray-700 mb-1">
           Assign To <span class="text-red-500">*</span>
         </label>
@@ -382,15 +440,14 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
 
         <template v-else>
           <select v-model="newTask.assignee" class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
-                   focus:outline-none focus:border-green-800 bg-white">
-            <option value="" disabled hidden>Select member</option>
+                   focus:outline-none focus:border-green-800 bg-white hover:cursor-pointer">
+            <option :value="null" disabled hidden>Select assignee...</option>
             <option v-for="m in assignableMembers" :key="m.id" :value="m.id">
               {{ memberLabel(m) }}{{ m.isSelf ? ' (You)' : '' }}
             </option>
           </select>
 
-          <p v-if="selectedAssigneeUnit"
-            class="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
+          <p v-if="selectedAssigneeUnit" class="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
             <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
               <path
                 d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
@@ -410,33 +467,29 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
 
           <!-- Mode toggle -->
           <div class="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
-            <button type="button"
-              @click="switchMode('file')"
-              :class="[
-                'flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-md transition-all',
-                uploadMode === 'file'
-                  ? 'bg-white text-green-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              ]">
+            <button type="button" @click="switchMode('file')" :class="[
+              'hover:cursor-pointer disabled:cursor-not-allowed flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-md transition-all',
+              uploadMode === 'file'
+                ? 'bg-white text-green-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            ]">
               <!-- upload icon -->
               <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
               Upload
             </button>
-            <button type="button"
-              @click="switchMode('link')"
-              :class="[
-                'flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-md transition-all',
-                uploadMode === 'link'
-                  ? 'bg-white text-green-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              ]">
+            <button type="button" @click="switchMode('link')" :class="[
+              'flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-md transition-all',
+              uploadMode === 'link'
+                ? 'bg-white text-green-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            ]">
               <!-- link icon -->
               <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
               </svg>
               Paste Link
             </button>
@@ -447,35 +500,35 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
         <template v-if="uploadMode === 'file'">
 
           <!-- Drop zone / trigger -->
-          <label
-            :class="[
-              'flex flex-col items-center justify-center gap-2 w-full rounded-xl border-2 border-dashed',
-              'cursor-pointer transition-colors px-4 py-5',
-              uploadLoading
-                ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
-                : uploadSuccess
-                  ? 'border-green-400 bg-green-50'
-                  : uploadError
-                    ? 'border-red-300 bg-red-50'
-                    : 'border-gray-300 hover:border-green-700 hover:bg-green-50'
-            ]">
+          <label :class="[
+            'flex flex-col items-center justify-center gap-2 w-full rounded-xl border-2 border-dashed',
+            'cursor-pointer transition-colors px-4 py-5',
+            uploadLoading
+              ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
+              : uploadSuccess
+                ? 'border-green-400 bg-green-50'
+                : uploadError
+                  ? 'border-red-300 bg-red-50'
+                  : 'border-gray-300 hover:border-green-700 hover:bg-green-50'
+          ]">
 
             <!-- Spinner while uploading -->
             <template v-if="uploadLoading">
               <svg class="animate-spin w-6 h-6 text-green-800" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="rgba(0,0,0,0.1)" stroke-width="3"/>
-                <path d="M12 2a10 10 0 0 1 10 10" stroke="#166534" stroke-width="3" stroke-linecap="round"/>
+                <circle cx="12" cy="12" r="10" stroke="rgba(0,0,0,0.1)" stroke-width="3" />
+                <path d="M12 2a10 10 0 0 1 10 10" stroke="#166534" stroke-width="3" stroke-linecap="round" />
               </svg>
-              <span class="text-xs text-gray-500">Uploading <span class="font-medium text-gray-700">{{ uploadedFileName }}</span>…</span>
+              <span class="text-xs text-gray-500">Uploading <span class="font-medium text-gray-700">{{ uploadedFileName
+                  }}</span>…</span>
             </template>
 
             <!-- Success state -->
             <template v-else-if="uploadSuccess">
               <svg class="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
               <p class="text-xs text-green-800 font-medium text-center">
-                {{ uploadedFileName }}<br/>
+                {{ uploadedFileName }}<br />
                 <span class="font-normal text-green-600">Uploaded — link filled in below</span>
               </p>
               <span class="text-xs text-gray-400 underline">Click to replace</span>
@@ -485,7 +538,7 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
             <template v-else-if="uploadError">
               <svg class="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                  d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
               </svg>
               <p class="text-xs text-red-600 font-medium text-center">{{ uploadError }}</p>
               <span class="text-xs text-gray-400 underline">Click to try again</span>
@@ -495,32 +548,24 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
             <template v-else>
               <svg class="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
               <p class="text-xs text-gray-500 text-center">
-                <span class="font-semibold text-gray-700">Click to choose a file</span><br/>
+                <span class="font-semibold text-gray-700">Click to choose a file</span><br />
                 Uploads to your Drive folder
               </p>
             </template>
 
-            <input
-              ref="fileInputRef"
-              type="file"
-              class="hidden"
-              :disabled="uploadLoading"
-              @change="uploadFile" />
+            <input ref="fileInputRef" type="file" class="hidden" :disabled="uploadLoading" @change="uploadFile" />
           </label>
 
           <!-- Auto-filled link preview (editable) -->
           <div v-if="outputUrl" class="flex items-center gap-2">
             <svg class="w-3.5 h-3.5 text-green-700 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
             </svg>
-            <input
-              v-model="outputUrl"
-              type="url"
-              class="flex-1 border border-gray-200 rounded-lg h-8 px-2 text-xs
+            <input v-model="outputUrl" type="url" class="flex-1 border border-gray-200 rounded-lg h-8 px-2 text-xs
                      focus:outline-none focus:border-green-700 text-gray-600 bg-gray-50 transition-colors" />
             <a :href="outputUrl" target="_blank"
               class="text-xs text-green-800 font-semibold hover:underline whitespace-nowrap">
@@ -531,22 +576,18 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
 
         <!-- LINK PASTE mode -->
         <template v-else>
-          <input
-            v-model="outputUrl"
-            type="url"
-            placeholder="https://drive.google.com/…"
-            class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
+          <input v-model="outputUrl" type="url" placeholder="https://drive.google.com/…" class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
                    focus:outline-none focus:border-green-800 transition-colors" />
         </template>
       </div>
       <!-- ── end Output block ────────────────────────────────────────────────── -->
 
       <!-- Sub-tasks (Director only, not when pre-filling a subtask) -->
-      <div v-if="auth.isDirector && !preFill">
+      <div v-if="auth.isDirector && !preFill && newTask.type === 1">
         <div class="flex items-center justify-between mb-2">
           <label class="text-sm font-semibold text-gray-700">Sub-tasks</label>
           <button type="button" @click="addSubTask"
-            class="flex items-center gap-1 text-xs font-bold text-green-800 hover:text-green-600">
+            class="flex items-center gap-1 text-xs font-bold text-green-800 hover:text-green-600 hover:cursor-pointer">
             <Icons :icon="'add'" class="w-3 h-3" /> Add
           </button>
         </div>
@@ -556,15 +597,25 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
             <textarea v-model="item.text" rows="1" maxlength="200" :placeholder="`Sub-task ${i + 1}…`" class="flex-1 border-2 border-gray-200 rounded-lg px-2 py-1.5 text-sm resize-none
                      focus:outline-none focus:border-green-800 transition-colors" />
             <button type="button" @click="removeSubTask(i)"
-              class="text-gray-300 hover:text-red-400 mt-1.5 flex-shrink-0 text-lg leading-none">×</button>
+              class="text-gray-300 hover:text-red-400 mt-1.5 flex-shrink-0 text-lg leading-none hover:cursor-pointer">×</button>
           </div>
         </div>
       </div>
 
-      <!-- Urgent -->
-      <div class="flex items-center gap-3">
-        <input v-model="newTask.urgent" type="checkbox" id="urgent" class="w-4 h-4 accent-red-700" />
-        <label for="urgent" class="text-sm font-semibold text-red-700">Mark as Urgent</label>
+      <div class="flex justify-start gap-10">
+        <!-- Urgent -->
+        <div class="flex items-center gap-2">
+          <input v-model="newTask.urgent" type="checkbox" id="urgent"
+            class="w-4 h-4 accent-red-700 hover:cursor-pointer" />
+          <label for="urgent" class="text-sm font-semibold text-red-700 hover:cursor-pointer">Mark as Urgent</label>
+        </div>
+
+        <!-- Mark as Design -->
+        <div v-if="preFill && newTask.type === 1" class="flex items-center gap-2">
+          <input v-model="newTask.design" type="checkbox" id="design"
+            class="w-4 h-4 accent-green-900 hover:cursor-pointer" />
+          <label for="design" class="text-sm font-semibold text-green-900 hover:cursor-pointer">Mark as Design</label>
+        </div>
       </div>
 
       <!-- Approval flow note -->
@@ -600,13 +651,12 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
     <!-- Footer -->
     <div class="flex gap-3 px-7 py-4 border-t border-gray-100">
       <button type="button" @click="emit('close')" class="flex-1 h-11 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm
-               hover:border-green-800 hover:text-green-800 transition-colors">
+               hover:border-green-800 hover:text-green-800 hover:cursor-pointer transition-colors">
         Cancel
       </button>
-      <button @click="submitForm" :disabled="loading || uploadLoading"
-        class="flex-1 h-11 rounded-xl bg-green-950 text-white font-semibold text-sm
+      <button @click="submitForm" :disabled="loading || uploadLoading" class="flex-1 h-11 rounded-xl bg-green-950 text-white font-semibold text-sm
                hover:bg-green-800 active:scale-95 transition-all
-               disabled:opacity-50 disabled:cursor-not-allowed
+               disabled:opacity-50 disabled:cursor-not-allowed hover:cursor-pointer
                flex items-center justify-center gap-2">
         <svg v-if="loading" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />

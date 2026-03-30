@@ -17,7 +17,6 @@ export const useContactStore = defineStore('contact', () => {
             if (error) throw error
 
             emails.value = (data || [])
-            console.log(emails.value)
         } catch (e) {
             console.log('Error fetching emails: ', e)
         }
