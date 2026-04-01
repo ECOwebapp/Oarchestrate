@@ -130,7 +130,7 @@ export const useNotifStore = defineStore('notif', () => {
             task_duration ( created ),
             task_notif    ( read_by_assignee, read_by_director, read_by_unit_head ),
             task_output   ( link )`)
-          .is('parent_id', null)
+          .is('parent_ppa_id', null)
           .eq('task_approval.unit_head', true)
           .eq('task_approval.director', false)
           .limit(30)
@@ -145,7 +145,7 @@ export const useNotifStore = defineStore('notif', () => {
               task_duration ( created ),
               task_notif    ( read_by_assignee, read_by_director, read_by_unit_head ),
               task_output   ( link )`)
-            .is('parent_id', null).or(officeFilter)
+            .is('parent_ppa_id', null).or(officeFilter)
           d2 = (od || []).filter(t => t.task_output?.link && !t.task_approval?.director)
         }
         const seen = new Set()
@@ -180,7 +180,7 @@ export const useNotifStore = defineStore('notif', () => {
               task_duration ( created ),
               task_notif    ( read_by_assignee, read_by_director, read_by_unit_head ),
               task_output   ( link )`)
-            .is('parent_id', null).or(filter).limit(30)
+            .is('parent_ppa_id', null).or(filter).limit(30)
           taskRows = (d || []).filter(t => t.task_output?.link && !t.task_approval?.unit_head)
           taskErr  = e
         }
@@ -194,7 +194,7 @@ export const useNotifStore = defineStore('notif', () => {
             task_duration ( created ),
             task_notif    ( read_by_assignee, read_by_director, read_by_unit_head )`)
           .or(`assignee.eq.${uid},assigner.eq.${uid}`)
-          .is('parent_id', null).limit(30)
+          .is('parent_ppa_id', null).limit(30)
         taskRows = d || []
         taskErr  = e
       }
@@ -247,7 +247,7 @@ export const useNotifStore = defineStore('notif', () => {
         .from('task_poke')
         .select(`
           id, task_id, from_user, message, created_at, is_read,
-          task:task_id ( task_profile(title) )
+          task:task_poke_task_id_fkey ( task_profile(title) )
         `)
         .eq('to_user', uid)
         .order('created_at', { ascending: false })

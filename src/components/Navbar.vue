@@ -29,7 +29,7 @@ const formattedUnits = computed(() => {
 
 const navNames = [
   'Dashboard',
-  'Tasks',
+  'Projects',
   'Design',
   'Organization',
   'Analytics',
@@ -37,7 +37,7 @@ const navNames = [
 ]
 
 const getPath = (name) => `/${name.toLowerCase()}`
-const isActive = (name) => route.name === name
+const isActive = (name) => route.name === name || route.name === `/${name.toLowerCase()}/`
 const version = '0.1 alpha'
 </script>
 
