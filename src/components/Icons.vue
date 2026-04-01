@@ -34,7 +34,7 @@ import { computed } from 'vue';
 const props = defineProps(['icon', 'iconClass'])
 const icons = {
     dashboard: mdiMonitorDashboard,
-    tasks: mdiFormatListBulleted,
+    projects: mdiFormatListBulleted,
     design: mdiDraw,
     organization: mdiAccountGroup,
     analytics: mdiPoll,

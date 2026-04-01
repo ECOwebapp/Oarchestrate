@@ -6,7 +6,7 @@ import Login from '@/views/Login.vue'
 import Organization from '@/views/Organization.vue'
 import Profile from '@/views/Profile.vue'
 import Register from '@/views/Register.vue'
-import Tasks from '@/views/Tasks.vue'
+import Projects from '@/views/Projects.vue'
 import Main from '@/views/Main.vue'
 
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -14,6 +14,7 @@ import { taskStore } from '@/stores/tasks'
 import { useMemberStore } from '@/stores/member'
 import { usePosStore } from '@/stores/positions'
 import { createRouter, createWebHistory } from 'vue-router'
+import { routes as autoRoutes } from 'vue-router/auto-routes'
 import { ref } from 'vue'
 
 const routes = [
@@ -50,12 +51,12 @@ const routes = [
         component: Dashboard,
         meta: { requiresTasks: true, requiresAuth: true },
       },
-      {
-        path: 'tasks',
-        name: 'Tasks',
-        component: Tasks,
-        meta: { requireMembers: true, requiresTasks: true, requiresAuth: true },
-      },
+      // {
+      //   path: 'projects',
+      //   name: 'Projects',
+      //   component: Projects,
+      //   meta: { requireMembers: true, requiresTasks: true, requiresAuth: true },
+      // },
       {
         path: 'design',
         name: 'Design',
@@ -80,6 +81,7 @@ const routes = [
         component: Profile,
         meta: { requiresAuth: true },
       },
+      ...autoRoutes
     ]
   },
 

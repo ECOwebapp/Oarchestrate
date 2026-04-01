@@ -12,6 +12,7 @@ const emit = defineEmits(['close', 'success'])
 const props = defineProps({
   design: { type: Boolean, default: false },
   preFill: { type: Object, default: null },
+  parentId: { type: Number }
 })
 
 const memberStore = useMemberStore()
@@ -36,6 +37,7 @@ const uploadedFileName = ref('')
 const fileInputRef = ref(null)
 
 const newTask = ref({
+  parentId: props.parentId,
   name: '',
   description: '',
   endDate: null,
@@ -287,24 +289,24 @@ const submitForm = async () => {
     const validSubs = subTasks.value.filter(s => s.text.trim()).map(s => ({ description: s.text }))
     const assigneeId = auth.isMember ? auth.userID : newTask.value.assignee
 
-    if (props.preFill && newTask.value.assignee) {
-      await store.assignSubtask({
-        spawnedTaskId: newTask.value.subtaskId,
-        assigneeId: assigneeId,
-        urgent: newTask.value.urgent,
-        design: newTask.value.design
-      })
-    } else if (props.preFill && !newTask.value.assignee) {
-      await store.assignSubtask({
-        subtaskId: newTask.value.subtaskId,
-        assigneeId: assigneeId,
-        parentTask: newTask.value.parentTask,
-        urgent: newTask.value.urgent,
-        design: newTask.value.design
-      })
-    }
+    // if (props.preFill && newTask.value.assignee) {
+    //   await store.assignSubtask({
+    //     spawnedTaskId: newTask.value.subtaskId,
+    //     assigneeId: assigneeId,
+    //     urgent: newTask.value.urgent,
+    //     design: newTask.value.design
+    //   })
+    // } else if (props.preFill && !newTask.value.assignee) {
+    //   await store.assignSubtask({
+    //     subtaskId: newTask.value.subtaskId,
+    //     assigneeId: assigneeId,
+    //     parentTask: newTask.value.parentTask,
+    //     urgent: newTask.value.urgent,
+    //     design: newTask.value.design
+    //   })
+    // }
 
-    else {
+    // else {
       await store.addTasks({
         mainTask: {
           name: newTask.value.name,
@@ -316,9 +318,8 @@ const submitForm = async () => {
           assignee: assigneeId,
           outputLink: showOutput.value ? outputUrl.value : '',
         },
-        subTasks: validSubs,
       })
-    }
+    // }
 
     emit('success')
   } catch (e) {
