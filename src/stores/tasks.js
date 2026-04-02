@@ -71,11 +71,11 @@ export const taskStore = defineStore('tasks', () => {
   // ── Supabase select fragment ────────────────────────────────────────────────
   const TASK_SELECT = `
     id, parent_ppa_id, assigner, assignee, design,
-    task_profile ( title, description, urgent, revision, task_type,
+    task_profile(title, description, urgent, revision, task_type,
       task_type_ref:task_type(task_type) ),
-    task_approval ( unit_head, director, revision_comment, revised_at ),
-    task_duration ( created, deadline ),
-    task_output   ( link )
+    task_approval( unit_head, director, revision_comment, revised_at ),
+    task_duration( created, deadline ),
+    task_output( link )
   `
 
   // ── mapRow ──────────────────────────────────────────────────────────────────
@@ -175,7 +175,7 @@ export const taskStore = defineStore('tasks', () => {
         const { data: taskRows, error: taskError } = await supabase
           .from('task')
           .select(TASK_SELECT)
-          .eq('parent_ppa_id', parentId)
+          .eq('parent_ppa_id', Number(parentId))
           .order('id', { ascending: false })
 
         if (taskError) throw taskError
@@ -195,6 +195,8 @@ export const taskStore = defineStore('tasks', () => {
 
         // const spawnedMap = buildSpawnedMap([...(rows || []), ...extraSpawnedRows])
         // const parentRows = (rows || []).filter(r => !r.source_subtask_id)
+
+        console.log(taskRows)
 
         tasks.value = taskRows.map(t => ({
           ...mapRow(t),
@@ -290,15 +292,14 @@ export const taskStore = defineStore('tasks', () => {
     if (!data) throw new Error('Task not found.')
 
     const allUserIds = [
-      data.assigner, data.assignee,
-      ...(data.subtasks || []).map(s => s.assignee),
-      ...(data.subtasks || []).map(s => s.assigner),
+      data.assigner, data.assignee
     ].filter(Boolean)
 
     await resolveNames([...new Set([...allUserIds])])
 
     const spawnedMap = buildSpawnedMap([data])
-    return mapRow(data, spawnedMap)
+    console.log (mapRow(data))
+    return mapRow(data)
   }
 
   // ── NOTIFICATION HELPER ─────────────────────────────────────────────────────
@@ -323,19 +324,19 @@ export const taskStore = defineStore('tasks', () => {
             task_id: taskId,
             from_user: fromUserId,
             to_user: directorId,
-            role: 'director',
+            role: 1, // Director
             comment: message || 'To Director: Output submitted — awaiting your approval.',
             is_read: false,
           })
         }
       }
       await supabase.from('task_notif').upsert(
-        { task_id: taskId, read_by_director: false, read_by_assignee: true, read_by_unit_head: true },
+        { task_id: taskId, read_by_assignee: true, read_by_unit_head: true },
         { onConflict: 'task_id' }
       )
     } else {
       const { data: uhRows } = await supabase
-        .from('position_of_members')
+        .from('position')
         .select('user_id')
         .eq('unit_id', assigneeUnitId)
         .eq('pos_id', 4)
@@ -365,24 +366,22 @@ export const taskStore = defineStore('tasks', () => {
             task_id: taskId,
             from_user: fromUserId,
             to_user: uhId,
-            role: 'unit_head',
+            role: 4, // Unit Head
             comment: message || 'From Unit Head: Output submitted — awaiting your review.',
-            is_read: false,
           })
         } else if (!existing && isSenderAUnitHead) {
           await supabase.from('task_revision').insert({
             task_id: taskId,
             from_user: fromUserId,
             to_user: directorId,
-            role: 'unit_head',
+            role: 4,
             comment: message || 'From Unit Head: Output submitted — awaiting your review.',
-            is_read: false,
           })
         }
       }
 
       await supabase.from('task_notif').upsert(
-        { task_id: taskId, read_by_unit_head: false, read_by_assignee: true, read_by_director: false },
+        { task_id: taskId, read_by_assignee: true },
         { onConflict: 'task_id' }
       )
     }
@@ -426,7 +425,7 @@ export const taskStore = defineStore('tasks', () => {
     await Promise.all([
       supabase.from('task_profile').insert({
         task_id: taskId, title: mainTask.name, description: mainTask.description,
-        task_type: mainTask.type, urgent: !!mainTask.urgent, revision: false,
+        task_type: mainTask.type, urgent: !!mainTask.urgent,
       }),
       supabase.from('task_approval').insert({
         task_id: taskId, unit_head: initialUnitHead, director: initialDirector,
@@ -449,22 +448,22 @@ export const taskStore = defineStore('tasks', () => {
     const auth = useAuthStore()
 
     const { data: updated, error: updErr } = await supabase
-      .from('task_output').update({ link }).eq('id', taskId).select('id')
+      .from('task_output').update({ link }).eq('task_id', taskId).select('id')
     if (updErr) throw new Error(updErr.message)
     if (!updated || updated.length === 0) {
-      const { error: insErr } = await supabase.from('task_output').insert({ id: taskId, link })
+      const { error: insErr } = await supabase.from('task_output').insert({ task_id: taskId, link })
       if (insErr) throw new Error(insErr.message)
     }
 
     const { data: taskRow } = await supabase
-      .from('task').select('assignee, assigner').eq('id', taskId).maybeSingle()
+      .from('task').select('assignee, assigner').eq('task_id', taskId).maybeSingle()
     const assigneeId = taskRow?.assignee || auth.user.id
     const assignerId = taskRow?.assigner || auth.user.id
     const isSelfAssigned = assigneeId === assignerId
 
     await resolveUnitIds([assigneeId])
     if (isSelfAssigned || isOfficeUser(assigneeId)) {
-      await supabase.from('task_approval').update({ unit_head: true }).eq('id', taskId)
+      await supabase.from('task_approval').update({ unit_head: true }).eq('task_id', taskId)
     }
 
     await _notifySubmission(taskId, assigneeId, auth.user.id, null, isSelfAssigned)
@@ -479,7 +478,7 @@ export const taskStore = defineStore('tasks', () => {
     const { data: oldOutput } = await supabase
       .from('task_output')
       .select('link')
-      .eq('id', taskId)
+      .eq('task_id', taskId)
       .maybeSingle()
     const oldLink = oldOutput?.link || null
 
@@ -489,7 +488,7 @@ export const taskStore = defineStore('tasks', () => {
       const { error: updErr } = await supabase
         .from('task_output')
         .update({ link: newLink })
-        .eq('id', taskId)
+        .eq('task_id', taskId)
       if (updErr) throw new Error(updErr.message)
 
       deleteOutputFile(oldLink).catch((e) =>
@@ -506,7 +505,7 @@ export const taskStore = defineStore('tasks', () => {
 
     // 5. Re-notify the reviewer with the updated file
     const { data: taskRow } = await supabase
-      .from('task').select('assignee, assigner').eq('id', taskId).maybeSingle()
+      .from('task').select('assignee, assigner').eq('task_id', taskId).maybeSingle()
     const assigneeId = taskRow?.assignee || auth.user.id
     const assignerId = taskRow?.assigner || auth.user.id
     const isSelfAssigned = assigneeId === assignerId
@@ -528,7 +527,7 @@ export const taskStore = defineStore('tasks', () => {
     const { data: currentOutput } = await supabase
       .from('task_output')
       .select('link')
-      .eq('id', taskId)
+      .eq('task_id', taskId)
       .maybeSingle()
     const currentLink = currentOutput?.link || null
 
@@ -538,7 +537,7 @@ export const taskStore = defineStore('tasks', () => {
       const { error: clearErr } = await supabase
         .from('task_output')
         .update({ link: '' })
-        .eq('id', taskId)
+        .eq('task_id', taskId)
       if (clearErr) throw new Error(clearErr.message)
 
       deleteOutputFile(currentLink).catch((e) =>
@@ -551,7 +550,7 @@ export const taskStore = defineStore('tasks', () => {
       supabase
         .from('task_approval')
         .update({ unit_head: false, revision_comment: null, revised_at: null })
-        .eq('id', taskId),
+        .eq('task_id', taskId),
 
       // 5. Dismiss pending reviewer notifications
       supabase
@@ -564,7 +563,7 @@ export const taskStore = defineStore('tasks', () => {
       supabase
         .from('task_profile')
         .update({ revision: false })
-        .eq('id', taskId)
+        .eq('task_id', taskId)
     ])
 
     await fetchTasks()
@@ -576,7 +575,7 @@ export const taskStore = defineStore('tasks', () => {
     const col = role === 'director' ? 'director' : 'unit_head'
     await supabase.from('task_approval')
       .update({ [col]: true, revision_comment: null, revised_at: null })
-      .eq('id', taskId)
+      .eq('task_id', taskId)
 
     const task = tasks.value.find(t => t.id === taskId)
     if (task) {
@@ -605,8 +604,8 @@ export const taskStore = defineStore('tasks', () => {
       : { unit_head: false, revision_comment: comment, revised_at: new Date().toISOString() }
 
     await Promise.all([
-      supabase.from('task_approval').update(resetCols).eq('id', taskId),
-      supabase.from('task_profile').update({ revision: true }).eq('id', taskId),
+      supabase.from('task_approval').update(resetCols).eq('task_id', taskId),
+      supabase.from('task_profile').update({ revision: true }).eq('task_id', taskId),
       supabase.from('task_revision').insert({
         task_id: taskId,
         from_user: auth.user.id,
@@ -626,11 +625,11 @@ export const taskStore = defineStore('tasks', () => {
 
     if (newOutputLink) {
       const { data: updated, error: updErr } = await supabase
-        .from('task_output').update({ link: newOutputLink }).eq('id', taskId).select('id')
+        .from('task_output').update({ link: newOutputLink }).eq('task_id', taskId).select('id')
       if (updErr) throw new Error(updErr.message)
       if (!updated || updated.length === 0) {
         const { error: insErr } = await supabase
-          .from('task_output').insert({ id: taskId, link: newOutputLink })
+          .from('task_output').insert({ task_id: taskId, link: newOutputLink })
         if (insErr) throw new Error(insErr.message)
       }
     }
@@ -646,12 +645,12 @@ export const taskStore = defineStore('tasks', () => {
     const revisorRole = lastRevision?.role || 'unit_head'
     const assigneeId = task?.assignee || auth.user.id
 
-    await supabase.from('task_profile').update({ revision: false }).eq('id', taskId)
+    await supabase.from('task_profile').update({ revision: false }).eq('task_id', taskId)
 
     if (revisorRole === 'director') {
       await supabase.from('task_approval')
         .update({ unit_head: true, director: false, revision_comment: null, revised_at: null })
-        .eq('id', taskId)
+        .eq('task_id', taskId)
 
       if (lastRevision?.from_user) {
         await supabase.from('task_revision').insert({
@@ -670,17 +669,17 @@ export const taskStore = defineStore('tasks', () => {
     } else {
       await resolveUnitIds([assigneeId])
       const assigneeIsOffice = isOfficeUser(assigneeId)
-      const assignerData = await supabase.from('task').select('assigner').eq('id', taskId).maybeSingle()
+      const assignerData = await supabase.from('task').select('assigner').eq('task_id', taskId).maybeSingle()
       const isSelfAssigned = assignerData?.data?.assigner === assigneeId
 
       if (assigneeIsOffice || isSelfAssigned) {
         await supabase.from('task_approval')
-          .update({ unit_head: true, director: false, revision_comment: null, revised_at: null })
-          .eq('id', taskId)
+          .update({ unit_head: true, revision_comment: null, revised_at: null })
+          .eq('task_id', taskId)
       } else {
         await supabase.from('task_approval')
-          .update({ unit_head: false, director: false, revision_comment: null, revised_at: null })
-          .eq('id', taskId)
+          .update({ revision_comment: null, revised_at: null })
+          .eq('task_id', taskId)
       }
 
       await _notifySubmission(

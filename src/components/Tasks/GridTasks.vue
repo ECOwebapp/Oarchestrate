@@ -1,7 +1,7 @@
 <script setup vapor>
 import { ref, watch, nextTick } from 'vue'
 import TaskCard from './TaskCard.vue'
-import TaskDetail from './TaskDetail.vue'
+import TaskDetail from '../TaskDetail.vue'
 import { taskStore } from '@/stores/tasks';
 
 const task = taskStore()
@@ -55,15 +55,6 @@ const handleAssign = (event) => {
         :selected="props.selectedIds.has(task.id)" :is-deletable="props.isDeletable(task)" @open="handleOpen(task)"
         @toggle-select="emit('toggle-select', $event)" :style="{ animationDelay: `${index * 0.03}s` }" />
     </div>
-
-    <template>
-      <Teleport to="#task-detail">
-        <Transition name="modal">
-          <TaskDetail v-if="selected" :key="selected.id" :task="selected" :loading="loading" @close="handleClose"
-            @assignSubtask="handleAssign" />
-        </Transition>
-      </Teleport>
-    </template>
   </div>
 
 </template>

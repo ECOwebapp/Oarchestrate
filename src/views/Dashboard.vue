@@ -1,7 +1,7 @@
 <script setup vapor>
-import AddTask from '@/components/AddTask.vue'
+import AddTask from '@/components/Tasks/AddTask.vue'
 import Loading from '@/components/Loading.vue'
-import TaskCard from '@/components/TaskCard.vue'
+import TaskCard from '@/components/Tasks/TaskCard.vue'
 import TaskDetail from '@/components/TaskDetail.vue'
 import { supabase } from '@/lib/supabaseClient'
 import { taskStore } from '@/stores/tasks'

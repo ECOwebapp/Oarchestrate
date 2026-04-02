@@ -1,6 +1,6 @@
 <script setup vapor>
 import { ref } from 'vue'
-import TaskDetail from './TaskDetail.vue'
+import TaskDetail from '../TaskDetail.vue'
 
 const props = defineProps({
   tasks: Array,

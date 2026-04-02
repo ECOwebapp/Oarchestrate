@@ -1,9 +1,9 @@
 <script setup vapor>
-import AddTask from '@/components/AddTask.vue'
-import ChartTasks from '@/components/ChartTasks.vue'
-import GridTasks from '@/components/GridTasks.vue'
+import AddTask from '@/components/Tasks/AddTask.vue'
+import ChartTasks from '@/components/Tasks/ChartTasks.vue'
+import GridTasks from '@/components/Tasks/GridTasks.vue'
 import Icons from '@/components/Icons.vue'
-import TableTasks from '@/components/TableTasks.vue'
+import TableTasks from '@/components/Tasks/TableTasks.vue'
 import Loading from '@/components/Loading.vue'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'

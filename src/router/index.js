@@ -6,7 +6,7 @@ import Login from '@/views/Login.vue'
 import Organization from '@/views/Organization.vue'
 import Profile from '@/views/Profile.vue'
 import Register from '@/views/Register.vue'
-import Projects from '@/views/Projects.vue'
+import Projects from '@/views/Task.vue'
 import Main from '@/views/Main.vue'
 
 import { useAuthStore } from '@/stores/useAuthStore'
