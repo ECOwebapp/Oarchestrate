@@ -2,6 +2,7 @@
 import { useAuthStore } from '@/stores/useAuthStore'
 import { mdiAccount, mdiLink } from '@mdi/js'
 import { computed } from 'vue'
+import router from '@/router';
 
 const props = defineProps({
   task: Object,
@@ -55,12 +56,11 @@ const isResubmitted = computed(() =>
 
 const handleClick = () => {
   if (props.selectable) {
-    emit('toggle-select', props.task)
+    emit('toggle-select', props.project)
   } else {
-    emit('open', props.task)
+    router.push(`/projects/${props.task.parentId}/tasks/${props.task.id}/subtasks/`)
   }
 }
-
 const handleCheckboxClick = (e) => {
   e.stopPropagation()
   emit('toggle-select', props.task)

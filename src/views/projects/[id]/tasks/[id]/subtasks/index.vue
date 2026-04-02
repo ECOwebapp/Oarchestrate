@@ -1,9 +1,9 @@
 <script setup vapor>
-import AddTask from '@/components/AddTask.vue'
-import ChartTasks from '@/components/ChartTasks.vue'
-import GridTasks from '@/components/GridTasks.vue'
+import AddTask from '@/components/Subtasks/AddSubtask.vue'
+import ChartTasks from '@/components/Subtasks/ChartSubtasks.vue'
+import GridTasks from '@/components/Subtasks/GridSubtasks.vue'
 import Icons from '@/components/Icons.vue'
-import TableTasks from '@/components/TableTasks.vue'
+import TableTasks from '@/components/Subtasks/TableSubtasks.vue'
 import Loading from '@/components/Loading.vue'
 import { useSubtaskStore } from '@/stores/subtasks'
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -19,7 +19,8 @@ const addTask = ref(false)
 const search = ref('')
 const filter = ref('All')
 const sortBy = ref('Recently Assigned')
-const loading = storeToRefs(store)?.loading
+const loading = storeToRefs(subtaskStore)?.loading
+const parentId = computed(() => Number(route.params.id))
 
 // ── Only Directors and Unit Heads can select / delete ──────────────────────
 const canDelete = computed(() => auth.isDirector || auth.isUnitHead)
@@ -60,7 +61,7 @@ const activeUnitId = computed(() => {
   return headRole?.unit_id ?? null
 })
 
-onMounted(() => subtaskStore.fetchSubTasks(route.params.id))
+onMounted(() => subtaskStore.fetchSubTasks(parentId.value))
 
 const filterOpts = computed(() => {
   const base = ['All', 'Regular', 'Insertion', 'Urgent', 'Revision', 'Overdue']
@@ -122,7 +123,7 @@ const isDeletable = (task) => {
 // How many of the currently selected tasks the current user can actually delete
 const deletableSelectedCount = computed(() =>
   [...selectedIds.value].filter(id => {
-    const t = store.tasks.find(t => t.id === id)
+    const t = subtaskStore.subtasks.find(t => t.id === id)
     return t && isDeletable(t)
   }).length
 )
@@ -176,7 +177,7 @@ const deleteTasks = async () => {
   deleteError.value = ''
   try {
     const ids = [...selectedIds.value]
-    await store.deleteTasks(ids)          // store handles auth filtering internally too
+    await subtaskStore.deleteSubTasks(ids)          // store handles auth filtering internally too
     selectedIds.value = new Set()
     selectionMode.value = false
     showDeleteConfirm.value = false
@@ -216,7 +217,7 @@ const onCloseAddTask = async (success) => {
   preFillData.value = null
 
   if (success && taskDetail.value === false) {
-    await store.fetchTasks()
+    await subtaskStore.fetchSubTasks(parentId.value)
   }
 }
 </script>

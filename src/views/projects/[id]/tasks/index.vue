@@ -1,9 +1,9 @@
 <script setup vapor>
-import AddTask from '@/components/AddTask.vue'
-import ChartTasks from '@/components/ChartTasks.vue'
-import GridTasks from '@/components/GridTasks.vue'
+import AddTask from '@/components/Tasks/AddTask.vue'
+import ChartTasks from '@/components/Tasks/ChartTasks.vue'
+import GridTasks from '@/components/Tasks/GridTasks.vue'
 import Icons from '@/components/Icons.vue'
-import TableTasks from '@/components/TableTasks.vue'
+import TableTasks from '@/components/Tasks/TableTasks.vue'
 import Loading from '@/components/Loading.vue'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -20,6 +20,7 @@ const search = ref('')
 const filter = ref('All')
 const sortBy = ref('Recently Assigned')
 const loading = storeToRefs(store)?.loading
+const parentId = computed(() => Number(route.params.id))
 
 // ── Only Directors and Unit Heads can select / delete ──────────────────────
 const canDelete = computed(() => auth.isDirector || auth.isUnitHead)
@@ -60,7 +61,7 @@ const activeUnitId = computed(() => {
   return headRole?.unit_id ?? null
 })
 
-onMounted(() => store.fetchTasks(route.params.id))
+onMounted(() => store.fetchTasks(parentId.value))
 
 const filterOpts = computed(() => {
   const base = ['All', 'Regular', 'Insertion', 'Urgent', 'Revision', 'Overdue']
@@ -216,7 +217,7 @@ const onCloseAddTask = async (success) => {
   preFillData.value = null
 
   if (success && taskDetail.value === false) {
-    await store.fetchTasks()
+    await store.fetchTasks(parentId.value)
   }
 }
 </script>
@@ -356,7 +357,7 @@ const onCloseAddTask = async (success) => {
       <Transition name="modal">
         <div v-if="addTask" class="fixed inset-0 z-150 flex items-center justify-center bg-black/50 px-4"
           @click.self="onCloseAddTask">
-          <AddTask @close="onCloseAddTask" @success="onCloseAddTask(true)" :design="false" :pre-fill="preFillData" :parent-id="route.params.id" />
+          <AddTask @close="onCloseAddTask" @success="onCloseAddTask(true)" :design="false" :pre-fill="preFillData" :parent-id="parentId" />
         </div>
       </Transition>
     </Teleport>

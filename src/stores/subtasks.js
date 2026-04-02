@@ -252,8 +252,8 @@ export const useSubtaskStore = defineStore('subtasks', () => {
         const posRes = memberPos.value.filter(mp => mp.user_id === assigneeIds)
         const roleMap = Object.fromEntries((posRes || []).map(r => [r.user_id, r.pos_id]))
 
-        const spawnedMap = buildSpawnedMap([...(rows || []), ...extraSpawnedRows])
-        const parentRows = (rows || []).filter(r => !r.source_subtask_id)
+        const spawnedMap = buildSpawnedMap([...(subtaskRows || []), ...extraSpawnedRows])
+        const parentRows = (subtaskRows || []).filter(r => !r.source_subtask_id)
 
         subtasks.value = parentRows.map(t => ({
           ...subtaskRow(t, spawnedMap),
@@ -342,6 +342,26 @@ export const useSubtaskStore = defineStore('subtasks', () => {
     } finally {
       loading.value = false
     }
+  }
+
+  const fetchTaskById = async (subtaskId) => {
+    const { data, error } = await supabase
+      .from('task')
+      .select(SUBTASK_SELECT)
+      .eq('id', subtaskId)
+      .maybeSingle()
+
+    if (error) throw new Error(error.message)
+    if (!data) throw new Error('TSubtask not found.')
+
+    const allUserIds = [
+      data.assigner, data.assignee
+    ].filter(Boolean)
+
+    await resolveNames([...new Set([...allUserIds])])
+
+    const spawnedMap = buildSpawnedMap([data])
+    return subtaskRow(data, spawnedMap)
   }
 
   // ── NOTIFICATION HELPER ─────────────────────────────────────────────────────

@@ -5,24 +5,24 @@ import { computed, ref, watch } from 'vue'
 
 export const useNotifStore = defineStore('notif', () => {
 
-  const notifs  = ref([])
+  const notifs = ref([])
   const loading = ref(false)
-  const PAGE    = 8
-  const shown   = ref(PAGE)
+  const PAGE = 8
+  const shown = ref(PAGE)
 
-  const unread  = computed(() => notifs.value.filter(n => !n.read).length)
+  const unread = computed(() => notifs.value.filter(n => !n.read).length)
   const visible = computed(() => notifs.value.slice(0, shown.value))
   const hasMore = computed(() => shown.value < notifs.value.length)
 
-  const showMore    = () => { shown.value += PAGE }
-  const resetShown  = () => { shown.value = PAGE }
+  const showMore = () => { shown.value += PAGE }
+  const resetShown = () => { shown.value = PAGE }
 
   // ─────────────────────────────────────────
   // FETCH
   // ─────────────────────────────────────────
   const fetchNotifs = async () => {
     const auth = useAuthStore()
-    const uid  = auth.user?.id
+    const uid = auth.user?.id
     if (!uid) return
 
     // Wait until auth store finishes loading the profile
@@ -56,7 +56,7 @@ export const useNotifStore = defineStore('notif', () => {
 
         const userIds = (regs || []).map(r => r.user_id)
         let nameMap = {}
-        let posMap  = {}
+        let posMap = {}
         let unitMap = {}
 
         if (userIds.length) {
@@ -70,7 +70,7 @@ export const useNotifStore = defineStore('notif', () => {
           ])
 
           if (profRes.error) console.error('[notifStore] user_profile error:', profRes.error)
-          if (posRes.error)  console.error('[notifStore] position error:',     posRes.error)
+          if (posRes.error) console.error('[notifStore] position error:', posRes.error)
 
           nameMap = Object.fromEntries(
             (profRes.data || []).map(p => [p.user_id, `${p.fname || ''} ${p.lname || ''}`.trim()])
@@ -79,23 +79,23 @@ export const useNotifStore = defineStore('notif', () => {
             (posRes.data || []).map(p => [p.user_id, p?.pos_name || ''])
           )
           unitMap = Object.fromEntries(
-            (posRes.data || []).map(u => [u.user_id, u?.unit_name|| ''])
+            (posRes.data || []).map(u => [u.user_id, u?.unit_name || ''])
           )
         }
 
-        ;(regs || []).forEach(r => {
+        ; (regs || []).forEach(r => {
           const unitLabel = unitMap[r.user_id] || ''
           results.push({
-            id:       `reg-${r.user_id}`,
-            type:     'registration',
-            userId:   r.user_id,
-            title:    nameMap[r.user_id] || 'New User',
-            position: posMap[r.user_id]  || 'Unassigned',
-            unit:     unitLabel,
-            body:     `Registered${unitLabel ? ` under ${unitLabel}` : ''} — awaiting your approval.`,
-            time:     r.requested_at,
-            read:     !!r.notif_read_by_director,
-            status:   'pending',
+            id: `reg-${r.user_id}`,
+            type: 'registration',
+            userId: r.user_id,
+            title: nameMap[r.user_id] || 'New User',
+            position: posMap[r.user_id] || 'Unassigned',
+            unit: unitLabel,
+            body: `Registered${unitLabel ? ` under ${unitLabel}` : ''} — awaiting your approval.`,
+            time: r.requested_at,
+            read: !!r.notif_read_by_director,
+            status: 'pending',
           })
         })
       }
@@ -107,7 +107,7 @@ export const useNotifStore = defineStore('notif', () => {
       // Unit Head  → tasks from their unit members with output submitted, not yet unit_head approved
       // Member     → their own tasks
       let taskRows = []
-      let taskErr  = null
+      let taskErr = null
 
       if (auth.isDirector) {
         // Get Office unit id
@@ -130,7 +130,6 @@ export const useNotifStore = defineStore('notif', () => {
             task_duration ( created ),
             task_notif    ( read_by_assignee, read_by_director, read_by_unit_head ),
             task_output   ( link )`)
-          .is('parent_ppa_id', null)
           .eq('task_approval.unit_head', true)
           .eq('task_approval.director', false)
           .limit(30)
@@ -140,16 +139,16 @@ export const useNotifStore = defineStore('notif', () => {
           const { data: od } = await supabase
             .from('task')
             .select(`id, assignee, assigner,
-              task_profile ( title, urgent, task_type_ref:task_type(task_type) ),
+              task_profile!task_id ( title, urgent, task_type_ref:task_type(task_type) ),
               task_approval ( unit_head, director ),
               task_duration ( created ),
               task_notif    ( read_by_assignee, read_by_director, read_by_unit_head ),
               task_output   ( link )`)
-            .is('parent_ppa_id', null).or(officeFilter)
+            .or(officeFilter)
           d2 = (od || []).filter(t => t.task_output?.link && !t.task_approval?.director)
         }
         const seen = new Set()
-        taskRows = [...(d1||[]), ...d2].filter(t => {
+        taskRows = [...(d1 || []), ...d2].filter(t => {
           if (seen.has(t.id)) return false; seen.add(t.id); return true
         })
         taskErr = e1
@@ -160,7 +159,7 @@ export const useNotifStore = defineStore('notif', () => {
         const activeUnitId = computed(() => {
           // Look for the position entry where they are a Unit Head (ID 4)
           const headRole = auth.positions?.find(p => p.pos_id === 4);
-        
+
           // Return that specific unit_id, or null if they aren't a Unit Head anywhere
           return headRole?.unit_id ?? null;
         });
@@ -180,9 +179,9 @@ export const useNotifStore = defineStore('notif', () => {
               task_duration ( created ),
               task_notif    ( read_by_assignee, read_by_director, read_by_unit_head ),
               task_output   ( link )`)
-            .is('parent_ppa_id', null).or(filter).limit(30)
+            .or(filter).limit(30)
           taskRows = (d || []).filter(t => t.task_output?.link && !t.task_approval?.unit_head)
-          taskErr  = e
+          taskErr = e
         }
 
       } else {
@@ -194,9 +193,9 @@ export const useNotifStore = defineStore('notif', () => {
             task_duration ( created ),
             task_notif    ( read_by_assignee, read_by_director, read_by_unit_head )`)
           .or(`assignee.eq.${uid},assigner.eq.${uid}`)
-          .is('parent_ppa_id', null).limit(30)
+          .limit(30)
         taskRows = d || []
-        taskErr  = e
+        taskErr = e
       }
 
       if (taskErr) console.error('[notifStore] task fetch error:', taskErr)
@@ -212,11 +211,11 @@ export const useNotifStore = defineStore('notif', () => {
         )
       }
 
-      ;(taskRows || []).forEach(t => {
-        const urgent   = !!t.task_profile?.urgent
+      ; (taskRows || []).forEach(t => {
+        const urgent = !!t.task_profile?.urgent
         const taskType = t.task_profile?.task_type_ref?.task_type?.toLowerCase() || 'regular'
         let isRead = false
-        if (auth.isDirector)  isRead = !!t.task_notif?.read_by_director
+        if (auth.isDirector) isRead = !!t.task_notif?.read_by_director
         else if (auth.isUnitHead) isRead = !!t.task_notif?.read_by_unit_head
         else isRead = !!t.task_notif?.read_by_assignee
 
@@ -226,19 +225,19 @@ export const useNotifStore = defineStore('notif', () => {
         }
 
         const submitter = nm2[t.assignee] || 'Someone'
-        const assigner  = nm2[t.assigner] || 'Unknown'
+        const assigner = nm2[t.assigner] || 'Unknown'
         results.push({
-          id:    `task-${t.id}`,
-          type:  'task_submitted',
+          id: `task-${t.id}`,
+          type: 'task_submitted',
           title: t.task_profile?.title || 'Untitled Task',
-          body:  auth.isUnitHead
+          body: auth.isUnitHead
             ? `${submitter} submitted output — awaiting your review · ${taskType}${urgent ? ' · URGENT' : ''}`
             : auth.isDirector
               ? `${submitter} · ${taskType}${urgent ? ' · URGENT' : ''} · approved by Unit Head`
               : `Assigned by ${assigner} · ${taskType}${urgent ? ' · URGENT' : ''}`,
-          time:  t.task_duration?.created,
-          read:  isRead,
-          meta:  { urgent, taskType, taskId: t.id },
+          time: t.task_duration?.created,
+          read: isRead,
+          meta: { urgent, taskType, taskId: t.id },
         })
       })
 
@@ -267,15 +266,15 @@ export const useNotifStore = defineStore('notif', () => {
         )
       }
 
-      ;(pokes || []).forEach(p => {
+      ; (pokes || []).forEach(p => {
         results.push({
-          id:    `poke-${p.id}`,
-          type:  'poke',
+          id: `poke-${p.id}`,
+          type: 'poke',
           title: pokerMap[p.from_user] || 'A team member',
-          body:  p.message || `Followed up on "${p.task?.task_profile?.title || 'a task'}"`,
-          time:  p.created_at,
-          read:  !!p.is_read,
-          meta:  { taskId: p.task_id },
+          body: p.message || `Followed up on "${p.task?.task_profile?.title || 'a task'}"`,
+          time: p.created_at,
+          read: !!p.is_read,
+          meta: { taskId: p.task_id },
         })
       })
 
@@ -298,7 +297,7 @@ export const useNotifStore = defineStore('notif', () => {
       if (n.type !== 'registration') n.read = true
     })
     const auth = useAuthStore()
-    const uid  = auth.user?.id
+    const uid = auth.user?.id
     if (!uid) return
 
     try {
@@ -338,10 +337,10 @@ export const useNotifStore = defineStore('notif', () => {
       const { error } = await supabase
         .from('account_status')
         .update({
-          status_id:                 2,
+          status_id: 2,
           notif_read_by_director: true,
-          reviewed_by:            auth.user?.id,
-          reviewed_at:            new Date().toISOString(),
+          reviewed_by: auth.user?.id,
+          reviewed_at: new Date().toISOString(),
         })
         .eq('user_id', userId)
       if (error) throw error
@@ -360,10 +359,10 @@ export const useNotifStore = defineStore('notif', () => {
       const { error } = await supabase
         .from('account_status')
         .update({
-          status_id:                 3,
+          status_id: 3,
           notif_read_by_director: true,
-          reviewed_by:            auth.user?.id,
-          reviewed_at:            new Date().toISOString(),
+          reviewed_by: auth.user?.id,
+          reviewed_at: new Date().toISOString(),
         })
         .eq('user_id', userId)
       if (error) throw error
