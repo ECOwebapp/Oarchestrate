@@ -310,7 +310,7 @@ export const useSubtaskStore = defineStore('subtasks', () => {
 
         const spawnedMap = buildSpawnedMap([...(subtaskRows || []), ...extraSpawnedRows])
 
-        subtasks.value = rows.map(t => ({
+        subtasks.value = subtaskRows.map(t => ({
           ...subtaskRow(t, spawnedMap),
           assigneeRole: roleMap[t.assignee] || null,
           assigneeUnitId: getAssigneeUnitId(t.assignee),
