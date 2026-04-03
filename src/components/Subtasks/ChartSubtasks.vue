@@ -3,7 +3,7 @@ import { GanttChart } from 'jordium-gantt-vue3'
 import 'jordium-gantt-vue3/dist/assets/jordium-gantt-vue3.css'
 import { computed } from 'vue'
 
-const props = defineProps(['tasks'])
+const props = defineProps(['subtasks'])
 
 const getProgress = (task) => {
     const start = new Date(task.from).getTime()
@@ -24,7 +24,7 @@ const getProgress = (task) => {
 //               task.name, task.type, task.urgent,
 //               task.assignerName, task.assigneeName
 const ganttTasks = computed(() =>
-    props.tasks
+    props.subtasks
         .filter(t => t.from && t.to)   // skip tasks with no dates
         .map((task, index) => ({
             id:         task.id ?? index + 1,

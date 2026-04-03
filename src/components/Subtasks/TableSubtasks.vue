@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import TaskDetail from '../TaskDetail.vue'
 
 const props = defineProps({
-  tasks: Array,
+  subtasks: Array,
   selectable: { type: Boolean, default: false },
   selectedIds: { type: Object, default: () => new Set() },  // Set of selected task ids
   isDeletable: { type: Function, default: () => false },
@@ -74,10 +74,10 @@ const handleAssign = (event) => {
           </tr>
         </thead>
         <tbody>
-          <tr v-if="tasks.length === 0">
-            <td :colspan="selectable ? 8 : 7" class="text-center py-16 text-gray-400 text-sm">No tasks found</td>
+          <tr v-if="subtasks.length === 0">
+            <td :colspan="selectable ? 8 : 7" class="text-center py-16 text-gray-400 text-sm">No subtasks found</td>
           </tr>
-          <tr v-for="(task, index) in tasks" :key="task.id"
+          <tr v-for="(task, index) in subtasks" :key="task.id"
             class="border-b border-gray-100 transition-colors animate-slide-up" :class="[
               selectedIds.has(task.id) ? 'bg-green-50' : 'hover:bg-gray-50',
               selectable && isDeletable(task) ? 'cursor-pointer' : '',
