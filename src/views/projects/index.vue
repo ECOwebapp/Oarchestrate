@@ -199,7 +199,7 @@ const onCloseAddProject = async (success) => {
 <template>
   <div class="flex flex-col h-full min-h-0">
 
-    <Loading v-if="loading" :message="'Loading tasks from the source...'" />
+    <Loading v-if="loading" :message="'Loading projects from the source...'" />
 
     <div v-else class="flex flex-col h-full min-h-0">
 
@@ -461,3 +461,9 @@ const onCloseAddProject = async (success) => {
   }
 }
 </style>
+<route lang="yaml">
+  name: "Projects"
+  meta:
+    requiresAuth: true
+    layout: "projects"
+</route>

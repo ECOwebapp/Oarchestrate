@@ -283,8 +283,8 @@ const submitForm = async () => {
     if (!newTask.value.description.trim()) throw new Error('Description is required.')
     if (!newTask.value.type) throw new Error('Task type is required.')
     if (!newTask.value.endDate) throw new Error('Deadline is required.')
-    if (!auth.isMember && !newTask.value.assignee)
-      throw new Error('Please select an assignee.')
+    // if (!auth.isMember && !newTask.value.assignee)
+    //   throw new Error('Please select an assignee.')
 
     const validSubs = subTasks.value.filter(s => s.text.trim()).map(s => ({ description: s.text }))
     const assigneeId = auth.isMember ? auth.userID : newTask.value.assignee
@@ -316,7 +316,7 @@ const submitForm = async () => {
           endDate: newTask.value.endDate,
           urgent: newTask.value.urgent,
           design: props.design,
-          assignee: assigneeId,
+          assignee: assigneeId || null,
           outputLink: showOutput.value ? outputUrl.value : '',
         },
       })
@@ -613,7 +613,7 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
         </div>
 
         <!-- Mark as Design -->
-        <div v-if="preFill && newTask.type === 1" class="flex items-center gap-2">
+        <div v-if="newTask.type === 1 && (auth.isDirector || auth.isUnitHead)" class="flex items-center gap-2">
           <input v-model="newTask.design" type="checkbox" id="design"
             class="w-4 h-4 accent-green-900 hover:cursor-pointer" />
           <label for="design" class="text-sm font-semibold text-green-900 hover:cursor-pointer">Mark as Design</label>

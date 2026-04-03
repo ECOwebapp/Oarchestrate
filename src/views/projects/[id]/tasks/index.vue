@@ -331,11 +331,11 @@ const onCloseAddTask = async (success) => {
       <div class="flex-1 overflow-auto bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0">
         <GridTasks v-if="state === 'Grid View'" :tasks="filtered" :selectable="selectionMode"
           :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
-          @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true" @close="taskDetail = false" 
+          @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true" @close="taskDetail = false"
           @success="() => { taskDetail = false; onCloseAddTask(true); }" />
         <TableTasks v-else-if="state === 'Table View'" :tasks="filtered" :selectable="selectionMode"
           :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
-          @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true"  @close="taskDetail = false"
+          @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true" @close="taskDetail = false"
           @success="() => { taskDetail = false; onCloseAddTask(true); }" />
         <ChartTasks v-else-if="state === 'Chart View'" :tasks="filtered" />
       </div>
@@ -357,7 +357,8 @@ const onCloseAddTask = async (success) => {
       <Transition name="modal">
         <div v-if="addTask" class="fixed inset-0 z-150 flex items-center justify-center bg-black/50 px-4"
           @click.self="onCloseAddTask">
-          <AddTask @close="onCloseAddTask" @success="onCloseAddTask(true)" :design="false" :pre-fill="preFillData" :parent-id="parentId" />
+          <AddTask @close="onCloseAddTask" @success="onCloseAddTask(true)" :design="false" :pre-fill="preFillData"
+            :parent-id="parentId" />
         </div>
       </Transition>
     </Teleport>
@@ -488,3 +489,9 @@ const onCloseAddTask = async (success) => {
   }
 }
 </style>
+<route lang="yaml">
+  name: "Tasks"
+  meta:
+    requiresAuth: true
+    layout: "projects"
+</route>
