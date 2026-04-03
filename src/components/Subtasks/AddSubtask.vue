@@ -1,7 +1,7 @@
 <script setup vapor>
 import { useMemberStore } from '@/stores/member'
 import { usePosStore } from '@/stores/positions'
-import { taskStore } from '@/stores/tasks'
+import { useSubtaskStore } from '@/stores/subtasks'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, ref, watch } from 'vue'
 import BulkAddTask from '../BulkAddTask.vue'
@@ -17,10 +17,10 @@ const props = defineProps({
 
 const memberStore = useMemberStore()
 const posStore = usePosStore()
-const store = taskStore()
+const subtaskStore = useSubtaskStore()
 const auth = useAuthStore()
 
-const { tasks } = storeToRefs(store)
+const { subtasks } = storeToRefs(subtaskStore)
 
 const loading = ref(false)
 const subTasks = ref([{ text: '' }])
@@ -69,8 +69,8 @@ const applyPreFill = (fill) => {
     subtaskId: fill.subtask.id || null,
     parentTask: fill.parentTask || null,
     type: fill.type || 1,
-    urgent: tasks.value.find(t => t.sourceSubtaskId === fill.subtask.id)?.urgent || false,
-    design: tasks.value.find(t => t.sourceSubtaskId === fill.subtask.id)?.design || false,
+    urgent: subtasks.value.find(t => t.sourceSubtaskId === fill.subtask.id)?.urgent || false,
+    design: subtasks.value.find(t => t.sourceSubtaskId === fill.subtask.id)?.design || false,
     outputLink: fill.outputLink || '',
   }
 }
@@ -283,8 +283,6 @@ const submitForm = async () => {
     if (!newTask.value.description.trim()) throw new Error('Description is required.')
     if (!newTask.value.type) throw new Error('Task type is required.')
     if (!newTask.value.endDate) throw new Error('Deadline is required.')
-    if (!auth.isMember && !newTask.value.assignee)
-      throw new Error('Please select an assignee.')
 
     const validSubs = subTasks.value.filter(s => s.text.trim()).map(s => ({ description: s.text }))
     const assigneeId = auth.isMember ? auth.userID : newTask.value.assignee
@@ -307,16 +305,16 @@ const submitForm = async () => {
     // }
 
     // else {
-      await store.addTasks({
-        mainTask: {
+      await subtaskStore.addSubTasks({
+        subTask: {
           parentId: newTask.value.parentId,
           name: newTask.value.name,
           description: newTask.value.description,
           type: newTask.value.type,
           endDate: newTask.value.endDate,
           urgent: newTask.value.urgent,
-          design: props.design,
-          assignee: assigneeId,
+          design: newTask.value.design,
+          assignee: newTask.value.assignee ? assigneeId : null,
           outputLink: showOutput.value ? outputUrl.value : '',
         },
       })
@@ -354,7 +352,7 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
     <!-- Header -->
     <div class="flex items-center justify-between px-7 py-5 border-b border-gray-100">
       <h2 class="text-xl font-bold text-gray-900">
-        <template v-if="auth.isDirector">Assign a Task</template>
+        <template v-if="auth.isDirector">Assign a Subtask</template>
         <template v-else-if="auth.isUnitHead">Assign to Unit</template>
         <template v-else>Submit Insertion Task</template>
       </h2>
@@ -584,26 +582,6 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
       </div>
       <!-- ── end Output block ────────────────────────────────────────────────── -->
 
-      <!-- Sub-tasks (Director only, not when pre-filling a subtask) -->
-      <div v-if="auth.isDirector && !preFill && newTask.type === 1">
-        <div class="flex items-center justify-between mb-2">
-          <label class="text-sm font-semibold text-gray-700">Sub-tasks</label>
-          <button type="button" @click="addSubTask"
-            class="flex items-center gap-1 text-xs font-bold text-green-800 hover:text-green-600 hover:cursor-pointer">
-            <Icons :icon="'add'" class="w-3 h-3" /> Add
-          </button>
-        </div>
-        <div class="space-y-2 max-h-40 overflow-y-auto pr-1">
-          <div v-for="(item, i) in subTasks" :key="i" class="flex items-start gap-2">
-            <span class="text-xs text-gray-400 mt-2.5 flex-shrink-0 w-4">{{ i + 1 }}</span>
-            <textarea v-model="item.text" rows="1" maxlength="200" :placeholder="`Sub-task ${i + 1}…`" class="flex-1 border-2 border-gray-200 rounded-lg px-2 py-1.5 text-sm resize-none
-                     focus:outline-none focus:border-green-800 transition-colors" />
-            <button type="button" @click="removeSubTask(i)"
-              class="text-gray-300 hover:text-red-400 mt-1.5 flex-shrink-0 text-lg leading-none hover:cursor-pointer">×</button>
-          </div>
-        </div>
-      </div>
-
       <div class="flex justify-start gap-10">
         <!-- Urgent -->
         <div class="flex items-center gap-2">
@@ -613,7 +591,7 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
         </div>
 
         <!-- Mark as Design -->
-        <div v-if="preFill && newTask.type === 1" class="flex items-center gap-2">
+        <div v-if="newTask.type === 1 && (auth.isDirector || auth.isUnitHead)" class="flex items-center gap-2">
           <input v-model="newTask.design" type="checkbox" id="design"
             class="w-4 h-4 accent-green-900 hover:cursor-pointer" />
           <label for="design" class="text-sm font-semibold text-green-900 hover:cursor-pointer">Mark as Design</label>

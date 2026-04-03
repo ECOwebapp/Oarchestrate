@@ -10,6 +10,10 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
+import GridSubtasks from '@/components/Subtasks/GridSubtasks.vue'
+import TableSubtasks from '@/components/Subtasks/TableSubtasks.vue'
+import ChartSubtasks from '@/components/Subtasks/ChartSubtasks.vue'
+import AddSubtask from '@/components/Subtasks/AddSubtask.vue'
 
 const subtaskStore = useSubtaskStore()
 const auth = useAuthStore()
@@ -33,9 +37,9 @@ const isDeleting = ref(false)
 const deleteError = ref('')
 const taskDetail = ref(false)
 
-const tasks = computed(() => {
+const subtasks = computed(() => {
   // if (auth.isDirector) {
-  //   return store.tasks.filter(t => {
+  //   return store.subtasks.filter(t => {
   //     // 1. Core requirement: Must not be marked as 'design'
   //     const isNotDesigned = !t.design;
 
@@ -53,7 +57,7 @@ const tasks = computed(() => {
   // Default filter for everyone else
 
 
-  return subtaskStore.subtasks.filter(t => !t.design);
+  return subtaskStore.subtasks;
 });
 
 const activeUnitId = computed(() => {
@@ -72,7 +76,7 @@ const filterOpts = computed(() => {
 const sortOpts = ['Recently Assigned', 'Date Due', 'Name A→Z', 'Urgent First']
 
 const filtered = computed(() => {
-  let list = tasks.value
+  let list = subtasks.value
   const q = search.value.toLowerCase()
   if (q) list = list.filter(t =>
     t.name.toLowerCase().includes(q) ||
@@ -101,7 +105,7 @@ const filtered = computed(() => {
   else
     list = [...list].sort((a, b) => new Date(b.from) - new Date(a.from))
 
-  // Always bubble overdue tasks to the top. Within overdue tasks, sort by days overdue (most overdue first).
+  // Always bubble overdue subtasks to the top. Within overdue subtasks, sort by days overdue (most overdue first).
   list = list.sort((a, b) => {
     const oa = a.overdue ? 1 : 0
     const ob = b.overdue ? 1 : 0
@@ -113,14 +117,14 @@ const filtered = computed(() => {
 })
 
 // ── Permission check per task ────────────────────────────────────────────────
-// Director: any task | Unit Head: only tasks they assigned
+// Director: any task | Unit Head: only subtasks they assigned
 const isDeletable = (task) => {
   if (auth.isDirector) return true
   if (auth.isUnitHead) return task.assigner === auth.userID
   return false
 }
 
-// How many of the currently selected tasks the current user can actually delete
+// How many of the currently selected subtasks the current user can actually delete
 const deletableSelectedCount = computed(() =>
   [...selectedIds.value].filter(id => {
     const t = subtaskStore.subtasks.find(t => t.id === id)
@@ -131,7 +135,7 @@ const deletableSelectedCount = computed(() =>
 // ── Selection helpers ────────────────────────────────────────────────────────
 const selectedCount = computed(() => selectedIds.value.size)
 
-// Subset of visible tasks that this user is allowed to delete
+// Subset of visible subtasks that this user is allowed to delete
 const selectableTasks = computed(() => filtered.value.filter(isDeletable))
 
 const allVisibleSelected = computed(() =>
@@ -152,7 +156,7 @@ const toggleSelectMode = () => {
 }
 
 const toggleTaskSelect = (task) => {
-  if (!isDeletable(task)) return   // silently ignore non-deletable tasks
+  if (!isDeletable(task)) return   // silently ignore non-deletable subtasks
   const next = new Set(selectedIds.value)
   if (next.has(task.id)) next.delete(task.id)
   else next.add(task.id)
@@ -183,7 +187,7 @@ const deleteTasks = async () => {
     showDeleteConfirm.value = false
   } catch (err) {
     console.error('[Tasks] delete error:', err)
-    deleteError.value = err.message || 'Failed to delete tasks. Please try again.'
+    deleteError.value = err.message || 'Failed to delete subtasks. Please try again.'
   } finally {
     isDeleting.value = false
   }
@@ -225,7 +229,7 @@ const onCloseAddTask = async (success) => {
 <template>
   <div class="flex flex-col h-full min-h-0">
 
-    <Loading v-if="loading" :message="'Loading tasks from the source...'" />
+    <Loading v-if="loading" :message="'Loading subtasks from the source...'" />
 
     <div v-else class="flex flex-col h-full min-h-0">
 
@@ -237,7 +241,7 @@ const onCloseAddTask = async (success) => {
           class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl
                hover:bg-green-800 active:scale-95 transition-all text-sm flex-shrink-0 hover:cursor-pointer">
           <Icons :icon="'add'" />
-          <span class="hidden sm:inline">Add Task</span>
+          <span class="hidden sm:inline">Add Subtask</span>
         </button>
 
         <!-- Select toggle — Director & Unit Head only -->
@@ -329,15 +333,15 @@ const onCloseAddTask = async (success) => {
 
       <!-- ── View ── -->
       <div class="flex-1 overflow-auto bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0">
-        <GridTasks v-if="state === 'Grid View'" :tasks="filtered" :selectable="selectionMode"
+        <GridSubtasks v-if="state === 'Grid View'" :subtasks="filtered" :selectable="selectionMode"
           :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
           @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true" @close="taskDetail = false" 
           @success="() => { taskDetail = false; onCloseAddTask(true); }" />
-        <TableTasks v-else-if="state === 'Table View'" :tasks="filtered" :selectable="selectionMode"
+        <TableSubtasks v-else-if="state === 'Table View'" :subtasks="filtered" :selectable="selectionMode"
           :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
           @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true"  @close="taskDetail = false"
           @success="() => { taskDetail = false; onCloseAddTask(true); }" />
-        <ChartTasks v-else-if="state === 'Chart View'" :tasks="filtered" />
+        <ChartSubtasks v-else-if="state === 'Chart View'" :subtasks="filtered" />
       </div>
 
       <!-- ── View toggle ── -->
@@ -357,7 +361,7 @@ const onCloseAddTask = async (success) => {
       <Transition name="modal">
         <div v-if="addTask" class="fixed inset-0 z-150 flex items-center justify-center bg-black/50 px-4"
           @click.self="onCloseAddTask">
-          <AddTask @close="onCloseAddTask" @success="onCloseAddTask(true)" :design="false" :pre-fill="preFillData" />
+          <AddSubtask @close="onCloseAddTask" @success="onCloseAddTask(true)" :design="false" :pre-fill="preFillData" :parent-id="parentId" />
         </div>
       </Transition>
     </Teleport>
@@ -488,3 +492,9 @@ const onCloseAddTask = async (success) => {
   }
 }
 </style>
+<route lang="yaml">
+  name: "Subtasks"
+  meta:
+    requiresAuth: true
+    layout: "projects"
+  </route>

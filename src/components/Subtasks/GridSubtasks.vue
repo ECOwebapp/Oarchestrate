@@ -1,12 +1,12 @@
 <script setup vapor>
 import { ref, watch, nextTick } from 'vue'
-import TaskCard from '../Tasks/TaskCard.vue'
+import SubtaskCard from './SubtaskCard.vue';
 import TaskDetail from '../TaskDetail.vue'
-import { taskStore } from '@/stores/tasks';
+import { useSubtaskStore } from '@/stores/subtasks';
 
-const task = taskStore()
+const subtaskStore = useSubtaskStore()
 const props = defineProps({
-  tasks: Array,
+  subtasks: Array,
   selectable: { type: Boolean, default: false },
   selectedIds: { type: Object, default: () => new Set() },  // Set of selected task ids
   isDeletable: { type: Function, default: () => false },
@@ -17,9 +17,9 @@ const selected = ref(null)
 const loading = ref(false)
 const success = ref(false)
 
-const handleOpen = (task) => {
+const handleOpen = (subtask) => {
   if (props.selectable) return
-  selected.value = task
+  selected.value = subtask
   emit('open')
 }
 
@@ -41,18 +41,18 @@ const handleAssign = (event) => {
 
 <template>
   <div>
-    <div v-if="props.tasks.length === 0" class="flex flex-col items-center justify-center h-full py-20 text-gray-400">
+    <div v-if="props.subtasks.length === 0" class="flex flex-col items-center justify-center h-full py-20 text-gray-400">
       <svg class="w-12 h-12 mb-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
           d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
       </svg>
-      <p class="text-sm font-semibold">No tasks found</p>
+      <p class="text-sm font-semibold">No subtasks found</p>
     </div>
 
     <div v-else class="mask-y-from-95% mask-y-to-97% h-full overflow-y-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4
            justify-items-stretch px-4 sm:px-6 lg:px-10 py-6 gap-4">
-      <TaskCard v-for="(task, index) in props.tasks" :key="task.id" :task="task" :selectable="props.selectable"
-        :selected="props.selectedIds.has(task.id)" :is-deletable="props.isDeletable(task)" @open="handleOpen(task)"
+      <SubtaskCard v-for="(subtask, index) in props.subtasks" :key="subtask.id" :task="subtask" :selectable="props.selectable"
+        :selected="props.selectedIds.has(subtask.id)" :is-deletable="props.isDeletable(subtask)" @open="handleOpen(subtask)"
         @toggle-select="emit('toggle-select', $event)" :style="{ animationDelay: `${index * 0.03}s` }" />
     </div>
 

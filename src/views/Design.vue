@@ -1,7 +1,7 @@
 <script setup vapor>
 import AddTask from '@/components/Tasks/AddTask.vue'
 import ChartTasks from '@/components/Tasks/ChartTasks.vue'
-import GridTasks from '@/components/Tasks/GridTasks.vue'
+import GridSubtasks from '@/components/Subtasks/GridSubtasks.vue'
 import Icons from '@/components/Icons.vue'
 import TableTasks from '@/components/Tasks/TableTasks.vue'
 import Loading from '@/components/Loading.vue'
@@ -9,15 +9,17 @@ import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useSubtaskStore } from '@/stores/subtasks'
 
 const store = taskStore()
+const subtaskStore = useSubtaskStore()
 const auth = useAuthStore()
 const state = ref('Grid View')
 const addTask = ref(false)
 const search = ref('')
 const filter = ref('All')
 const sortBy = ref('Recently Assigned')
-const loading = storeToRefs(store)?.loading
+const { loading } = storeToRefs(store)
 
 // ── Only Directors and Unit Heads can select / delete ──────────────────────
 const canDelete = computed(() => auth.isDirector || auth.isUnitHead)
@@ -30,26 +32,10 @@ const isDeleting = ref(false)
 const deleteError = ref('')
 
 const tasks = computed(() => {
-  // if (auth.isDirector) {
-  //   return store.tasks.filter(t => {
-  //     // 1. Core requirement: Must not be marked as 'design'
-  //     const isNotDesigned = !t.design;
-
-  //     const isParentTask = !t.parentId
-
-  //     // 2. The Exception: 
-  //     // Show it if the Unit Head approved it (true) 
-  //     // OR if the task type is 'Insertion' (typeId === 2)
-  //     const isVisibleToDirector = t.unitHead || t.typeId === 2;
-
-  //     return isNotDesigned;
-  //   });
-  // }
-
-  // Default filter for everyone else
-
-
-  return store.tasks.filter(t => t.design);
+  return [
+    ...store.tasks.filter(t => t.design),
+    ...subtaskStore.subtasks.filter(st => st.design)
+  ];
 });
 
 const activeUnitId = computed(() => {
@@ -57,7 +43,12 @@ const activeUnitId = computed(() => {
   return headRole?.unit_id ?? null
 })
 
-onMounted(async() => await store.fetchTasks())
+onMounted(async () => {
+  await Promise.all([
+    store.fetchTasks(),
+    subtaskStore.fetchSubTasks()
+  ])
+})
 
 const filterOpts = computed(() => {
   const base = ['All', 'Regular', 'Insertion', 'Urgent', 'Revision']
@@ -224,7 +215,8 @@ const onCloseAddTask = () => {
 
         <!-- Select toggle — Director & Unit Head only -->
         <button v-if="canDelete" @click="toggleSelectMode"
-          class="hover:cursor-pointer flex items-center gap-2 font-bold h-11 px-5 rounded-2xl transition-all text-sm flex-shrink-0" :class="selectionMode
+          class="hover:cursor-pointer flex items-center gap-2 font-bold h-11 px-5 rounded-2xl transition-all text-sm flex-shrink-0"
+          :class="selectionMode
             ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             : 'outline outline-2 outline-green-950 text-green-950 bg-white hover:bg-green-50'">
           <svg v-if="!selectionMode" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -311,7 +303,7 @@ const onCloseAddTask = () => {
 
       <!-- ── View ── -->
       <div class="flex-1 overflow-auto bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0">
-        <GridTasks v-if="state === 'Grid View'" :tasks="filtered" :selectable="selectionMode"
+        <GridSubtasks v-if="state === 'Grid View'" :subtasks="filtered" :selectable="selectionMode"
           :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
           @assign-subtask="onAssignSubtask" />
         <TableTasks v-else-if="state === 'Table View'" :tasks="filtered" :selectable="selectionMode"

@@ -36,8 +36,12 @@ const navNames = [
   'Profile',
 ]
 
-const getPath = (name) => `/${name.toLowerCase()}`
-const isActive = (name) => route.name === name || route.name === `/${name.toLowerCase()}/`
+const getPath = (name) => `/${name.toLowerCase()}/`
+const isActive = (name) => {
+  const children = ['Tasks', 'Subtasks', 'Projects'].includes(route.name)
+  if (name === 'Projects') return children 
+  return route.name === name
+}
 const version = '0.1 alpha'
 </script>
 

@@ -2,11 +2,14 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
-const pageName = useRoute().name === '/projects/' ? 'Projects' : useRoute().name
+const route = useRoute()
+const pageName = computed(() => route.name)
 
 const header = {
     dashboard: "View summary of analytics and tasks",
-    projects: "Manage all regular tasks, including creating, approving, assigning, and deleting",
+    projects: "Manage all programs, projects, and activities (PPAs)",
+    tasks: "Manage all tasks, including creating, approving, assigning, and deleting",
+    subtasks: "Manage or view all children of a Task called subtasks",
     design: "Review all designs, including submitting, commenting, and approving",
     organization: "View all members and their hierarchy within the organisation",
     analytics: "View detailed analysis of the tasks with different types of charts",
@@ -14,7 +17,7 @@ const header = {
 }
 
 const description = computed(() => {
-    const key = String(pageName).toLowerCase();
+    const key = String(pageName.value).toLowerCase();
     return header[key] || null;
 });
 

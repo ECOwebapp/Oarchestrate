@@ -164,7 +164,7 @@ export const taskStore = defineStore('tasks', () => {
   }
 
   // ── FETCH TASKS ─────────────────────────────────────────────────────────────
-  const fetchTasks = async (parentId) => {
+  const fetchTasks = async (parentId = null) => {
     const auth = useAuthStore()
     const uid = auth.user?.id
     if (!uid) return
@@ -172,11 +172,17 @@ export const taskStore = defineStore('tasks', () => {
 
     try {
       if (auth.isDirector) {
-        const { data: taskRows, error: taskError } = await supabase
+        let query = supabase
           .from('task')
-          .select(TASK_SELECT)
-          .eq('parent_ppa_id', Number(parentId))
-          .order('id', { ascending: false })
+          .select(TASK_SELECT);
+
+        if (parentId) {
+          // If design is true, we filter by the parent_ppa_id
+          query = query.eq('parent_ppa_id', Number(parentId));
+        }
+
+        const { data: taskRows, error: taskError } = await query
+          .order('id', { ascending: false });
 
         if (taskError) throw taskError
 
@@ -220,10 +226,16 @@ export const taskStore = defineStore('tasks', () => {
         const unitUserIds = (unitUsers || []).map(m => m.user_id)
         const allIds = [...new Set([uid, ...unitUserIds])]
 
-        const { data: taskRows, error } = await supabase
+        let query = supabase
           .from('task')
-          .select(TASK_SELECT)
-          .eq('parent_ppa_id', parentId)
+          .select(TASK_SELECT);
+
+        if (parentId) {
+          // If design is true, we filter by the parent_ppa_id
+          query = query.eq('parent_ppa_id', Number(parentId));
+        }
+
+        const { data: taskRows, error: taskError } = await query
           .or(allIds.map(id => `assignee.eq.${id}`).join(','))
           .order('id', { ascending: false })
         if (error) throw error
@@ -255,10 +267,16 @@ export const taskStore = defineStore('tasks', () => {
         await fetchUnitMembers()
 
       } else {
-        const { data: taskRows, error } = await supabase
+        let query = supabase
           .from('task')
-          .select(TASK_SELECT)
-          .eq('parent_ppa_id', parentId)
+          .select(TASK_SELECT);
+
+        if (parentId) {
+          // If design is true, we filter by the parent_ppa_id
+          query = query.eq('parent_ppa_id', Number(parentId));
+        }
+
+        const { data: taskRows, error } = await query
           .eq('assignee', uid)
           .order('id', { ascending: false })
         if (error) throw error
@@ -298,7 +316,7 @@ export const taskStore = defineStore('tasks', () => {
     await resolveNames([...new Set([...allUserIds])])
 
     const spawnedMap = buildSpawnedMap([data])
-    console.log (mapRow(data))
+    console.log(mapRow(data))
     return mapRow(data)
   }
 
@@ -397,8 +415,8 @@ export const taskStore = defineStore('tasks', () => {
       .from('task')
       .insert({
         parent_ppa_id: mainTask.parentId,
-        assigner: uid,
-        assignee: assigneeId,
+        assigner: mainTask.assignee ? uid : null,
+        assignee: mainTask.assignee ? assigneeId : null,
         design: !!mainTask.design
       })
       .select('id').single()
@@ -433,10 +451,11 @@ export const taskStore = defineStore('tasks', () => {
       supabase.from('task_duration').insert({
         task_id: taskId, deadline: mainTask.endDate,
       }),
-      supabase.from('task_output').insert({ task_id: taskId, link: outputLink }),
     ])
 
-    if (hasOutput && !isDirectorSelfAssign) {
+    if (mainTask.outputLink) await supabase.from('task_output').insert({ task_id: taskId, link: outputLink })
+
+    if (hasOutput && !isDirectorSelfAssign || mainTask.assignee) {
       await _notifySubmission(taskId, assigneeId, uid, null, isSelfAssigned)
     }
 
@@ -448,12 +467,12 @@ export const taskStore = defineStore('tasks', () => {
     const auth = useAuthStore()
 
     const { data: updated, error: updErr } = await supabase
-      .from('task_output').update({ link }).eq('task_id', taskId).select('id')
+      .from('task_output').upsert({ link }).eq('task_id', taskId).select('id')
     if (updErr) throw new Error(updErr.message)
-    if (!updated || updated.length === 0) {
-      const { error: insErr } = await supabase.from('task_output').insert({ task_id: taskId, link })
-      if (insErr) throw new Error(insErr.message)
-    }
+    // if (!updated || updated.length === 0) {
+    //   const { error: insErr } = await supabase.from('task_output').insert({ task_id: taskId, link })
+    //   if (insErr) throw new Error(insErr.message)
+    // }
 
     const { data: taskRow } = await supabase
       .from('task').select('assignee, assigner').eq('task_id', taskId).maybeSingle()
