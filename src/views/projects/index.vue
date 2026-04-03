@@ -30,7 +30,7 @@ const isDeleting = ref(false)
 const deleteError = ref('')
 const taskDetail = ref(false)
 
-const projects = computed(() => projectStore.projects);
+const projects = computed(() => projectStore.projects.filter(p => p.is_involved));
 
 const activeUnitId = computed(() => {
   const headRole = auth.positions?.find(p => p.pos_id === 4)

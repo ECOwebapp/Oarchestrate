@@ -233,7 +233,7 @@ const onCloseAddTask = async (success) => {
       <div class="flex flex-wrap items-center gap-3 px-4 sm:px-6 lg:px-10 py-4 flex-shrink-0">
 
         <!-- Add Task -->
-        <button v-if="!selectionMode && (auth.isDirector || auth.isUnitHead || auth.isMember)" @click="addTask = true"
+        <button v-if="!selectionMode && (route.params.id ? auth.isDirector : auth.isUnitHead || auth.isMember)" @click="addTask = true"
           class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl
                hover:bg-green-800 active:scale-95 transition-all text-sm flex-shrink-0 hover:cursor-pointer">
           <Icons :icon="'add'" />

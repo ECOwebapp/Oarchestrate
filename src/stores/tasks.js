@@ -235,7 +235,7 @@ export const taskStore = defineStore('tasks', () => {
           query = query.eq('parent_ppa_id', Number(parentId));
         }
 
-        const { data: taskRows, error: taskError } = await query
+        const { data: taskRows, error } = await query
           .or(allIds.map(id => `assignee.eq.${id}`).join(','))
           .order('id', { ascending: false })
         if (error) throw error

@@ -11,30 +11,19 @@ export const useProjectStore = defineStore('ppa', () => {
     const fetchProjects = async () => {
         try {
             loading.value = true
-            const { data: projectRes, error: projectErr } = await supabase
-                .from('ppa')
-                .select(`
-                    id, 
-                    title, 
-                    description, 
-                    created_at, 
-                    deadline, 
-                    director_id, 
-                    director:user_profile(
-                        lname, fname, middle_initial
-                    ),
-                    is_completed
-                `)
+            const { data: projectRes, error: projectErr } = await supabase.rpc('get_ppa', { user_uuid: auth.userID })
 
             if (projectErr) throw projectErr
 
             projects.value = (projectRes || []).map(p => ({
                 ...p,
-                director: p.director 
+                director: p.director
                     ? `${p.director.fname} 
                         ${p.director.middle_initial !== null ? p.director.middle_initial : ''} 
-                        ${p.director.lname}` 
-                    : null
+                        ${p.director.lname}`
+                    : null,
+
+                is_involved: auth.isDirector ? true : p.is_involved
             }))
 
         } catch (e) {

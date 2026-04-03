@@ -19,7 +19,7 @@ const addTask = ref(false)
 const search = ref('')
 const filter = ref('All')
 const sortBy = ref('Recently Assigned')
-const { loading } = storeToRefs(store)
+const loading = ref(false)
 
 // ── Only Directors and Unit Heads can select / delete ──────────────────────
 const canDelete = computed(() => auth.isDirector || auth.isUnitHead)
@@ -44,10 +44,12 @@ const activeUnitId = computed(() => {
 })
 
 onMounted(async () => {
+  loading.value = true
   await Promise.all([
     store.fetchTasks(),
     subtaskStore.fetchSubTasks()
   ])
+  loading.value = false
 })
 
 const filterOpts = computed(() => {
