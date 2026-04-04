@@ -202,17 +202,7 @@ const cancelDelete = () => {
 const preFillData = ref(null)
 
 const onAssignSubtask = (data) => {
-  preFillData.value = {
-    name: data.subtask.name,
-    description: data.subtask.description || '',
-    // assignee: data.assignedMemberId,
-    // assigneeName: data.assignedMemberName,
-    subtask: data.subtask,
-    parentTask: data.parentTask,
-    type: 1,
-    endDate: data.parentTask?.to || null,
-    // action: data.action || ''
-  }
+  preFillData.value = (data || {})
   addTask.value = true
 }
 
@@ -335,11 +325,11 @@ const onCloseAddTask = async (success) => {
       <div class="flex-1 overflow-auto bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0">
         <GridSubtasks v-if="state === 'Grid View'" :subtasks="filtered" :selectable="selectionMode"
           :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
-          @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true" @close="taskDetail = false" 
+          @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true" @close="taskDetail = false"
           @success="() => { taskDetail = false; onCloseAddTask(true); }" />
         <TableSubtasks v-else-if="state === 'Table View'" :subtasks="filtered" :selectable="selectionMode"
           :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
-          @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true"  @close="taskDetail = false"
+          @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true" @close="taskDetail = false"
           @success="() => { taskDetail = false; onCloseAddTask(true); }" />
         <ChartSubtasks v-else-if="state === 'Chart View'" :subtasks="filtered" />
       </div>
@@ -361,7 +351,8 @@ const onCloseAddTask = async (success) => {
       <Transition name="modal">
         <div v-if="addTask" class="fixed inset-0 z-150 flex items-center justify-center bg-black/50 px-4"
           @click.self="onCloseAddTask">
-          <AddSubtask @close="onCloseAddTask" @success="onCloseAddTask(true)" :design="false" :pre-fill="preFillData" :parent-id="parentId" />
+          <AddSubtask @close="onCloseAddTask" @success="onCloseAddTask(true)" :design="false" :pre-fill="preFillData"
+            :parent-id="parentId" />
         </div>
       </Transition>
     </Teleport>

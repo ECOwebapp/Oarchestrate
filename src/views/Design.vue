@@ -1,15 +1,15 @@
 <script setup vapor>
 import AddTask from '@/components/Tasks/AddTask.vue'
-import ChartTasks from '@/components/Tasks/ChartTasks.vue'
 import GridSubtasks from '@/components/Subtasks/GridSubtasks.vue'
 import Icons from '@/components/Icons.vue'
-import TableTasks from '@/components/Tasks/TableTasks.vue'
 import Loading from '@/components/Loading.vue'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSubtaskStore } from '@/stores/subtasks'
+import TableSubtasks from '@/components/Subtasks/TableSubtasks.vue'
+import ChartSubtasks from '@/components/Subtasks/ChartSubtasks.vue'
 
 const store = taskStore()
 const subtaskStore = useSubtaskStore()
@@ -20,6 +20,8 @@ const search = ref('')
 const filter = ref('All')
 const sortBy = ref('Recently Assigned')
 const loading = ref(false)
+
+const taskDetail = ref(false)
 
 // ── Only Directors and Unit Heads can select / delete ──────────────────────
 const canDelete = computed(() => auth.isDirector || auth.isUnitHead)
@@ -177,25 +179,21 @@ const cancelDelete = () => {
 const preFillData = ref(null)
 
 const onAssignSubtask = (data) => {
-  preFillData.value = {
-    name: data.subtask.name,
-    description: data.subtask.description || '',
-    assignee: data.assignedMemberId,
-    assigneeName: data.assignedMemberName,
-    subtaskId: data.subtask.id,
-    parentTask: data.parentTask,
-    type: 1,
-    endDate: data.parentTask?.to || null,
-    urgent: false,
-    design: false,
-    action: data.action || ''
-  }
+
+  preFillData.value = (data || {})
   addTask.value = true
 }
 
-const onCloseAddTask = () => {
+const onCloseAddTask = async (success) => {
   addTask.value = false
   preFillData.value = null
+
+  if (success && taskDetail.value === false) {
+    await Promise.all([
+      store.fetchTasks(),
+      subtaskStore.fetchSubTasks()
+    ])
+  }
 }
 </script>
 
@@ -306,12 +304,13 @@ const onCloseAddTask = () => {
       <!-- ── View ── -->
       <div class="flex-1 overflow-auto bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0">
         <GridSubtasks v-if="state === 'Grid View'" :subtasks="filtered" :selectable="selectionMode"
+        :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
+        @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true" @close="taskDetail = false" 
+        @success="() => { taskDetail = false; onCloseAddTask(true); }" />
+        <TableSubtasks v-else-if="state === 'Table View'" :subtasks="filtered" :selectable="selectionMode"
           :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
           @assign-subtask="onAssignSubtask" />
-        <TableTasks v-else-if="state === 'Table View'" :tasks="filtered" :selectable="selectionMode"
-          :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
-          @assign-subtask="onAssignSubtask" />
-        <ChartTasks v-else-if="state === 'Chart View'" :tasks="filtered" />
+        <ChartSubtasks v-else-if="state === 'Chart View'" :subtasks="filtered" />
       </div>
 
       <!-- ── View toggle ── -->
@@ -327,11 +326,11 @@ const onCloseAddTask = () => {
     </div>
 
     <!-- ── Add Task Modal ── -->
-    <Teleport to="body">
+    <Teleport to="#add-task">
       <Transition name="modal">
         <div v-if="addTask" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
           @click.self="onCloseAddTask">
-          <AddTask @close="onCloseAddTask" :design="true" :pre-fill="preFillData" />
+          <AddTask @close="onCloseAddTask" @success="onCloseAddTask(true)" :design="true" :pre-fill="preFillData" />
         </div>
       </Transition>
     </Teleport>
