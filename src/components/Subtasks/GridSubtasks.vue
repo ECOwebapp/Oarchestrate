@@ -53,7 +53,7 @@ const handleAssign = (event) => {
            justify-items-stretch px-4 sm:px-6 lg:px-10 py-6 gap-4">
       <SubtaskCard v-for="(subtask, index) in props.subtasks" :key="subtask.id" :task="subtask" :selectable="props.selectable"
         :selected="props.selectedIds.has(subtask.id)" :is-deletable="props.isDeletable(subtask)" @open="handleOpen(subtask)"
-        @toggle-select="emit('toggle-select', $event)" :style="{ animationDelay: `${index * 0.03}s` }" />
+        @toggle-select="emit('toggle-select', $event)" @assignSubtask="handleAssign" :style="{ animationDelay: `${index * 0.03}s` }" />
     </div>
 
     <template>

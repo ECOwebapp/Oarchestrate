@@ -411,14 +411,21 @@ export const taskStore = defineStore('tasks', () => {
     const uid = auth.user?.id
     const assigneeId = auth.isMember ? uid : mainTask.assignee
 
+    const taskData = {
+      parent_ppa_id: mainTask.parentId,
+      assigner: mainTask.assignee ? uid : null,
+      assignee: mainTask.assignee ? assigneeId : null,
+      design: !!mainTask.design
+    };
+    
+    // Only add the ID if it's truthy (exists in DB)
+    if (mainTask.id) {
+      taskData.id = mainTask.id;
+    }
+    
     const { data: taskRow, error: taskErr } = await supabase
       .from('task')
-      .insert({
-        parent_ppa_id: mainTask.parentId,
-        assigner: mainTask.assignee ? uid : null,
-        assignee: mainTask.assignee ? assigneeId : null,
-        design: !!mainTask.design
-      })
+      .upsert(taskData, { onConflict: 'id' })
       .select('id').single()
     if (taskErr) throw taskErr
     const taskId = taskRow.id
@@ -441,19 +448,19 @@ export const taskStore = defineStore('tasks', () => {
     }
 
     await Promise.all([
-      supabase.from('task_profile').insert({
+      supabase.from('task_profile').upsert({
         task_id: taskId, title: mainTask.name, description: mainTask.description,
         task_type: mainTask.type, urgent: !!mainTask.urgent,
-      }),
-      supabase.from('task_approval').insert({
+      }, { onConflict: 'task_id' }),
+      supabase.from('task_approval').upsert({
         task_id: taskId, unit_head: initialUnitHead, director: initialDirector,
-      }),
-      supabase.from('task_duration').insert({
+      }, { onConflict: 'task_id' }),
+      supabase.from('task_duration').upsert({
         task_id: taskId, deadline: mainTask.endDate,
-      }),
+      }, { onConflict: 'task_id' }),
     ])
 
-    if (mainTask.outputLink) await supabase.from('task_output').insert({ task_id: taskId, link: outputLink })
+    if (mainTask.outputLink) await supabase.from('task_output').upsert({ task_id: taskId, link: outputLink }, { onConflict: 'task_id' })
 
     if (hasOutput && !isDirectorSelfAssign || mainTask.assignee) {
       await _notifySubmission(taskId, assigneeId, uid, null, isSelfAssigned)
