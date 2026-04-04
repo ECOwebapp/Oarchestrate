@@ -276,10 +276,9 @@ export const useSubtaskStore = defineStore('subtasks', () => {
 
         let query = supabase.from('subtask').select(SUBTASK_SELECT)
         if (parentTaskId) query = query.eq('parent_task_id', parentTaskId)
+        else query = query = query.or(`assignee.in.(${allIds.join(',')}),task.assignee.in.(${allIds.join(',')})`)
 
         const { data: subtaskRows, error } = await query
-          .order('id', { ascending: false })
-          .or(allIds.map(id => `assignee.eq.${id}`).join(','))
           .order('id', { ascending: false })
         if (error) throw error
 
@@ -311,7 +310,7 @@ export const useSubtaskStore = defineStore('subtasks', () => {
         const spawnedMap = buildSpawnedMap([...(subtaskRows || []), ...extraSpawnedRows])
 
         subtasks.value = subtaskRows.map(t => ({
-          ...subtaskRow(t, spawnedMap),
+          ...subtaskRow(t, {}),
           assigneeRole: roleMap[t.assignee] || null,
           assigneeUnitId: getAssigneeUnitId(t.assignee),
           assigneeIsOffice: isOfficeUser(t.assignee),

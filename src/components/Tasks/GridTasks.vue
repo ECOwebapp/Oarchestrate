@@ -4,7 +4,6 @@ import TaskCard from './TaskCard.vue'
 import TaskDetail from '../TaskDetail.vue'
 import { taskStore } from '@/stores/tasks';
 
-const task = taskStore()
 const props = defineProps({
   tasks: Array,
   selectable: { type: Boolean, default: false },
@@ -19,8 +18,17 @@ const success = ref(false)
 
 const handleOpen = (task) => {
   if (props.selectable) return
-  selected.value = task
-  emit('open')
+  emit('assignSubtask', {
+    id: task.id,
+    name: task.name,
+    description: task.description,
+    endDate: task.endDate,
+    assignee: task.assignee,
+    type: task.typeId,
+    urgent: task.urgent,
+    design: task.design,
+    outputLink: task.outputLink,
+  }); 
 }
 
 const handleClose = () => {
@@ -31,11 +39,6 @@ const handleClose = () => {
     if(success.value) emit('success')
     else emit('close')
   }, 10)
-}
-
-const handleAssign = (event) => {
-  emit('assignSubtask', event); 
-  if(event) success.value = true;
 }
 </script>
 

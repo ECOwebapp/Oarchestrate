@@ -9,7 +9,7 @@ const props = defineProps({
   selectable: { type: Boolean, default: false },
   selected: { type: Boolean, default: false },
 })
-const emit = defineEmits(['open', 'toggle-select'])
+const emit = defineEmits(['open', 'toggle-select', 'assignSubtask'])
 const auth = useAuthStore()
 
 const daysLeft = computed(() => {
@@ -65,6 +65,10 @@ const handleCheckboxClick = (e) => {
   e.stopPropagation()
   emit('toggle-select', props.task)
 }
+
+const handleEditClick = () => {
+  emit('open')
+}
 </script>
 
 <template>
@@ -86,6 +90,11 @@ const handleCheckboxClick = (e) => {
       <svg v-if="selected" class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
         <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
       </svg>
+    </div>
+
+    <div v-else-if="auth.isDirector || (props.task?.assigner === auth.userID)" @click.stop="handleEditClick" class="absolute top-2.5 right-2.5 z-20 w-10 h-5 rounded-sm flex items-center justify-center
+              transition-all duration-150 shadow-sm text-xs bg-yellow-500">
+      Edit
     </div>
 
     <div v-if="selected" class="absolute inset-0 bg-green-50/40 rounded-2xl pointer-events-none" />

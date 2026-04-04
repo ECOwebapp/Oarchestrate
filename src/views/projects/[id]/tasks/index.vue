@@ -198,17 +198,8 @@ const cancelDelete = () => {
 const preFillData = ref(null)
 
 const onAssignSubtask = (data) => {
-  preFillData.value = {
-    name: data.subtask.name,
-    description: data.subtask.description || '',
-    // assignee: data.assignedMemberId,
-    // assigneeName: data.assignedMemberName,
-    subtask: data.subtask,
-    parentTask: data.parentTask,
-    type: 1,
-    endDate: data.parentTask?.to || null,
-    // action: data.action || ''
-  }
+
+  preFillData.value = (data || {})
   addTask.value = true
 }
 
