@@ -9,7 +9,7 @@ const props = defineProps({
   selectable: { type: Boolean, default: false },
   selected: { type: Boolean, default: false },
 })
-const emit = defineEmits(['open', 'toggle-select'])
+const emit = defineEmits(['assignSubtask', 'open', 'toggle-select'])
 const auth = useAuthStore()
 
 const daysLeft = computed(() => {
@@ -68,8 +68,16 @@ const handleCheckboxClick = (e) => {
 
 const handleEditClick = () => {
   emit('assignSubtask', {
-    ...task
-  })
+    id: props.task.id,
+    name: props.task.name,
+    description: props.task.description,
+    endDate: props.task.endDate,
+    assignee: props.task.assignee,
+    type: props.task.typeId,
+    urgent: props.task.urgent,
+    design: props.task.design,
+    outputLink: props.task.outputLink,
+  }); 
 }
 </script>
 

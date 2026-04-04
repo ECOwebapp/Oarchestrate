@@ -61,18 +61,7 @@ onMounted(async () => {
 
 const applyPreFill = (fill) => {
   if (!fill) return
-  newTask.value = {
-    name: fill.name || '',
-    description: fill.description || '',
-    endDate: fill.endDate || null,
-    assignee: fill.subtask.spawnedAssignee || null,
-    subtaskId: fill.subtask.id || null,
-    parentTask: fill.parentTask || null,
-    type: fill.type || 1,
-    urgent: subtasks.value.find(t => t.sourceSubtaskId === fill.subtask.id)?.urgent || false,
-    design: subtasks.value.find(t => t.sourceSubtaskId === fill.subtask.id)?.design || false,
-    outputLink: fill.outputLink || '',
-  }
+  newTask.value = (fill || {})
 }
 
 watch(() => props.preFill, (fill) => {
@@ -328,26 +317,11 @@ const submitForm = async () => {
     loading.value = false
   }
 }
-
-const addSubTask = () => subTasks.value.push({ text: '' })
-const removeSubTask = (i) => subTasks.value.splice(i, 1)
 </script>
 
 <template>
   <!-- ── Main AddTask card ──────────────────────────────────────────────────── -->
   <div class="bg-white w-full max-w-lg max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-
-    <!-- ── BulkAddTask modal overlay ─────────────────────────────────────────── -->
-    <Teleport to="body">
-      <Transition @after-leave="emit('close')" enter-active-class="transition-opacity duration-200"
-        enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition-opacity duration-150"
-        leave-from-class="opacity-100" leave-to-class="opacity-0">
-        <div v-if="showBulk" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4"
-          @click.self="showBulk = false">
-          <BulkAddTask @close="showBulk = false" />
-        </div>
-      </Transition>
-    </Teleport>
 
     <!-- Header -->
     <div class="flex items-center justify-between px-7 py-5 border-b border-gray-100">
@@ -358,15 +332,6 @@ const removeSubTask = (i) => subTasks.value.splice(i, 1)
       </h2>
 
       <div class="flex items-center gap-2">
-        <button v-if="auth.isDirector && !preFill" @click="showBulk = true" class="flex items-center gap-1.5 text-xs font-semibold text-green-800
-                 border border-green-800 rounded-lg px-3 py-1.5
-                 hover:bg-green-50 hover:cursor-pointer active:scale-95 transition-all">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M4 6h16M4 10h16M4 14h8M4 18h8M17 14v6M14 17h6" />
-          </svg>
-          Bulk Add
-        </button>
 
         <button @click="emit('close')"
           class="hover:cursor-pointer text-gray-400 hover:text-gray-700 text-2xl leading-none">×</button>
