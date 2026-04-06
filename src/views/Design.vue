@@ -1,15 +1,14 @@
 <script setup vapor>
-import AddTask from '@/components/Tasks/AddTask.vue'
-import GridSubtasks from '@/components/Subtasks/GridSubtasks.vue'
 import Icons from '@/components/Icons.vue'
 import Loading from '@/components/Loading.vue'
+import ChartSubtasks from '@/components/Subtasks/ChartSubtasks.vue'
+import GridSubtasks from '@/components/Subtasks/GridSubtasks.vue'
+import TableSubtasks from '@/components/Subtasks/TableSubtasks.vue'
+import AddTask from '@/components/Tasks/AddTask.vue'
+import { useSubtaskStore } from '@/stores/subtasks'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, ref } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useSubtaskStore } from '@/stores/subtasks'
-import TableSubtasks from '@/components/Subtasks/TableSubtasks.vue'
-import ChartSubtasks from '@/components/Subtasks/ChartSubtasks.vue'
 
 const store = taskStore()
 const subtaskStore = useSubtaskStore()
@@ -175,12 +174,28 @@ const cancelDelete = () => {
   deleteError.value = ''
 }
 
-// ── Add task pre-fill ────────────────────────────────────────────────────────
+// ── Edit task modal ────────────────────────────────────────────────────────
 const preFillData = ref(null)
 
 const onAssignSubtask = (data) => {
+  if (!data) return
 
-  preFillData.value = (data || {})
+  // Extract subtask from event data (comes from TaskDetail.pickMemberAndAssign)
+  const subtask = data.subtask || data
+  const parentTask = data.parentTask
+
+  // Get deadline from multiple possible sources
+  const deadline = parentTask?.to || parentTask?.endDate || subtask?.to || subtask?.endDate || null
+
+  preFillData.value = {
+    id: subtask.id,                              // CRITICAL: Must have ID for update-only logic
+    name: subtask.name || '',
+    description: subtask.description || '',
+    endDate: deadline,                          // Use the resolved deadline
+    type: parentTask?.typeId || 1,
+    urgent: subtask.urgent || false,
+    design: true,                                // Always mark prefilled tasks as design tasks
+  }
   addTask.value = true
 }
 
@@ -204,14 +219,6 @@ const onCloseAddTask = async (success) => {
 
       <!-- ── Toolbar ── -->
       <div class="flex flex-wrap items-center gap-3 px-4 sm:px-6 lg:px-10 py-4 flex-shrink-0">
-
-        <!-- Add Task -->
-        <button v-if="!selectionMode && (auth.isDirector || auth.isUnitHead || auth.isMember)" @click="addTask = true"
-          class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl
-               hover:bg-green-800 active:scale-95 transition-all text-sm flex-shrink-0 hover:cursor-pointer">
-          <Icons :icon="'add'" />
-          <span class="hidden sm:inline">Add Task</span>
-        </button>
 
         <!-- Select toggle — Director & Unit Head only -->
         <button v-if="canDelete" @click="toggleSelectMode"
@@ -305,8 +312,7 @@ const onCloseAddTask = async (success) => {
       <div class="flex-1 overflow-auto bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0">
         <GridSubtasks v-if="state === 'Grid View'" :subtasks="filtered" :selectable="selectionMode"
         :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
-        @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true" @close="taskDetail = false" 
-        @success="() => { taskDetail = false; onCloseAddTask(true); }" />
+        @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true" @close="taskDetail = false" />
         <TableSubtasks v-else-if="state === 'Table View'" :subtasks="filtered" :selectable="selectionMode"
           :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
           @assign-subtask="onAssignSubtask" />
@@ -325,7 +331,7 @@ const onCloseAddTask = async (success) => {
 
     </div>
 
-    <!-- ── Add Task Modal ── -->
+    <!-- ── Edit Task Modal ── -->
     <Teleport to="#add-task">
       <Transition name="modal">
         <div v-if="addTask" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
