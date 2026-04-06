@@ -1,11 +1,16 @@
+import { useAuthStore } from '@/stores/useAuthStore'
+
 const UPLOAD_URL = import.meta.env.VITE_UPLOAD_URL || '/api/upload-to-drive'
 
-export async function uploadOutputFile({ file, userName, onProgress }) {
+export async function uploadOutputFile({ file, onProgress }) {
   if (!file) throw new Error('No file provided.')
+
+  const authStore = useAuthStore()
+  const userName = authStore.fullName || 'Unknown User'
 
   const formData = new FormData()
   formData.append('file', file)
-  formData.append('userName', userName || 'Unknown User')
+  formData.append('userName', userName)
 
   const xhr = new XMLHttpRequest()
 
@@ -39,13 +44,13 @@ export async function uploadOutputFile({ file, userName, onProgress }) {
 
 export async function deleteOutputFile(fileUrl) {
   if (!fileUrl) return
- 
+
   const res = await fetch(UPLOAD_URL, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ fileUrl }),
   })
- 
+
   if (!res.ok) {
     let msg = `Delete failed (${res.status})`
     try {
@@ -54,6 +59,6 @@ export async function deleteOutputFile(fileUrl) {
     } catch { /* ignore */ }
     throw new Error(msg)
   }
- 
+
   return res.json()
 }

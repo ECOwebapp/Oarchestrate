@@ -1,4 +1,5 @@
 <script setup vapor>
+import { useDesignStore } from '@/stores/design'
 import { useMemberStore } from '@/stores/member'
 import { usePosStore } from '@/stores/positions'
 import { taskStore } from '@/stores/tasks'
@@ -7,6 +8,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import BulkAddTask from '../BulkAddTask.vue'
 import Icons from '../Icons.vue'
 import { storeToRefs } from 'pinia'
+import { computed, onMounted, ref, watch } from 'vue'
 
 const emit = defineEmits(['close', 'success'])
 const props = defineProps({
@@ -18,6 +20,7 @@ const props = defineProps({
 const memberStore = useMemberStore()
 const posStore = usePosStore()
 const store = taskStore()
+const designStore = useDesignStore()
 const auth = useAuthStore()
 
 const { tasks } = storeToRefs(store)
@@ -109,6 +112,26 @@ const _resolvePosName = (userId, allPositions, context = null) => {
 const assignableMembers = computed(() => {
   const allMembers = memberStore.members || []
   const allPositions = posStore.memberPos || []
+  const PDU_UNIT_ID = 1
+
+  // ── Special case: Design tasks → only PDU Junior Draftsmen allowed ───────
+  if (newTask.value.design && (auth.isDirector || auth.isUnitHead)) {
+    const juniorDraftsmanIds = new Set(
+      allPositions
+        .filter(p => 
+          String(p.unit_id) === String(PDU_UNIT_ID) &&
+          Number(p.pos_id) === 5  // Junior Draftsman
+        )
+        .map(p => String(p.user_id))
+    )
+    return allMembers
+      .filter(m => juniorDraftsmanIds.has(String(m.id)))
+      .map(m => ({
+        ...m,
+        pos_name: 'Junior Draftsman (PDU)',
+        isDesignTask: true
+      }))
+  }
 
   if (auth.isDirector) {
     const allowedIds = new Set(
@@ -278,7 +301,6 @@ const submitForm = async () => {
     // if (!auth.isMember && !newTask.value.assignee)
     //   throw new Error('Please select an assignee.')
 
-    const validSubs = subTasks.value.filter(s => s.text.trim()).map(s => ({ description: s.text }))
     const assigneeId = auth.isMember ? auth.userID : newTask.value.assignee
 
     // if (props.preFill && newTask.value.assignee) {

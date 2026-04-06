@@ -3,6 +3,11 @@ import AddTask from '@/components/Tasks/AddTask.vue'
 import GridSubtasks from '@/components/Subtasks/GridSubtasks.vue'
 import Icons from '@/components/Icons.vue'
 import Loading from '@/components/Loading.vue'
+import ChartSubtasks from '@/components/Subtasks/ChartSubtasks.vue'
+import GridSubtasks from '@/components/Subtasks/GridSubtasks.vue'
+import TableSubtasks from '@/components/Subtasks/TableSubtasks.vue'
+import AddTask from '@/components/Tasks/AddTask.vue'
+import { useSubtaskStore } from '@/stores/subtasks'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, ref } from 'vue'
@@ -175,7 +180,7 @@ const cancelDelete = () => {
   deleteError.value = ''
 }
 
-// ── Add task pre-fill ────────────────────────────────────────────────────────
+// ── Edit task modal ────────────────────────────────────────────────────────
 const preFillData = ref(null)
 
 const onAssignSubtask = (data) => {
@@ -204,14 +209,6 @@ const onCloseAddTask = async (success) => {
 
       <!-- ── Toolbar ── -->
       <div class="flex flex-wrap items-center gap-3 px-4 sm:px-6 lg:px-10 py-4 flex-shrink-0">
-
-        <!-- Add Task -->
-        <button v-if="!selectionMode && (auth.isDirector || auth.isUnitHead || auth.isMember)" @click="addTask = true"
-          class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl
-               hover:bg-green-800 active:scale-95 transition-all text-sm flex-shrink-0 hover:cursor-pointer">
-          <Icons :icon="'add'" />
-          <span class="hidden sm:inline">Add Task</span>
-        </button>
 
         <!-- Select toggle — Director & Unit Head only -->
         <button v-if="canDelete" @click="toggleSelectMode"
