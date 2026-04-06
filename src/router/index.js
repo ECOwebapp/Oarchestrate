@@ -14,7 +14,6 @@ import { taskStore } from '@/stores/tasks'
 import { useMemberStore } from '@/stores/member'
 import { usePosStore } from '@/stores/positions'
 import { createRouter, createWebHistory } from 'vue-router'
-import { routes as autoRoutes } from 'vue-router/auto-routes'
 import { ref } from 'vue'
 
 const routes = [
@@ -81,7 +80,6 @@ const routes = [
         component: Profile,
         meta: { requiresAuth: true },
       },
-      ...autoRoutes
     ]
   },
 

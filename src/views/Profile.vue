@@ -8,6 +8,7 @@ import { useUnitStore } from '@/stores/unit'
 import PersonalInformation from '@/components/Profile/PersonalInformation.vue'
 import ContactInformation from '@/components/Profile/ContactInformation.vue'
 import WorkInformation from '@/components/Profile/WorkInformation.vue'
+import ChangePassword from '@/components/Profile/ChangePassword.vue'
 import { useAddressStore } from '@/stores/address'
 import { useGenderStore } from '@/stores/gender'
 
@@ -23,6 +24,13 @@ const genders = useGenderStore()
 const saveDialog = ref(null)
 
 const infoSection = ref('personal')
+
+const infoTabs = [
+  { key: 'personal', label: 'Personal Information', icon: 'personal' },
+  { key: 'contact', label: 'Contact Information', icon: 'contact' },
+  { key: 'work', label: 'Work Information', icon: 'work' },
+  { key: 'password', label: 'Change Password', icon: 'profile' },
+]
 
 const form = reactive({
   fname: '',
@@ -138,10 +146,10 @@ onMounted(async () => {
       <div class="w-full lg:w-72 lg:flex-shrink-0">
         <ul class="flex w-full flex-col gap-2 border-b border-slate-200 pb-4 lg:border-b-0 lg:border-r lg:pr-5 lg:pb-0">
           <li class="flex items-center p-4 block text-sm font-semibold rounded-2xl transition-colors hover:cursor-pointer"
-            :class="infoSection === list.toLowerCase() ? 'bg-green-950 text-white shadow-sm' : 'text-slate-800 hover:bg-slate-100'"
-            v-for="list in ['Personal', 'Contact', 'Work']" @click="infoSection = list.toLowerCase()">
-            <Icons :icon="list.toLocaleLowerCase()" />
-            <span class="flex-1 px-2">{{ list }} Information</span>
+            :class="infoSection === section.key ? 'bg-green-950 text-white shadow-sm' : 'text-slate-800 hover:bg-slate-100'"
+            v-for="section in infoTabs" :key="section.key" @click="infoSection = section.key">
+            <Icons :icon="section.icon" />
+            <span class="flex-1 px-2">{{ section.label }}</span>
             <Icons :icon="'chevronRight'" />
           </li>
         </ul>
@@ -172,6 +180,9 @@ onMounted(async () => {
 
         <!-- Unit -->
         <WorkInformation v-else-if="infoSection === 'work'" :loading-dropdowns="loadingDropdowns" />
+
+        <!-- Change Password -->
+        <ChangePassword v-else-if="infoSection === 'password'" ref="saveDialog" />
       </div>
 
     </div>

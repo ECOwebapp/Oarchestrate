@@ -1,6 +1,6 @@
 <script setup vapor>
 import Icons from '../Icons.vue';
-import { ref, computed, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useGenderStore } from '@/stores/gender';
 import { storeToRefs } from 'pinia';
@@ -14,9 +14,7 @@ const { gender } = storeToRefs(genders)
 const { userAddress } = storeToRefs(addressStore)
 
 const fileInput = ref(null)
-const showPassword = ref(false)
 const errors = reactive({})
-const showConfirm = ref(false)
 const imagePreview = ref(null)
 const uploadError = ref('')   // separate error just for avatar
 const imageFile = ref(null)  // holds the actual File object
@@ -37,9 +35,7 @@ const form = reactive({
     regionCode: '',
     provinceCode: '',
     cityCode: '',
-    barangayCode: '',
-    password: '',
-    confirmPassword: ''
+    barangayCode: ''
 })
 
 onMounted(async () => {
@@ -90,20 +86,6 @@ const handleImageUpload = (e) => {
 }
 
 const triggerUpload = () => fileInput.value.click()
-
-const passwordStrength = computed(() => {
-    const p = form.password
-    if (!p) return { label: '', pct: 0, color: '#e5e7eb' }
-    let s = 0
-    if (p.length >= 8) s++
-    if (p.length >= 12) s++
-    if (/[A-Z]/.test(p)) s++
-    if (/[0-9]/.test(p)) s++
-    if (/[^A-Za-z0-9]/.test(p)) s++
-    if (s <= 2) return { label: 'Weak', pct: 33, color: '#ef4444' }
-    if (s <= 3) return { label: 'Fair', pct: 66, color: '#ca8a04' }
-    return { label: 'Strong', pct: 100, color: '#15803d' }
-})
 
 const clearError = (field) => { delete errors[field] }
 
@@ -239,73 +221,6 @@ const handleSave = async () => {
                             <option v-for="g in gender" :key="g.id" :value="g.id">{{ g.type }}</option>
                         </select>
                     </div>
-                </div>
-            </div>
-
-            <div class="mb-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
-
-                <!-- Password -->
-                <div class="min-w-0">
-                    <p class="block text-sm font-semibold text-gray-700 mb-1">Change Password</p>
-                    <div class="relative">
-                        <input v-model="form.password" :type="showPassword ? 'text' : 'password'" placeholder="Password"
-                            @input="clearError('password')"
-                            class="w-full p-4 rounded-lg border text-gray-700 bg-white text-sm placeholder-gray-400 transition focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent"
-                            :class="errors.password ? 'border-red-400' : 'border-gray-300'" />
-                        <button type="button" @click="showPassword = !showPassword"
-                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
-                            <svg v-if="!showPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="1.8" class="w-5 h-5">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                <circle cx="12" cy="12" r="3" />
-                            </svg>
-                            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                                class="w-5 h-5">
-                                <path
-                                    d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-                                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-                                <line x1="1" y1="1" x2="23" y2="23" />
-                            </svg>
-                        </button>
-                    </div>
-                    <div v-if="form.password" class="flex items-center gap-2 mt-1.5">
-                        <div class="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden">
-                            <div class="h-full rounded-full transition-all duration-300"
-                                :style="{ width: passwordStrength.pct + '%', background: passwordStrength.color }">
-                            </div>
-                        </div>
-                        <span class="text-xs font-semibold" :style="{ color: passwordStrength.color }">
-                            {{ passwordStrength.label }}
-                        </span>
-                    </div>
-                    <p v-if="errors.password" class="text-red-500 text-xs mt-1">{{ errors.password }}</p>
-                </div>
-
-                <!-- Confirm Password -->
-                <div class="min-w-0">
-                    <p class="block text-sm font-semibold text-gray-700 mb-1">Confirm Password</p>
-                    <div class="relative">
-                        <input v-model="form.confirmPassword" :type="showConfirm ? 'text' : 'password'"
-                            placeholder="Confirm Password" @input="clearError('confirmPassword')"
-                            class="w-full p-4 rounded-lg border text-gray-700 bg-white text-sm placeholder-gray-400 transition focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent"
-                            :class="errors.confirmPassword ? 'border-red-400' : 'border-gray-300'" />
-                        <button type="button" @click="showConfirm = !showConfirm"
-                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
-                            <svg v-if="!showConfirm" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="1.8" class="w-5 h-5">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                <circle cx="12" cy="12" r="3" />
-                            </svg>
-                            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                                class="w-5 h-5">
-                                <path
-                                    d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-                                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-                                <line x1="1" y1="1" x2="23" y2="23" />
-                            </svg>
-                        </button>
-                    </div>
-                    <p v-if="errors.confirmPassword" class="text-red-500 text-xs mt-1">{{ errors.confirmPassword }}</p>
                 </div>
             </div>
 
