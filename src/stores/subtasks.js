@@ -261,8 +261,6 @@ export const useSubtaskStore = defineStore('subtasks', () => {
           assigneeIsOffice: isOfficeUser(t.assignee),
         }))
 
-        console.log(subtaskRows)
-
       } else if (auth.isUnitHead) {
         const activeUnitId = computed(() => {
           const headRole = auth.positions?.find(p => p.pos_id === 4)
@@ -397,7 +395,7 @@ export const useSubtaskStore = defineStore('subtasks', () => {
       }
       await supabase.from('task_notif').upsert(
         { subtask_id: subTaskId, read_by_assignee: true, read_by_unit_head: true },
-        { onConflict: 'task_id' }
+        { onConflict: 'subtask_id' }
       )
     } else {
       const { data: uhRows } = await supabase
@@ -423,8 +421,6 @@ export const useSubtaskStore = defineStore('subtasks', () => {
           .eq('to_user', uhId)
           .eq('is_read', false)
           .maybeSingle()
-
-        console.log('I should\'ve been called once: ', uhId)
 
         if (!existing) {
           await supabase.from('task_revision').insert({
@@ -458,14 +454,27 @@ export const useSubtaskStore = defineStore('subtasks', () => {
     const uid = auth.user?.id
     const assigneeId = auth.isMember ? uid : subTask.assignee
 
+    const calculateAssigner = () => {
+      if (auth.isUnitHead) return auth.userID;
+      if (auth.isDirector && subTask?.assignee) return auth.userID;
+      return null
+    }
+
+    const subtaskData = {
+      parent_task_id: subTask.parentId,
+      assigner: calculateAssigner(),
+      assignee: subTask.assignee ? assigneeId : null,
+      design: !!subTask.design
+    };
+
+    // Only add the ID if it's truthy (exists in DB)
+    if (subTask.id) {
+      subtaskData.id = subTask.id;
+    }
+
     const { data: subtaskRow, error: taskErr } = await supabase
       .from('subtask')
-      .insert({
-        parent_task_id: subTask.parentId,
-        assigner: subTask?.assignee ? uid : null,
-        assignee: subTask?.assignee ? assigneeId : null,
-        design: subTask?.design
-      })
+      .upsert(subtaskData, { onConflict: 'id' })
       .select('id').single()
     if (taskErr) throw taskErr
     const subTaskId = subtaskRow.id
@@ -488,43 +497,32 @@ export const useSubtaskStore = defineStore('subtasks', () => {
     }
 
     await Promise.all([
-      supabase.from('task_profile').insert({
+      supabase.from('task_profile').upsert({
         subtask_id: subTaskId, title: subTask.name, description: subTask.description,
         task_type: subTask.type, urgent: !!subTask.urgent,
-      }),
-      supabase.from('task_approval').insert({
+      }, { onConflict: 'subtask_id' }),
+      supabase.from('task_approval').upsert({
         subtask_id: subTaskId, unit_head: initialUnitHead, director: initialDirector,
-      }),
-      supabase.from('task_duration').insert({
+      }, { onConflict: 'subtask_id' }),
+      supabase.from('task_duration').upsert({
         subtask_id: subTaskId, deadline: subTask.endDate,
-      }),
+      }, { onConflict: 'subtask_id' }),
     ])
 
-    if (subTask.outputLink) supabase.from('task_output').insert({ subtask_id: subTaskId, link: outputLink })
+    if (subTask.outputLink) supabase.from('task_output').upsert({ subtask_id: subTaskId, link: outputLink }, { onConflict: 'subtask_id' })
+
+    if (subTask.oldAssignee) {
+      await supabase.from('subtask_assignment_log').upsert({
+        subtask_id: subTaskId,
+        assigned_by: uid,
+        assigned_to: assigneeId,
+        previous_assignee: subTask.oldAssignee
+      }, { onConflict: 'subtask_id' })
+    }
 
     if (hasOutput && !isDirectorSelfAssign || subTask?.assignee) {
       await _notifySubmission(subTaskId, assigneeId, uid, null, isSelfAssigned)
     }
-
-    // for (const sub of (spawnedTasks || []).filter(s => s.description?.trim())) {
-    //   const { data: subRow } = await supabase
-    //     .from('subtask').insert({ assigner: uid, assignee: assigneeId, parent_subtask_id: subTaskId })
-    //     .select('id').single()
-    //   if (!subRow) continue
-    //   await Promise.all([
-    //     supabase.from('task_profile').insert({
-    //       id: subRow.id, title: sub.description, description: sub.description,
-    //       task_type: subTask.type, urgent: false,
-    //     }),
-    //     supabase.from('task_approval').insert({ id: subRow.id, unit_head: false, director: false }),
-    //     supabase.from('task_duration').insert({
-    //       id: subRow.id, created: new Date().toISOString().split('T')[0], deadline: subTask.endDate,
-    //     }),
-    //     supabase.from('task_output').insert({ id: subRow.id, link: '' }),
-    //   ])
-    // }
-
-    // await fetchTasks()
   }
 
   // ── SUBMIT OUTPUT ───────────────────────────────────────────────────────────
@@ -824,7 +822,7 @@ export const useSubtaskStore = defineStore('subtasks', () => {
     const { data: subtaskRows } = await supabase
       .from('subtask')
       .select('id')
-      .in('subtask_id', allowedIds)
+      .in('id', allowedIds)
     const spawnedTaskIds = (subtaskRows || []).map(r => r.id)
 
     const { data: spawnedRows } = spawnedTaskIds.length
@@ -848,7 +846,7 @@ export const useSubtaskStore = defineStore('subtasks', () => {
       del('task_poke', 'subtask_id', allIds),
       del('comment_section', 'subtask_id', allIds),
       del('task_notif', 'subtask_id', allIds),
-      del('design_approval', 'subtask_id', allIds),
+      del('design_approval', 'id', allIds),
       del('task_output', 'subtask_id', allIds),
       del('task_approval', 'subtask_id', allIds),
       del('task_duration', 'subtask_id', allIds),
@@ -883,8 +881,6 @@ export const useSubtaskStore = defineStore('subtasks', () => {
           .select('id')
           .maybeSingle()
 
-        console.log(data.id)
-
         if (error) throw new Error('Failed to reassign: ' + error.message)
 
         if (urgent) {
@@ -918,7 +914,6 @@ export const useSubtaskStore = defineStore('subtasks', () => {
         `)
           .eq('id', subTaskId)
           .maybeSingle()
-        console.log(subTaskId)
 
         const { data: newTask, error: newTaskErr } = await supabase
           .from('subtask')

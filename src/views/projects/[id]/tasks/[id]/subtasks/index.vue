@@ -16,6 +16,7 @@ import ChartSubtasks from '@/components/Subtasks/ChartSubtasks.vue'
 import AddSubtask from '@/components/Subtasks/AddSubtask.vue'
 
 const subtaskStore = useSubtaskStore()
+const { subtasks } = storeToRefs(subtaskStore)
 const auth = useAuthStore()
 const route = useRoute()
 const state = ref('Grid View')
@@ -36,29 +37,6 @@ const showDeleteConfirm = ref(false)
 const isDeleting = ref(false)
 const deleteError = ref('')
 const taskDetail = ref(false)
-
-const subtasks = computed(() => {
-  // if (auth.isDirector) {
-  //   return store.subtasks.filter(t => {
-  //     // 1. Core requirement: Must not be marked as 'design'
-  //     const isNotDesigned = !t.design;
-
-  //     const isParentTask = !t.parentId
-
-  //     // 2. The Exception: 
-  //     // Show it if the Unit Head approved it (true) 
-  //     // OR if the task type is 'Insertion' (typeId === 2)
-  //     const isVisibleToDirector = t.unitHead || t.typeId === 2;
-
-  //     return isNotDesigned;
-  //   });
-  // }
-
-  // Default filter for everyone else
-
-
-  return subtaskStore.subtasks;
-});
 
 const activeUnitId = computed(() => {
   const headRole = auth.positions?.find(p => p.pos_id === 4)

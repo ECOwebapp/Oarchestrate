@@ -26,7 +26,7 @@ const loading = ref(false)
 const subTasks = ref([{ text: '' }])
 const outputUrl = ref('')
 const errorMsg = ref('')
-const showBulk = ref(false)
+const oldAssignee = ref('')
 
 // ── Upload state ──────────────────────────────────────────────────────────────
 const uploadMode = ref('link')   // 'link' | 'file'
@@ -37,6 +37,7 @@ const uploadedFileName = ref('')
 const fileInputRef = ref(null)
 
 const newTask = ref({
+  id: null,
   parentId: props.parentId,
   name: '',
   description: '',
@@ -61,7 +62,10 @@ onMounted(async () => {
 
 const applyPreFill = (fill) => {
   if (!fill) return
+  oldAssignee.value = fill?.assignee
   newTask.value = (fill || {})
+
+  console.log(fill.assignee)
 }
 
 watch(() => props.preFill, (fill) => {
@@ -276,26 +280,9 @@ const submitForm = async () => {
     const validSubs = subTasks.value.filter(s => s.text.trim()).map(s => ({ description: s.text }))
     const assigneeId = auth.isMember ? auth.userID : newTask.value.assignee
 
-    // if (props.preFill && newTask.value.assignee) {
-    //   await store.assignSubtask({
-    //     spawnedTaskId: newTask.value.subtaskId,
-    //     assigneeId: assigneeId,
-    //     urgent: newTask.value.urgent,
-    //     design: newTask.value.design
-    //   })
-    // } else if (props.preFill && !newTask.value.assignee) {
-    //   await store.assignSubtask({
-    //     subtaskId: newTask.value.subtaskId,
-    //     assigneeId: assigneeId,
-    //     parentTask: newTask.value.parentTask,
-    //     urgent: newTask.value.urgent,
-    //     design: newTask.value.design
-    //   })
-    // }
-
-    // else {
       await subtaskStore.addSubTasks({
         subTask: {
+          id: newTask.value.id || null,
           parentId: newTask.value.parentId,
           name: newTask.value.name,
           description: newTask.value.description,
@@ -303,11 +290,11 @@ const submitForm = async () => {
           endDate: newTask.value.endDate,
           urgent: newTask.value.urgent,
           design: newTask.value.design,
+          oldAssignee: oldAssignee.value,
           assignee: newTask.value.assignee ? assigneeId : null,
           outputLink: showOutput.value ? outputUrl.value : '',
         },
       })
-    // }
 
     emit('success')
   } catch (e) {
