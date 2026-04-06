@@ -1,19 +1,15 @@
 <script setup vapor>
-import AddTask from '@/components/Subtasks/AddSubtask.vue'
-import ChartTasks from '@/components/Subtasks/ChartSubtasks.vue'
-import GridTasks from '@/components/Subtasks/GridSubtasks.vue'
+import AddSubtask from '@/components/Subtasks/AddSubtask.vue'
+import ChartSubtasks from '@/components/Subtasks/ChartSubtasks.vue'
+import GridSubtasks from '@/components/Subtasks/GridSubtasks.vue'
 import Icons from '@/components/Icons.vue'
-import TableTasks from '@/components/Subtasks/TableSubtasks.vue'
+import TableSubtasks from '@/components/Subtasks/TableSubtasks.vue'
 import Loading from '@/components/Loading.vue'
 import { useSubtaskStore } from '@/stores/subtasks'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import GridSubtasks from '@/components/Subtasks/GridSubtasks.vue'
-import TableSubtasks from '@/components/Subtasks/TableSubtasks.vue'
-import ChartSubtasks from '@/components/Subtasks/ChartSubtasks.vue'
-import AddSubtask from '@/components/Subtasks/AddSubtask.vue'
 
 const subtaskStore = useSubtaskStore()
 const auth = useAuthStore()

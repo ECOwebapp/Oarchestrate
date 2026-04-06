@@ -1,12 +1,11 @@
 <script setup vapor>
+import { useDesignStore } from '@/stores/design'
 import { useMemberStore } from '@/stores/member'
 import { usePosStore } from '@/stores/positions'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { computed, onMounted, ref, watch } from 'vue'
-import BulkAddTask from '../BulkAddTask.vue'
-import Icons from '../Icons.vue'
 import { storeToRefs } from 'pinia'
+import { computed, onMounted, ref, watch } from 'vue'
 
 const emit = defineEmits(['close', 'success'])
 const props = defineProps({
@@ -18,6 +17,7 @@ const props = defineProps({
 const memberStore = useMemberStore()
 const posStore = usePosStore()
 const store = taskStore()
+const designStore = useDesignStore()
 const auth = useAuthStore()
 
 const { tasks } = storeToRefs(store)
@@ -109,6 +109,26 @@ const _resolvePosName = (userId, allPositions, context = null) => {
 const assignableMembers = computed(() => {
   const allMembers = memberStore.members || []
   const allPositions = posStore.memberPos || []
+  const PDU_UNIT_ID = 1
+
+  // ── Special case: Design tasks → only PDU Junior Draftsmen allowed ───────
+  if (newTask.value.design && (auth.isDirector || auth.isUnitHead)) {
+    const juniorDraftsmanIds = new Set(
+      allPositions
+        .filter(p => 
+          String(p.unit_id) === String(PDU_UNIT_ID) &&
+          Number(p.pos_id) === 5  // Junior Draftsman
+        )
+        .map(p => String(p.user_id))
+    )
+    return allMembers
+      .filter(m => juniorDraftsmanIds.has(String(m.id)))
+      .map(m => ({
+        ...m,
+        pos_name: 'Junior Draftsman (PDU)',
+        isDesignTask: true
+      }))
+  }
 
   if (auth.isDirector) {
     const allowedIds = new Set(
@@ -275,32 +295,21 @@ const submitForm = async () => {
     if (!newTask.value.description.trim()) throw new Error('Description is required.')
     if (!newTask.value.type) throw new Error('Task type is required.')
     if (!newTask.value.endDate) throw new Error('Deadline is required.')
-    // if (!auth.isMember && !newTask.value.assignee)
-    //   throw new Error('Please select an assignee.')
 
-    const validSubs = subTasks.value.filter(s => s.text.trim()).map(s => ({ description: s.text }))
     const assigneeId = auth.isMember ? auth.userID : newTask.value.assignee
 
-    // if (props.preFill && newTask.value.assignee) {
-    //   await taskStore.addTasks({
-    //     mainTask: {
-    //       spawnedTaskId: newTask.value.subtaskId,
-    //       assigneeId: assigneeId,
-    //       urgent: newTask.value.urgent,
-    //       design: newTask.value.design
-    //     }
-    //   })
-    // } else if (props.preFill && !newTask.value.assignee) {
-    //   await taskStore.addTasks({
-    //     subtaskId: newTask.value.subtaskId,
-    //     assigneeId: assigneeId,
-    //     parentTask: newTask.value.parentTask,
-    //     urgent: newTask.value.urgent,
-    //     design: newTask.value.design
-    //   })
-    // }
+    // ── Design Task Assignment ────────────────────────────────────────────────
+    // If this is a design task with an existing ID, just update & assign (no new task)
+    if (props.design && newTask.value.id) {
+      if (!assigneeId) throw new Error('Please select an assignee for the design task.')
+      
+      await designStore.submitDesignTask(newTask.value.id, assigneeId)
+      emit('success')
+      return
+    }
 
-    // else {
+    // ── Regular Task Creation ─────────────────────────────────────────────────
+    // Create new task/subtask
     await store.addTasks({
       mainTask: {
         id: newTask.value.id,
@@ -315,7 +324,6 @@ const submitForm = async () => {
         outputLink: showOutput.value ? outputUrl.value : '',
       },
     })
-    // }
 
     emit('success')
   } catch (e) {
