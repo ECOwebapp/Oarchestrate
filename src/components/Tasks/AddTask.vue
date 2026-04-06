@@ -36,13 +36,6 @@ const uploadError = ref('')
 const uploadedFileName = ref('')
 const fileInputRef = ref(null)
 
-const isComplete = computed(() => {
-  if (!props.preFill) return false;
-  
-  // Returns true if all values are NOT null
-  return Object.values(props.preFill).every(value => value !== null);
-});
-
 const newTask = ref({
   id: null,
   parentId: props.parentId,
@@ -308,30 +301,46 @@ const submitForm = async () => {
     // }
 
     // else {
-      await store.addTasks({
-        mainTask: {
-          id: newTask.value.id,
-          parentId: newTask.value.parentId,
-          name: newTask.value.name,
-          description: newTask.value.description,
-          type: newTask.value.type,
-          endDate: newTask.value.endDate,
-          urgent: newTask.value.urgent,
-          design: props.design,
-          assignee: assigneeId || null,
-          outputLink: showOutput.value ? outputUrl.value : '',
-        },
-      })
-      // }
+    await store.addTasks({
+      mainTask: {
+        id: newTask.value.id,
+        parentId: newTask.value.parentId,
+        name: newTask.value.name,
+        description: newTask.value.description,
+        type: newTask.value.type,
+        endDate: newTask.value.endDate,
+        urgent: newTask.value.urgent,
+        design: props.design,
+        assignee: assigneeId || null,
+        outputLink: showOutput.value ? outputUrl.value : '',
+      },
+    })
+    // }
 
-      emit('success')
-    } catch (e) {
-      console.error('[AddTask] submit error:', e)
-      errorMsg.value = e.message || 'Something went wrong. Please try again.'
-    } finally {
-      loading.value = false
-    }
+    emit('success')
+  } catch (e) {
+    console.error('[AddTask] submit error:', e)
+    errorMsg.value = e.message || 'Something went wrong. Please try again.'
+  } finally {
+    loading.value = false
   }
+}
+
+
+const isComplete = computed(() => {
+  if (!props.preFill || typeof props.preFill !== 'object') return false;
+
+  // Returns true if all values are NOT null
+  return Object.values(props.preFill).every(value => value !== null && value !== undefined);
+});
+
+const isLocked = computed(() => {
+  // If no preFill, nothing is locked
+  if (!props.preFill) return false;
+  
+  // Logic: Locked if NOT director AND NOT the assignee
+  return !auth.isDirector && (props.preFill.assignee !== auth.userID);
+});
 </script>
 
 <template>
@@ -372,7 +381,9 @@ const submitForm = async () => {
         <label class="block text-sm font-semibold text-gray-700 mb-1">
           Title <span class="text-red-500">*</span>
         </label>
-        <input v-model="newTask.name" :disabled="!auth.isDirector && (preFill?.assignee !== auth.userID) && preFill.name" type="text" maxlength="100" placeholder="Task title…" class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
+        <input v-model="newTask.name"
+          :disabled="isLocked && preFill?.name" type="text"
+          maxlength="100" placeholder="Task title…" class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
                  focus:outline-none focus:border-green-800 transition-colors" />
       </div>
 
@@ -381,7 +392,9 @@ const submitForm = async () => {
         <label class="block text-sm font-semibold text-gray-700 mb-1">
           Description <span class="text-red-500">*</span>
         </label>
-        <textarea v-model="newTask.description" :disabled="!auth.isDirector && (preFill?.assignee !== auth.userID) && preFill.description"  rows="4" maxlength="500" placeholder="Describe the task…" class="w-full border-2 border-gray-300 rounded-xl px-3 py-2 text-sm resize-none
+        <textarea v-model="newTask.description"
+          :disabled="isLocked && preFill?.description" rows="4"
+          maxlength="500" placeholder="Describe the task…" class="w-full border-2 border-gray-300 rounded-xl px-3 py-2 text-sm resize-none
                  focus:outline-none focus:border-green-800 transition-colors" />
         <p class="text-xs text-gray-400 mt-0.5">{{ newTask.description.length }}/500</p>
       </div>
@@ -392,7 +405,8 @@ const submitForm = async () => {
           <label class="block text-sm font-semibold text-gray-700 mb-1">
             Type <span class="text-red-500">*</span>
           </label>
-          <select v-model="newTask.type" :disabled="!auth.isDirector && (preFill?.assignee !== auth.userID) && preFill.type"  class="hover:cursor-pointer w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
+          <select v-model="newTask.type"
+            :disabled="isLocked && preFill?.type" class="hover:cursor-pointer w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
                    focus:outline-none focus:border-green-800 bg-white">
             <option value="" disabled hidden>Select task type</option>
             <option v-for="t in typeOptions" :key="t.id" :value="t.id">{{ t.label }}</option>
@@ -402,7 +416,8 @@ const submitForm = async () => {
           <label class="block text-sm font-semibold text-gray-700 mb-1">
             Deadline <span class="text-red-500">*</span>
           </label>
-          <input v-model="newTask.endDate" :disabled="!auth.isDirector && (preFill?.assignee !== auth.userID) && preFill.endDate" type="date" class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
+          <input v-model="newTask.endDate"
+            :disabled="isLocked && preFill?.endDate" type="date" class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
                    focus:outline-none focus:border-green-800 transition-colors hover:cursor-pointer" />
         </div>
       </div>
@@ -419,7 +434,8 @@ const submitForm = async () => {
         </div>
 
         <template v-else>
-          <select v-model="newTask.assignee" :disabled="!auth.isDirector && (preFill?.assignee !== auth.userID) && preFill.assignee"  class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
+          <select v-model="newTask.assignee"
+            :disabled="isLocked && preFill?.assignee" class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
                    focus:outline-none focus:border-green-800 bg-white hover:cursor-pointer">
             <option :value="null" disabled hidden>Select assignee...</option>
             <option v-for="m in assignableMembers" :key="m.id" :value="m.id">
@@ -499,7 +515,7 @@ const submitForm = async () => {
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="#166534" stroke-width="3" stroke-linecap="round" />
               </svg>
               <span class="text-xs text-gray-500">Uploading <span class="font-medium text-gray-700">{{ uploadedFileName
-              }}</span>…</span>
+                  }}</span>…</span>
             </template>
 
             <!-- Success state -->
@@ -613,7 +629,8 @@ const submitForm = async () => {
                hover:border-green-800 hover:text-green-800 hover:cursor-pointer transition-colors">
         Cancel
       </button>
-      <button @click="submitForm" :disabled="(loading || uploadLoading) || (isComplete && preFill.assignee === auth.userID)" class="flex-1 h-11 rounded-xl bg-green-950 text-white font-semibold text-sm
+      <button @click="submitForm"
+        :disabled="(loading || uploadLoading) || (isComplete && preFill?.assignee === auth.userID)" class="flex-1 h-11 rounded-xl bg-green-950 text-white font-semibold text-sm
                hover:bg-green-800 active:scale-95 transition-all
                disabled:opacity-50 disabled:cursor-not-allowed hover:cursor-pointer
                flex items-center justify-center gap-2">
