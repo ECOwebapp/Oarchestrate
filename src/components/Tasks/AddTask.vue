@@ -5,10 +5,7 @@ import { usePosStore } from '@/stores/positions'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, ref, watch } from 'vue'
-import BulkAddTask from '../BulkAddTask.vue'
-import Icons from '../Icons.vue'
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, ref, watch } from 'vue'
 
 const emit = defineEmits(['close', 'success'])
 const props = defineProps({

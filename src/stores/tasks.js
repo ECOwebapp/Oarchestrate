@@ -5,7 +5,6 @@ import { usePosStore } from './positions'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { storeToRefs } from 'pinia'
 
 const OFFICE_UNIT_ID = 3
 
@@ -16,7 +15,6 @@ export const taskStore = defineStore('tasks', () => {
   const unitIdMap = ref({})
   const unitMembers = ref([])
   const positions = usePosStore()
-  const { memberPos } = storeToRefs(positions)
   const { memberPos } = storeToRefs(positions)
 
   // ── Name resolver ───────────────────────────────────────────────────────────
@@ -50,11 +48,6 @@ export const taskStore = defineStore('tasks', () => {
         if (!memberships[u.user_id]) memberships[u.user_id] = []
         memberships[u.user_id].push(u.unit_id)
       })
-      ; (data || []).forEach(u => {
-        if (!u?.user_id || u.unit_id == null) return
-        if (!memberships[u.user_id]) memberships[u.user_id] = []
-        memberships[u.user_id].push(u.unit_id)
-      })
 
     Object.entries(memberships).forEach(([userId, units]) => {
       const preferred = activeUnitHeadId != null && units.includes(activeUnitHeadId)
@@ -79,13 +72,7 @@ export const taskStore = defineStore('tasks', () => {
   const TASK_SELECT = `
     id, parent_ppa_id, assigner, assignee, design,
     task_profile(title, description, urgent, revision, task_type,
-    id, parent_ppa_id, assigner, assignee, design,
-    task_profile(title, description, urgent, revision, task_type,
       task_type_ref:task_type(task_type) ),
-    task_approval( unit_head, director, revision_comment, revised_at ),
-    task_duration( created, deadline ),
-    task_output( link )
-  `
     task_approval( unit_head, director, revision_comment, revised_at ),
     task_duration( created, deadline ),
     task_output( link )
@@ -93,9 +80,7 @@ export const taskStore = defineStore('tasks', () => {
 
   // ── mapRow ──────────────────────────────────────────────────────────────────
   const mapRow = (t) => ({
-  const mapRow = (t) => ({
     id: t.id,
-    parentId: t.parent_ppa_id,
     parentId: t.parent_ppa_id,
     assigner: t.assigner,
     assignee: t.assignee,
@@ -131,18 +116,6 @@ export const taskStore = defineStore('tasks', () => {
     })(),
     design: !!t.design,
     isSelfAssigned: t.assigner === t.assignee,
-  })
-
-  // ── buildSpawnedMap ─────────────────────────────────────────────────────────
-  const buildSpawnedMap = (allRows) => {
-    const map = {}
-    for (const row of (allRows || [])) {
-      if (!row.parent_task_id && row.parent_subtask_id) {
-        map[row.parent_subtask_id] = row
-      }
-    }
-    return map
-  }
   })
 
   // ── buildSpawnedMap ─────────────────────────────────────────────────────────
@@ -192,7 +165,6 @@ export const taskStore = defineStore('tasks', () => {
 
   // ── FETCH TASKS ─────────────────────────────────────────────────────────────
   const fetchTasks = async (parentId = null) => {
-  const fetchTasks = async (parentId = null) => {
     const auth = useAuthStore()
     const uid = auth.user?.id
     if (!uid) return
@@ -200,7 +172,6 @@ export const taskStore = defineStore('tasks', () => {
 
     try {
       if (auth.isDirector) {
-        let query = supabase
         let query = supabase
           .from('task')
           .select(TASK_SELECT);
@@ -214,29 +185,13 @@ export const taskStore = defineStore('tasks', () => {
           .order('id', { ascending: false });
 
         if (taskError) throw taskError
-          .select(TASK_SELECT);
 
-        if (parentId) {
-          // If design is true, we filter by the parent_ppa_id
-          query = query.eq('parent_ppa_id', Number(parentId));
-        }
-
-        const { data: taskRows, error: taskError } = await query
-          .order('id', { ascending: false });
-
-        if (taskError) throw taskError
-
-        const allUserIds = [...new Set((taskRows || []).flatMap(t => [
-          t.assigner, t.assignee
         const allUserIds = [...new Set((taskRows || []).flatMap(t => [
           t.assigner, t.assignee
         ]).filter(Boolean))]
         const assigneeIds = [...new Set((taskRows || []).map(t => t.assignee).filter(Boolean))]
         const allIdsToResolve = [...new Set([...allUserIds])]
-        const assigneeIds = [...new Set((taskRows || []).map(t => t.assignee).filter(Boolean))]
-        const allIdsToResolve = [...new Set([...allUserIds])]
 
-        await Promise.all([
         await Promise.all([
           resolveNames(allIdsToResolve),
           resolveUnitIds(assigneeIds),
@@ -263,25 +218,11 @@ export const taskStore = defineStore('tasks', () => {
 
         const unitUsers = memberPos.value.filter(mp => mp.unit_id === activeUnitId.value)
 
-        // const { data: unitUsers } = await supabase
-        //   .from('position_of_members').select('user_id').eq('unit_id', activeUnitId.value)
-
-        const unitUsers = memberPos.value.filter(mp => mp.unit_id === activeUnitId.value)
-
         const unitUserIds = (unitUsers || []).map(m => m.user_id)
         const allIds = [...new Set([uid, ...unitUserIds])]
 
         let query = supabase
-        let query = supabase
           .from('task')
-          .select(TASK_SELECT);
-
-        if (parentId) {
-          // If design is true, we filter by the parent_ppa_id
-          query = query.eq('parent_ppa_id', Number(parentId));
-        }
-
-        const { data: taskRows, error } = await query
           .select(TASK_SELECT);
 
         if (parentId) {
@@ -301,13 +242,7 @@ export const taskStore = defineStore('tasks', () => {
           .filter(Boolean))]
         const assigneeIds = [...new Set((taskRows || []).map(t => t.assignee).filter(Boolean))]
         const allIdsToResolve = [...new Set([...allUserIds])]
-        const allUserIds = [...new Set((taskRows || [])
-          .flatMap(t => [t.assigner, t.assignee])
-          .filter(Boolean))]
-        const assigneeIds = [...new Set((taskRows || []).map(t => t.assignee).filter(Boolean))]
-        const allIdsToResolve = [...new Set([...allUserIds])]
 
-        await Promise.all([
         await Promise.all([
           resolveNames(allIdsToResolve),
           resolveUnitIds(assigneeIds),
@@ -315,11 +250,7 @@ export const taskStore = defineStore('tasks', () => {
 
         const posRes = memberPos.value.filter(mp => mp.user_id === assigneeIds)
         const roleMap = Object.fromEntries((posRes || []).map(r => [r.user_id, r.pos_id]))
-        const posRes = memberPos.value.filter(mp => mp.user_id === assigneeIds)
-        const roleMap = Object.fromEntries((posRes || []).map(r => [r.user_id, r.pos_id]))
 
-        tasks.value = taskRows.map(t => ({
-          ...mapRow(t),
         tasks.value = taskRows.map(t => ({
           ...mapRow(t),
           assigneeRole: roleMap[t.assignee] || null,
@@ -332,16 +263,7 @@ export const taskStore = defineStore('tasks', () => {
 
       } else {
         let query = supabase
-        let query = supabase
           .from('task')
-          .select(TASK_SELECT);
-
-        if (parentId) {
-          // If design is true, we filter by the parent_ppa_id
-          query = query.eq('parent_ppa_id', Number(parentId));
-        }
-
-        const { data: taskRows, error } = await query
           .select(TASK_SELECT);
 
         if (parentId) {
@@ -355,11 +277,8 @@ export const taskStore = defineStore('tasks', () => {
         if (error) throw error
 
         const allUserIds = [...new Set((taskRows || []).flatMap(t => [t.assigner, t.assignee]).filter(Boolean))]
-        const allUserIds = [...new Set((taskRows || []).flatMap(t => [t.assigner, t.assignee]).filter(Boolean))]
         await Promise.all([resolveNames(allUserIds), resolveUnitIds([uid])])
 
-        tasks.value = (taskRows || []).map(t => ({
-          ...mapRow(t),
         tasks.value = (taskRows || []).map(t => ({
           ...mapRow(t),
           assigneeUnitId: getAssigneeUnitId(uid),
@@ -387,15 +306,10 @@ export const taskStore = defineStore('tasks', () => {
 
     const allUserIds = [
       data.assigner, data.assignee
-      data.assigner, data.assignee
     ].filter(Boolean)
 
     await resolveNames([...new Set([...allUserIds])])
-    await resolveNames([...new Set([...allUserIds])])
 
-    const spawnedMap = buildSpawnedMap([data])
-    console.log(mapRow(data))
-    return mapRow(data)
     const spawnedMap = buildSpawnedMap([data])
     console.log(mapRow(data))
     return mapRow(data)
@@ -424,7 +338,6 @@ export const taskStore = defineStore('tasks', () => {
             from_user: fromUserId,
             to_user: directorId,
             role: 1, // Director
-            role: 1, // Director
             comment: message || 'To Director: Output submitted — awaiting your approval.',
             is_read: false,
           })
@@ -432,12 +345,10 @@ export const taskStore = defineStore('tasks', () => {
       }
       await supabase.from('task_notif').upsert(
         { task_id: taskId, read_by_assignee: true, read_by_unit_head: true },
-        { task_id: taskId, read_by_assignee: true, read_by_unit_head: true },
         { onConflict: 'task_id' }
       )
     } else {
       const { data: uhRows } = await supabase
-        .from('position')
         .from('position')
         .select('user_id')
         .eq('unit_id', assigneeUnitId)
@@ -469,7 +380,6 @@ export const taskStore = defineStore('tasks', () => {
             from_user: fromUserId,
             to_user: uhId,
             role: 4, // Unit Head
-            role: 4, // Unit Head
             comment: message || 'From Unit Head: Output submitted — awaiting your review.',
           })
         } else if (!existing && isSenderAUnitHead) {
@@ -478,7 +388,6 @@ export const taskStore = defineStore('tasks', () => {
             from_user: fromUserId,
             to_user: directorId,
             role: 4,
-            role: 4,
             comment: message || 'From Unit Head: Output submitted — awaiting your review.',
           })
         }
@@ -486,14 +395,12 @@ export const taskStore = defineStore('tasks', () => {
 
       await supabase.from('task_notif').upsert(
         { task_id: taskId, read_by_assignee: true },
-        { task_id: taskId, read_by_assignee: true },
         { onConflict: 'task_id' }
       )
     }
   }
 
   // ── ADD TASK ────────────────────────────────────────────────────────────────
-  const addTasks = async ({ mainTask }) => {
   const addTasks = async ({ mainTask }) => {
     const auth = useAuthStore()
     const uid = auth.user?.id
@@ -511,22 +418,8 @@ export const taskStore = defineStore('tasks', () => {
       taskData.id = mainTask.id;
     }
     
-
-    const taskData = {
-      parent_ppa_id: mainTask.parentId,
-      assigner: mainTask.assignee ? uid : null,
-      assignee: mainTask.assignee ? assigneeId : null,
-      design: !!mainTask.design
-    };
-    
-    // Only add the ID if it's truthy (exists in DB)
-    if (mainTask.id) {
-      taskData.id = mainTask.id;
-    }
-    
     const { data: taskRow, error: taskErr } = await supabase
       .from('task')
-      .upsert(taskData, { onConflict: 'id' })
       .upsert(taskData, { onConflict: 'id' })
       .select('id').single()
     if (taskErr) throw taskErr
@@ -563,21 +456,7 @@ export const taskStore = defineStore('tasks', () => {
     ])
 
     if (mainTask.outputLink) await supabase.from('task_output').upsert({ task_id: taskId, link: outputLink }, { onConflict: 'task_id' })
-      supabase.from('task_profile').upsert({
-        task_id: taskId, title: mainTask.name, description: mainTask.description,
-        task_type: mainTask.type, urgent: !!mainTask.urgent,
-      }, { onConflict: 'task_id' }),
-      supabase.from('task_approval').upsert({
-        task_id: taskId, unit_head: initialUnitHead, director: initialDirector,
-      }, { onConflict: 'task_id' }),
-      supabase.from('task_duration').upsert({
-        task_id: taskId, deadline: mainTask.endDate,
-      }, { onConflict: 'task_id' }),
-    ])
 
-    if (mainTask.outputLink) await supabase.from('task_output').upsert({ task_id: taskId, link: outputLink }, { onConflict: 'task_id' })
-
-    if (hasOutput && !isDirectorSelfAssign || mainTask.assignee) {
     if (hasOutput && !isDirectorSelfAssign || mainTask.assignee) {
       await _notifySubmission(taskId, assigneeId, uid, null, isSelfAssigned)
     }
@@ -591,12 +470,7 @@ export const taskStore = defineStore('tasks', () => {
 
     const { data: updated, error: updErr } = await supabase
       .from('task_output').upsert({ link }).eq('task_id', taskId).select('id')
-      .from('task_output').upsert({ link }).eq('task_id', taskId).select('id')
     if (updErr) throw new Error(updErr.message)
-    // if (!updated || updated.length === 0) {
-    //   const { error: insErr } = await supabase.from('task_output').insert({ task_id: taskId, link })
-    //   if (insErr) throw new Error(insErr.message)
-    // }
     // if (!updated || updated.length === 0) {
     //   const { error: insErr } = await supabase.from('task_output').insert({ task_id: taskId, link })
     //   if (insErr) throw new Error(insErr.message)
@@ -604,14 +478,12 @@ export const taskStore = defineStore('tasks', () => {
 
     const { data: taskRow } = await supabase
       .from('task').select('assignee, assigner').eq('task_id', taskId).maybeSingle()
-      .from('task').select('assignee, assigner').eq('task_id', taskId).maybeSingle()
     const assigneeId = taskRow?.assignee || auth.user.id
     const assignerId = taskRow?.assigner || auth.user.id
     const isSelfAssigned = assigneeId === assignerId
 
     await resolveUnitIds([assigneeId])
     if (isSelfAssigned || isOfficeUser(assigneeId)) {
-      await supabase.from('task_approval').update({ unit_head: true }).eq('task_id', taskId)
       await supabase.from('task_approval').update({ unit_head: true }).eq('task_id', taskId)
     }
 
@@ -628,18 +500,9 @@ export const taskStore = defineStore('tasks', () => {
       .from('task_output')
       .select('link')
       .eq('task_id', taskId)
-      .eq('task_id', taskId)
       .maybeSingle()
     const oldLink = oldOutput?.link || null
 
-    // 3. Delete the old Drive file (fire-and-forget)
-    if (oldLink && oldLink !== newLink) {
-      // 2. Swap the output link in Supabase
-      const { error: updErr } = await supabase
-        .from('task_output')
-        .update({ link: newLink })
-        .eq('task_id', taskId)
-      if (updErr) throw new Error(updErr.message)
     // 3. Delete the old Drive file (fire-and-forget)
     if (oldLink && oldLink !== newLink) {
       // 2. Swap the output link in Supabase
@@ -664,7 +527,6 @@ export const taskStore = defineStore('tasks', () => {
     // 5. Re-notify the reviewer with the updated file
     const { data: taskRow } = await supabase
       .from('task').select('assignee, assigner').eq('task_id', taskId).maybeSingle()
-      .from('task').select('assignee, assigner').eq('task_id', taskId).maybeSingle()
     const assigneeId = taskRow?.assignee || auth.user.id
     const assignerId = taskRow?.assigner || auth.user.id
     const isSelfAssigned = assigneeId === assignerId
@@ -687,18 +549,9 @@ export const taskStore = defineStore('tasks', () => {
       .from('task_output')
       .select('link')
       .eq('task_id', taskId)
-      .eq('task_id', taskId)
       .maybeSingle()
     const currentLink = currentOutput?.link || null
 
-    // 3. Delete the Drive file (fire-and-forget)
-    if (currentLink) {
-      // 2. Clear the link in Supabase
-      const { error: clearErr } = await supabase
-        .from('task_output')
-        .update({ link: '' })
-        .eq('task_id', taskId)
-      if (clearErr) throw new Error(clearErr.message)
     // 3. Delete the Drive file (fire-and-forget)
     if (currentLink) {
       // 2. Clear the link in Supabase
@@ -719,12 +572,6 @@ export const taskStore = defineStore('tasks', () => {
         .from('task_approval')
         .update({ unit_head: false, revision_comment: null, revised_at: null })
         .eq('task_id', taskId),
-    await Promise.all([
-      // 4. Reset approval flags back to pre-submission state
-      supabase
-        .from('task_approval')
-        .update({ unit_head: false, revision_comment: null, revised_at: null })
-        .eq('task_id', taskId),
 
       // 5. Dismiss pending reviewer notifications
       supabase
@@ -732,19 +579,7 @@ export const taskStore = defineStore('tasks', () => {
         .update({ is_read: true })
         .eq('task_id', taskId)
         .eq('is_read', false),
-      // 5. Dismiss pending reviewer notifications
-      supabase
-        .from('task_revision')
-        .update({ is_read: true })
-        .eq('task_id', taskId)
-        .eq('is_read', false),
 
-      // 6. Defensive: clear revision flag
-      supabase
-        .from('task_profile')
-        .update({ revision: false })
-        .eq('task_id', taskId)
-    ])
       // 6. Defensive: clear revision flag
       supabase
         .from('task_profile')
@@ -761,7 +596,6 @@ export const taskStore = defineStore('tasks', () => {
     const col = role === 'director' ? 'director' : 'unit_head'
     await supabase.from('task_approval')
       .update({ [col]: true, revision_comment: null, revised_at: null })
-      .eq('task_id', taskId)
       .eq('task_id', taskId)
 
     const task = tasks.value.find(t => t.id === taskId)
@@ -802,18 +636,6 @@ export const taskStore = defineStore('tasks', () => {
         is_read: false,
       })
     ])
-    await Promise.all([
-      supabase.from('task_approval').update(resetCols).eq('task_id', taskId),
-      supabase.from('task_profile').update({ revision: true }).eq('task_id', taskId),
-      supabase.from('task_revision').insert({
-        task_id: taskId,
-        from_user: auth.user.id,
-        to_user: task.assignee,
-        role,
-        comment,
-        is_read: false,
-      })
-    ])
     await fetchTasks()
   }
 
@@ -825,11 +647,9 @@ export const taskStore = defineStore('tasks', () => {
     if (newOutputLink) {
       const { data: updated, error: updErr } = await supabase
         .from('task_output').update({ link: newOutputLink }).eq('task_id', taskId).select('id')
-        .from('task_output').update({ link: newOutputLink }).eq('task_id', taskId).select('id')
       if (updErr) throw new Error(updErr.message)
       if (!updated || updated.length === 0) {
         const { error: insErr } = await supabase
-          .from('task_output').insert({ task_id: taskId, link: newOutputLink })
           .from('task_output').insert({ task_id: taskId, link: newOutputLink })
         if (insErr) throw new Error(insErr.message)
       }
@@ -847,12 +667,10 @@ export const taskStore = defineStore('tasks', () => {
     const assigneeId = task?.assignee || auth.user.id
 
     await supabase.from('task_profile').update({ revision: false }).eq('task_id', taskId)
-    await supabase.from('task_profile').update({ revision: false }).eq('task_id', taskId)
 
     if (revisorRole === 'director') {
       await supabase.from('task_approval')
         .update({ unit_head: true, director: false, revision_comment: null, revised_at: null })
-        .eq('task_id', taskId)
         .eq('task_id', taskId)
 
       if (lastRevision?.from_user) {
@@ -873,19 +691,14 @@ export const taskStore = defineStore('tasks', () => {
       await resolveUnitIds([assigneeId])
       const assigneeIsOffice = isOfficeUser(assigneeId)
       const assignerData = await supabase.from('task').select('assigner').eq('task_id', taskId).maybeSingle()
-      const assignerData = await supabase.from('task').select('assigner').eq('task_id', taskId).maybeSingle()
       const isSelfAssigned = assignerData?.data?.assigner === assigneeId
 
       if (assigneeIsOffice || isSelfAssigned) {
         await supabase.from('task_approval')
           .update({ unit_head: true, revision_comment: null, revised_at: null })
           .eq('task_id', taskId)
-          .update({ unit_head: true, revision_comment: null, revised_at: null })
-          .eq('task_id', taskId)
       } else {
         await supabase.from('task_approval')
-          .update({ revision_comment: null, revised_at: null })
-          .eq('task_id', taskId)
           .update({ revision_comment: null, revised_at: null })
           .eq('task_id', taskId)
       }
@@ -938,7 +751,6 @@ export const taskStore = defineStore('tasks', () => {
 
     const { data: subtaskRows } = await supabase
       .from('task').select('id').in('parent_ppa_id', allowedIds)
-      .from('task').select('id').in('parent_ppa_id', allowedIds)
     const subtaskIds = (subtaskRows || []).map(r => r.id)
 
     const { data: spawnedRows } = subtaskIds.length
@@ -964,18 +776,7 @@ export const taskStore = defineStore('tasks', () => {
       del('task_approval', 'id', allIds),
       del('task_duration', 'id', allIds),
       del('task_profile', 'id', allIds)
-    await Promise.all([
-      del('task_revision', 'task_id', allIds),
-      del('task_poke', 'task_id', allIds),
-      del('comment_section', 'task_id', allIds),
-      del('task_notif', 'task_id', allIds),
-      del('design_approval', 'id', allIds),
-      del('task_output', 'id', allIds),
-      del('task_approval', 'id', allIds),
-      del('task_duration', 'id', allIds),
-      del('task_profile', 'id', allIds)
 
-    ])
     ])
     if (spawnedIds.length) {
       await supabase.from('task').delete().in('id', spawnedIds)
@@ -993,7 +794,6 @@ export const taskStore = defineStore('tasks', () => {
     tasks, loading, nameMap, unitMembers,
     fetchTasks, addTasks, submitOutput,
     approveTask, requestRevision, resubmitTask, fetchRevisions,
-    fetchUnitMembers, deleteTasks,
     fetchUnitMembers, deleteTasks,
     fetchTaskById,
     // new

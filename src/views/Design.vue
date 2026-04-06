@@ -1,6 +1,4 @@
 <script setup vapor>
-import AddTask from '@/components/Tasks/AddTask.vue'
-import GridSubtasks from '@/components/Subtasks/GridSubtasks.vue'
 import Icons from '@/components/Icons.vue'
 import Loading from '@/components/Loading.vue'
 import ChartSubtasks from '@/components/Subtasks/ChartSubtasks.vue'
@@ -11,10 +9,6 @@ import { useSubtaskStore } from '@/stores/subtasks'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, ref } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useSubtaskStore } from '@/stores/subtasks'
-import TableSubtasks from '@/components/Subtasks/TableSubtasks.vue'
-import ChartSubtasks from '@/components/Subtasks/ChartSubtasks.vue'
 
 const store = taskStore()
 const subtaskStore = useSubtaskStore()
