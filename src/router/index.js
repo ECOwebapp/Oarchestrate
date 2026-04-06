@@ -50,12 +50,12 @@ const routes = [
         component: Dashboard,
         meta: { requiresTasks: true, requiresAuth: true },
       },
-      // {
-      //   path: 'projects',
-      //   name: 'Projects',
-      //   component: Projects,
-      //   meta: { requireMembers: true, requiresTasks: true, requiresAuth: true },
-      // },
+      {
+        path: 'projects',
+        name: 'Projects',
+        component: Projects,
+        meta: { requireMembers: true, requiresTasks: true, requiresAuth: true },
+      },
       {
         path: 'design',
         name: 'Design',
