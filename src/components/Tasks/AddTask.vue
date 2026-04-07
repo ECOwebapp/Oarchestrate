@@ -4,8 +4,8 @@ import { useMemberStore } from '@/stores/member'
 import { usePosStore } from '@/stores/positions'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 
 const emit = defineEmits(['close', 'success'])
 const props = defineProps({
@@ -298,8 +298,6 @@ const submitForm = async () => {
 
     const assigneeId = auth.isMember ? auth.userID : newTask.value.assignee
 
-    // ── Design Task Assignment ────────────────────────────────────────────────
-    // If this is a design task with an existing ID, just update & assign (no new task)
     if (props.design && newTask.value.id) {
       if (!assigneeId) throw new Error('Please select an assignee for the design task.')
       
@@ -308,8 +306,6 @@ const submitForm = async () => {
       return
     }
 
-    // ── Regular Task Creation ─────────────────────────────────────────────────
-    // Create new task/subtask
     await store.addTasks({
       mainTask: {
         id: newTask.value.id,
@@ -324,6 +320,7 @@ const submitForm = async () => {
         outputLink: showOutput.value ? outputUrl.value : '',
       },
     })
+    // }
 
     emit('success')
   } catch (e) {

@@ -178,6 +178,7 @@ const cancelDelete = () => {
 const preFillData = ref(null)
 
 const onAssignSubtask = (data) => {
+
   if (!data) return
 
   // Extract subtask from event data (comes from TaskDetail.pickMemberAndAssign)
@@ -312,7 +313,8 @@ const onCloseAddTask = async (success) => {
       <div class="flex-1 overflow-auto bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0">
         <GridSubtasks v-if="state === 'Grid View'" :subtasks="filtered" :selectable="selectionMode"
         :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
-        @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true" @close="taskDetail = false" />
+        @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true" @close="taskDetail = false" 
+        @success="() => { taskDetail = false; onCloseAddTask(true); }" />
         <TableSubtasks v-else-if="state === 'Table View'" :subtasks="filtered" :selectable="selectionMode"
           :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
           @assign-subtask="onAssignSubtask" />
@@ -331,7 +333,7 @@ const onCloseAddTask = async (success) => {
 
     </div>
 
-    <!-- ── Edit Task Modal ── -->
+    <!-- ── Add Task Modal ── -->
     <Teleport to="#add-task">
       <Transition name="modal">
         <div v-if="addTask" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"

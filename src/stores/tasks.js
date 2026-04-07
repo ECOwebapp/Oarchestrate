@@ -199,11 +199,6 @@ export const taskStore = defineStore('tasks', () => {
         const posRes = memberPos.value.filter(mp => mp.user_id === assigneeIds)
         const roleMap = Object.fromEntries((posRes || []).map(r => [r.user_id, r.pos_id]))
 
-        // const spawnedMap = buildSpawnedMap([...(rows || []), ...extraSpawnedRows])
-        // const parentRows = (rows || []).filter(r => !r.source_subtask_id)
-
-        console.log(taskRows)
-
         tasks.value = taskRows.map(t => ({
           ...mapRow(t),
           assigneeRole: roleMap[t.assignee] || null,
@@ -277,7 +272,6 @@ export const taskStore = defineStore('tasks', () => {
         }
 
         const { data: taskRows, error } = await query
-          .eq('assignee', uid)
           .order('id', { ascending: false })
         if (error) throw error
 
