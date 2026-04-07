@@ -3,10 +3,8 @@ import { useMemberStore } from '@/stores/member'
 import { usePosStore } from '@/stores/positions'
 import { useSubtaskStore } from '@/stores/subtasks'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { computed, onMounted, ref, watch } from 'vue'
-import BulkAddTask from '../BulkAddTask.vue'
-import Icons from '../Icons.vue'
 import { storeToRefs } from 'pinia'
+import { computed, onMounted, ref, watch } from 'vue'
 
 const emit = defineEmits(['close', 'success'])
 const props = defineProps({
@@ -74,8 +72,11 @@ watch(() => props.preFill, (fill) => {
 
 // ── Position ID constants ─────────────────────────────────────────────────────
 const POS_UNIT_HEAD = 4
+const SENIOR_DRAFTSMAN = 6
+const JUNIOR_DRAFTSMAN = 5
 const DIRECTOR_ASSIGNABLE = new Set(['2', '3', '4', '12'])
 const DIRECTOR_ASSIGNABLE_NR = [2, 3, 4, 12]
+const DESIGN_POSITIONS = new Set(['5', '6'])
 
 // ── Shared helper ─────────────────────────────────────────────────────────────
 const _resolvePosName = (userId, allPositions, context = null) => {
@@ -112,14 +113,24 @@ const assignableMembers = computed(() => {
   const allPositions = posStore.memberPos || []
 
   if (auth.isDirector) {
-    const allowedIds = new Set(
+    let allowedIds = new Set(
       allPositions
         .filter(p => DIRECTOR_ASSIGNABLE.has(String(p.pos_id)))
         .map(p => String(p.user_id))
     )
+    
+    // If design task, only show Senior Draftsman and Junior Draftsman
+    if (newTask.value.design) {
+      allowedIds = new Set(
+        allPositions
+          .filter(p => DESIGN_POSITIONS.has(String(p.pos_id)))
+          .map(p => String(p.user_id))
+      )
+    }
+    
     return allMembers
       .filter(m => allowedIds.has(String(m.id)))
-      .map(m => ({ ...m, pos_name: _resolvePosName(m.id, allPositions, DIRECTOR_ASSIGNABLE_NR) }))
+      .map(m => ({ ...m, pos_name: _resolvePosName(m.id, allPositions, newTask.value.design ? [5, 6] : DIRECTOR_ASSIGNABLE_NR) }))
   }
 
   if (auth.isUnitHead) {
@@ -135,10 +146,10 @@ const assignableMembers = computed(() => {
           const isInUnit = String(p.unit_id) === String(unitId);
           const isNotSelf = !seen.has(String(p.user_id));
 
-          // Apply Senior Draftsman filter only if newTask.value.design is true
+          // If design task, only show Senior Draftsman and Junior Draftsman
           if (newTask.value.design) {
-            const isSeniorDraftsman = Number(p.pos_id) === 6;
-            return isInUnit && isNotSelf && isSeniorDraftsman;
+            const isDesignPosition = DESIGN_POSITIONS.has(String(p.pos_id));
+            return isInUnit && isNotSelf && isDesignPosition;
           }
 
           return isInUnit && isNotSelf;
