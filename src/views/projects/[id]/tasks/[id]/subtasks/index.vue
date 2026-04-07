@@ -2,6 +2,8 @@
 import Icons from '@/components/Icons.vue'
 import Loading from '@/components/Loading.vue'
 import { useSubtaskStore } from '@/stores/subtasks'
+import { taskStore } from '@/stores/tasks'
+import { useProjectStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
@@ -13,6 +15,8 @@ import AddSubtask from '@/components/Subtasks/AddSubtask.vue'
 
 const subtaskStore = useSubtaskStore()
 const { subtasks } = storeToRefs(subtaskStore)
+const tasksStore = taskStore()
+const projectStore = useProjectStore()
 const auth = useAuthStore()
 const route = useRoute()
 const state = ref('Grid View')
@@ -39,7 +43,23 @@ const activeUnitId = computed(() => {
   return headRole?.unit_id ?? null
 })
 
-onMounted(() => subtaskStore.fetchSubTasks(parentId.value))
+onMounted(async () => {
+  await Promise.all([
+    subtaskStore.fetchSubTasks(parentId.value),
+    tasksStore.fetchTasks(),
+    projectStore.fetchProjects(),
+  ])
+})
+
+const parentTask = computed(() => {
+  return tasksStore.tasks.find(t => t.id === parentId.value) || null
+})
+
+const parentProjectTitle = computed(() => {
+  if (!parentTask.value) return 'Unknown PPA'
+  const project = projectStore.projects.find(p => p.id === parentTask.value.parentId)
+  return project?.title || project?.name || 'Unknown PPA'
+})
 
 const filterOpts = computed(() => {
   const base = ['All', 'Regular', 'Insertion', 'Urgent', 'Revision', 'Overdue']
@@ -296,16 +316,50 @@ const onCloseAddTask = async (success) => {
       </div>
 
       <!-- ── View ── -->
-      <div class="flex-1 overflow-auto bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0">
-        <GridSubtasks v-if="state === 'Grid View'" :subtasks="filtered" :selectable="selectionMode"
-          :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
-          @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true" @close="taskDetail = false"
-          @success="() => { taskDetail = false; onCloseAddTask(true); }" />
-        <TableSubtasks v-else-if="state === 'Table View'" :subtasks="filtered" :selectable="selectionMode"
-          :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
-          @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true" @close="taskDetail = false"
-          @success="() => { taskDetail = false; onCloseAddTask(true); }" />
-        <ChartSubtasks v-else-if="state === 'Chart View'" :subtasks="filtered" />
+      <div class="flex-1 flex flex-col bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0 overflow-hidden">
+        <div class="px-5 py-3 flex items-center flex-wrap gap-2 border-b border-gray-200 flex-shrink-0 bg-white">
+          <router-link
+            to="/projects"
+            class="text-sm font-semibold text-gray-900 hover:text-gray-700 hover:bg-gray-100 px-2.5 py-1 rounded-md transition-colors truncate max-w-[170px] sm:max-w-[320px]"
+            :title="parentProjectTitle"
+          >
+            {{ parentProjectTitle }}
+          </router-link>
+          <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" />
+          </svg>
+          <router-link
+            v-if="parentTask"
+            :to="`/projects/${parentTask.parentId}/tasks`"
+            class="text-sm font-medium text-gray-700 hover:text-gray-600 hover:bg-gray-100 px-2.5 py-1 rounded-md transition-colors truncate max-w-[170px] sm:max-w-[320px]"
+            :title="parentTask.name"
+          >
+            {{ parentTask.name }}
+          </router-link>
+          <span
+            v-else
+            class="text-sm font-medium text-gray-700 px-2.5 py-1 truncate max-w-[170px] sm:max-w-[320px]"
+            title="Task"
+          >
+            Task
+          </span>
+          <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" />
+          </svg>
+          <span class="text-sm font-medium text-gray-600 px-2.5 py-1">Subtasks</span>
+        </div>
+
+        <div class="flex-1 overflow-auto min-h-0">
+          <GridSubtasks v-if="state === 'Grid View'" :subtasks="filtered" :selectable="selectionMode"
+            :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
+            @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true" @close="taskDetail = false"
+            @success="() => { taskDetail = false; onCloseAddTask(true); }" />
+          <TableSubtasks v-else-if="state === 'Table View'" :subtasks="filtered" :selectable="selectionMode"
+            :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
+            @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true" @close="taskDetail = false"
+            @success="() => { taskDetail = false; onCloseAddTask(true); }" />
+          <ChartSubtasks v-else-if="state === 'Chart View'" :subtasks="filtered" />
+        </div>
       </div>
 
       <!-- ── View toggle ── -->

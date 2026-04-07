@@ -13,6 +13,8 @@ import { storeToRefs } from 'pinia'
 const projectStore = useProjectStore()
 const auth = useAuthStore()
 const state = ref('Grid View')
+const activeTaskMode = ref('PPA')
+const taskModeTabs = ['PPA', 'Insertions']
 const addTask = ref(false)
 const search = ref('')
 const filter = ref('All')
@@ -49,6 +51,17 @@ const sortOpts = ['Recently Assigned', 'Date Due', 'Name A→Z', 'Urgent First']
 
 const filtered = computed(() => {
   let list = projects.value
+
+  if (activeTaskMode.value === 'PPA') {
+    list = list.filter(t =>
+      t.type?.toLowerCase() !== 'insertion' && t.typeId !== 2
+    )
+  } else if (activeTaskMode.value === 'Insertions') {
+    list = list.filter(t =>
+      t.type?.toLowerCase() === 'insertion' || t.typeId === 2
+    )
+  }
+
   const q = search.value.toLowerCase()
   if (q) list = list.filter(t =>
     t.name.toLowerCase().includes(q) ||
@@ -302,15 +315,43 @@ const onCloseAddProject = async (success) => {
       </div>
 
       <!-- ── View ── -->
-      <div class="flex-1 overflow-auto bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0">
-        <GridProjects v-if="state === 'Grid View'" :projects="filtered" :selectable="selectionMode"
-          :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
-           :modal="loading" @open="taskDetail = true" @success="onCloseAddProject(true)" />
-        <TableProjects v-else-if="state === 'Table View'" :tasks="filtered" :selectable="selectionMode"
-          :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
-          @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true"  @close="taskDetail = false"
-          @success="() => { taskDetail = false; onCloseAddProject(true); }" />
-        <ChartProjects v-else-if="state === 'Chart View'" :tasks="filtered" />
+      <div class="flex-1 flex flex-col bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0 overflow-hidden">
+        <div class="flex border-b border-gray-200 flex-shrink-0">
+          <button
+            v-for="tab in taskModeTabs"
+            :key="tab"
+            @click="activeTaskMode = tab"
+            class="relative flex items-center gap-2 px-6 py-3 text-sm font-semibold transition-colors hover:bg-gray-50 cursor-pointer"
+            :class="activeTaskMode === tab ? 'text-green-800' : 'text-gray-500 hover:text-gray-700'"
+          >
+            <Icons
+              v-if="tab === 'PPA'"
+              :icon="'projects'"
+              iconClass="w-4 h-4"
+            />
+            <Icons
+              v-else
+              :icon="'file'"
+              iconClass="w-4 h-4"
+            />
+            {{ tab }}
+            <span
+              v-if="activeTaskMode === tab"
+              class="absolute left-0 right-0 -bottom-px h-0.5 bg-green-800"
+            />
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-auto min-h-0">
+          <GridProjects v-if="state === 'Grid View'" :projects="filtered" :selectable="selectionMode"
+            :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
+            :modal="loading" @open="taskDetail = true" @success="onCloseAddProject(true)" />
+          <TableProjects v-else-if="state === 'Table View'" :tasks="filtered" :selectable="selectionMode"
+            :selected-ids="selectedIds" :is-deletable="isDeletable" @toggle-select="toggleTaskSelect"
+            @assign-subtask="onAssignSubtask" :modal="loading" @open="taskDetail = true" @close="taskDetail = false"
+            @success="() => { taskDetail = false; onCloseAddProject(true); }" />
+          <ChartProjects v-else-if="state === 'Chart View'" :tasks="filtered" />
+        </div>
       </div>
 
       <!-- ── View toggle ── -->
