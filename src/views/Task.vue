@@ -1,14 +1,14 @@
 <script setup vapor>
+import Icons from '@/components/Icons.vue'
+import Loading from '@/components/Loading.vue'
 import AddTask from '@/components/Tasks/AddTask.vue'
 import ChartTasks from '@/components/Tasks/ChartTasks.vue'
 import GridTasks from '@/components/Tasks/GridTasks.vue'
-import Icons from '@/components/Icons.vue'
 import TableTasks from '@/components/Tasks/TableTasks.vue'
-import Loading from '@/components/Loading.vue'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
+import { computed, onMounted, ref } from 'vue'
 
 const store = taskStore()
 const auth = useAuthStore()
@@ -31,26 +31,12 @@ const deleteError = ref('')
 const taskDetail = ref(false)
 
 const tasks = computed(() => {
-  // if (auth.isDirector) {
-  //   return store.tasks.filter(t => {
-  //     // 1. Core requirement: Must not be marked as 'design'
-  //     const isNotDesigned = !t.design;
-
-  //     const isParentTask = !t.parentId
-
-  //     // 2. The Exception: 
-  //     // Show it if the Unit Head approved it (true) 
-  //     // OR if the task type is 'Insertion' (typeId === 2)
-  //     const isVisibleToDirector = t.unitHead || t.typeId === 2;
-
-  //     return isNotDesigned;
-  //   });
-  // }
-
-  // Default filter for everyone else
-
-
-  return store.tasks.filter(t => !t.design);
+  if (auth.isDirector || auth.isUnitHead) {
+    // Show only parent tasks (PPA > Task level)
+    return store.tasks.filter(t => !t.parentId);
+  }
+  // Members: show only their own subtasks (Task > Subtask level, assigned to them)
+  return store.tasks.filter(t => t.parentId && t.assignee === auth.userID);
 });
 
 const activeUnitId = computed(() => {
