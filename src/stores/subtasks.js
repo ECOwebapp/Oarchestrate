@@ -271,7 +271,7 @@ export const useSubtaskStore = defineStore('subtasks', () => {
         await Promise.all([resolveNames(allUserIds), resolveUnitIds([uid])])
 
         subtasks.value = (subtaskRows || []).map(t => ({
-          ...subtaskRows(t, {}),
+          ...subtaskRow(t, {}),
           assigneeUnitId: getAssigneeUnitId(uid),
           assigneeIsOffice: isOfficeUser(uid),
         }))

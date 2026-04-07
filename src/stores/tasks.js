@@ -272,7 +272,6 @@ export const taskStore = defineStore('tasks', () => {
         }
 
         const { data: taskRows, error } = await query
-          .eq('assignee', uid)
           .order('id', { ascending: false })
         if (error) throw error
 
