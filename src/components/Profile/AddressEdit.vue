@@ -90,14 +90,14 @@ defineExpose({ fullAddress })
 
 <template>
     <!-- ── Address via PSGC ── -->
-    <div class="space-y-2">
+  <div class="space-y-1">
         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Home Address</p>
 
         <!-- Region -->
         <div class="flex-1">
-            <div v-if="loadingRegions" class="w-full h-11 rounded-lg bg-gray-100 animate-pulse"></div>
+            <div v-if="loadingRegions" class="w-full h-10 rounded-lg bg-gray-100 animate-pulse"></div>
             <select v-else v-model="form.regionCode" @change="() => { form.provinceCode = '';  form.cityCode = ''; form.barangayCode = '' }"
-                class="w-full px-4 py-3 rounded-lg border text-gray-700 bg-white text-sm transition hover:cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent"
+              class="w-full rounded-lg border bg-white px-3.5 py-2 text-[13px] text-gray-700 transition hover:cursor-pointer focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-700"
                 :class="errors.regionCode ? 'border-red-400' : 'border-gray-300'">
                 <option selected disabled value="">Region</option>
                 <option v-for="r in regions" :key="r.code" :value="r.code" class="hover:cursor-pointer">{{ r.name }}</option>
@@ -107,9 +107,9 @@ defineExpose({ fullAddress })
 
         <!-- Province (hidden for NCR) -->
         <div v-if="!isNCR && form.regionCode">
-            <div v-if="loadingProvinces" class="w-full h-11 rounded-lg bg-gray-100 animate-pulse"></div>
+            <div v-if="loadingProvinces" class="w-full h-10 rounded-lg bg-gray-100 animate-pulse"></div>
             <select v-else v-model="form.provinceCode" @change="() => form.cityCode = ''" :disabled="!form.regionCode"
-                class="w-full px-4 py-3 rounded-lg border text-gray-700 bg-white text-sm transition hover:cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400"
+              class="w-full rounded-lg border bg-white px-3.5 py-2 text-[13px] text-gray-700 transition hover:cursor-pointer focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-700 disabled:bg-gray-50 disabled:text-gray-400"
                 :class="errors.provinceCode ? 'border-red-400' : 'border-gray-300'">
                 <option selected disabled value="">Province</option>
                 <option v-for="p in provinces" :key="p.code" :value="p.code">{{ p.name }}</option>
@@ -119,10 +119,10 @@ defineExpose({ fullAddress })
 
         <!-- City / Municipality -->
         <div v-if="isNCR || form.provinceCode">
-            <div v-if="loadingCities" class="w-full h-11 rounded-lg bg-gray-100 animate-pulse"></div>
+            <div v-if="loadingCities" class="w-full h-10 rounded-lg bg-gray-100 animate-pulse"></div>
             <select v-else v-model="form.cityCode" @change="() => form.barangayCode = ''"
                 :disabled="!isNCR && !form.provinceCode"
-                class="w-full px-4 py-3 rounded-lg border text-gray-700 bg-white text-sm transition hover:cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400"
+              class="w-full rounded-lg border bg-white px-3.5 py-2 text-[13px] text-gray-700 transition hover:cursor-pointer focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-700 disabled:bg-gray-50 disabled:text-gray-400"
                 :class="errors.cityCode ? 'border-red-400' : 'border-gray-300'">
                 <option selected disabled value="">City / Municipality</option>
                 <option v-for="c in cities" :key="c.code" :value="c.code">{{ c.name }}</option>
@@ -132,9 +132,9 @@ defineExpose({ fullAddress })
 
         <!-- Barangay -->
         <div v-if="form.cityCode">
-            <div v-if="loadingBarangays" class="w-full h-11 rounded-lg bg-gray-100 animate-pulse"></div>
+            <div v-if="loadingBarangays" class="w-full h-10 rounded-lg bg-gray-100 animate-pulse"></div>
             <select v-else v-model="form.barangayCode" :disabled="!form.cityCode"
-                class="w-full px-4 py-3 rounded-lg border text-gray-700 bg-white text-sm transition hover:cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400"
+              class="w-full rounded-lg border bg-white px-3.5 py-2 text-[13px] text-gray-700 transition hover:cursor-pointer focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-700 disabled:bg-gray-50 disabled:text-gray-400"
                 :class="errors.barangayCode ? 'border-red-400' : 'border-gray-300'">
                 <option selected disabled value="">Barangay</option>
                 <option v-for="b in barangays" :key="b.code" :value="b.code">{{ b.name }}</option>
@@ -143,13 +143,13 @@ defineExpose({ fullAddress })
         </div>
 
         <!-- Computed address preview -->
-        <div v-if="fullAddress" class="flex items-start gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+        <div v-if="fullAddress" class="flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5">
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"
                 class="w-4 h-4 text-green-700 flex-shrink-0 mt-0.5">
                 <path d="M10 2C6.686 2 4 4.686 4 8c0 4.5 6 10 6 10s6-5.5 6-10c0-3.314-2.686-6-6-6z" />
                 <circle cx="10" cy="8" r="2" />
             </svg>
-            <p class="text-xs text-green-800 font-medium leading-relaxed">{{ fullAddress }}</p>
+          <p class="text-xs font-medium leading-snug text-green-800">{{ fullAddress }}</p>
         </div>
     </div>
 </template>

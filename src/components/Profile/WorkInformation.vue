@@ -89,28 +89,30 @@ const handleSave = async () => {
 
 <template>
     <div class="flex flex-col gap-5">
-        <table class="flex-1">
+        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <table class="flex-1 w-full">
             <thead>
-                <tr class="bg-green-900 text-white">
-                    <th v-for="head in ['Position', 'Unit', 'Action']" class="text-xl text-start px-5 py-2">{{ head }}
+                <tr class="bg-gradient-to-r from-emerald-950 to-green-800 text-white">
+                    <th v-for="head in ['Position', 'Unit', 'Action']" class="text-sm uppercase tracking-wide text-start px-5 py-3">{{ head }}
                     </th>
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="(pos, index) in (auth.positions || [])" class="">
-                    <td class="py-4 px-5">{{ pos.pos_name }}</td>
-                    <td class="px-5">{{ pos.unit_name }}</td>
-                    <td v-if="![1, 4].includes(pos.pos_id)" class="flex flex-row items-center gap-3 py-4 px-5">
-                        <Icons :icon="'edit'" class="hover:cursor-pointer" @click="openEditModal(pos)" />
-                        <Icons :icon="'deleteOutline'" class="text-red-700 hover:cursor-pointer"
+                <tr v-for="(pos, index) in (auth.positions || [])" class="border-b border-slate-100 transition-colors hover:bg-slate-50/80 last:border-b-0">
+                    <td class="py-4 px-5 text-sm font-medium text-slate-700">{{ pos.pos_name }}</td>
+                    <td class="px-5 text-sm text-slate-600">{{ pos.unit_name }}</td>
+                    <td v-if="![1, 4].includes(pos.pos_id)" class="flex flex-row items-center gap-3 py-4 px-5 text-slate-500">
+                        <Icons :icon="'edit'" class="hover:text-emerald-700 hover:cursor-pointer" @click="openEditModal(pos)" />
+                        <Icons :icon="'deleteOutline'" class="text-red-700 hover:text-red-800 hover:cursor-pointer"
                             @click="openDeleteModal(pos)" />
                     </td>
                 </tr>
             </tbody>
 
         </table>
+        </div>
         <div v-if="!auth.isDirector"
-            class="self-center flex gap-3 bg-green-950 mt-5 px-4 py-3 rounded-full text-white hover:cursor-pointer"
+            class="self-center mt-2 flex gap-3 rounded-full bg-gradient-to-r from-emerald-800 to-green-700 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(4,120,87,0.25)] transition-all hover:-translate-y-0.5 hover:from-emerald-700 hover:to-green-600 hover:shadow-[0_10px_24px_rgba(4,120,87,0.32)] hover:cursor-pointer"
             @click="openAddModal">
             <Icons :icon="'add'" />
             Add Position
@@ -119,9 +121,9 @@ const handleSave = async () => {
         <Teleport to="body" v-if="modal">
             <div class="fixed inset-0 z-[999] bg-black/50 flex items-center justify-center p-4">
 
-                <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden p-6 flex flex-col gap-4">
+                <div class="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl flex flex-col gap-4">
 
-                    <h2 class="text-xl font-bold border-b pb-2"
+                    <h2 class="border-b border-slate-200 pb-2 text-xl font-bold"
                         :class="modalMode === 'delete' ? 'text-red-900' : 'text-green-900'">
                         {{
                             modalMode === 'add' ?
@@ -136,7 +138,7 @@ const handleSave = async () => {
                             <p class="block text-sm font-semibold text-gray-700 mb-1">Unit</p>
                             <div v-if="loadingDropdowns" class="w-full h-10 rounded-lg bg-gray-200 animate-pulse"></div>
                             <select v-else v-model="localForm.unit" @change="clearPosOnUnitChange()"
-                                class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-green-700 bg-white cursor-pointer">
+                                class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-gray-700 shadow-[0_2px_8px_rgba(15,23,42,0.03)] focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 cursor-pointer">
                                 <option selected disabled :value="null">Select your unit</option>
                                 <option v-for="u in units.unit" :key="u.id" :value="u.id">{{ u.name }}</option>
                             </select>
@@ -153,7 +155,7 @@ const handleSave = async () => {
                             </div>
 
                             <select v-else v-model="localForm.position"
-                                class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-green-700 bg-white cursor-pointer">
+                                class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-gray-700 shadow-[0_2px_8px_rgba(15,23,42,0.03)] focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 cursor-pointer">
                                 <option selected disabled :value="null">Select your position</option>
                                 <option v-for="p in posOnUnit" :key="p.pos_id" :value="p.pos_id">
                                     {{ p.pos_name }}
@@ -170,10 +172,10 @@ const handleSave = async () => {
 
                     <div class="mt-4 flex justify-end gap-2 border-t pt-4">
                         <button @click="modal = false"
-                            class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 hover:cursor-pointer">Cancel</button>
+                            class="rounded-full px-4 py-2 text-sm font-medium text-gray-500 transition-colors hover:text-gray-700 hover:cursor-pointer">Cancel</button>
                         <button
-                            class="px-6 py-2 text-white rounded-lg text-sm font-bold shadow-lg transition-colors hover:cursor-pointer"
-                            :class="modalMode === 'delete' ? 'bg-red-800 hover:bg-red-900' : 'bg-green-800 hover:bg-green-900 '"
+                            class="rounded-full px-6 py-2 text-white text-sm font-bold shadow-lg transition-all hover:-translate-y-0.5 hover:cursor-pointer"
+                            :class="modalMode === 'delete' ? 'bg-red-800 hover:bg-red-900' : 'bg-gradient-to-r from-emerald-800 to-green-700 hover:from-emerald-700 hover:to-green-600'"
                             @click="() => { modal = false; handleSave() }">
                             Confirm
                         </button>
