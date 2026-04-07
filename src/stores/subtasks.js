@@ -83,7 +83,6 @@ export const useSubtaskStore = defineStore('subtasks', () => {
   const subtaskRow = (st) => ({
     id: st.id,
     parentTaskId: st.parent_task_id,
-    parentSubsubTaskId: st.parent_subtask_id,
     assigner: st.assigner,
     assignee: st.assignee,
     assignerName: nameMap.value[st.assigner] || '—',
@@ -332,7 +331,7 @@ export const useSubtaskStore = defineStore('subtasks', () => {
         }
       }
       await supabase.from('task_notif').upsert(
-        { subtask_id: subTaskId, read_by_assignee: true, read_by_unit_head: true },
+        { task_id: null, subtask_id: subTaskId, read_by_assignee: true, read_by_unit_head: true },
         { onConflict: 'subtask_id' }
       )
     } else {
@@ -344,8 +343,7 @@ export const useSubtaskStore = defineStore('subtasks', () => {
 
       const uhIds = [...new Set((uhRows || []).map(r => r.user_id))]
 
-      const allUnitHeads = positions.memberPos
-        .filter(link => link.pos_id === 4)
+      const allUnitHeads = uhRows
         .map(link => link.user_id)
 
       // 2. Check if the current sender is in that list
@@ -467,8 +465,18 @@ export const useSubtaskStore = defineStore('subtasks', () => {
   const submitOutput = async (subTaskId, link) => {
     const auth = useAuthStore()
 
+    let query = {
+      link: link
+    }
+
+    if (subTaskId) {
+      query.subtask_id = subTaskId
+    }
+
+    console.log(query)
+
     const { data: updated, error: updErr } = await supabase
-      .from('task_output').upsert({ link }).eq('subtask_id', subTaskId).select('id')
+      .from('task_output').upsert(query, { onConflict: 'subtask_id' })
     if (updErr) throw new Error(updErr.message)
     // if (!updated || updated.length === 0) {
     //   const { error: insErr } = await supabase.from('task_output').insert({ id: subTaskId, link })
@@ -477,8 +485,8 @@ export const useSubtaskStore = defineStore('subtasks', () => {
 
     const { data: taskRow } = await supabase
       .from('subtask').select('assignee, assigner').eq('id', subTaskId).maybeSingle()
-    const assigneeId = taskRow?.assignee || auth.user.id
-    const assignerId = taskRow?.assigner || auth.user.id
+    const assigneeId = taskRow?.assignee || auth.userID
+    const assignerId = taskRow?.assigner || auth.userID
     const isSelfAssigned = assigneeId === assignerId
 
     await resolveUnitIds([assigneeId])
@@ -486,7 +494,7 @@ export const useSubtaskStore = defineStore('subtasks', () => {
       await supabase.from('task_approval').update({ unit_head: true }).eq('subtask_id', subTaskId)
     }
 
-    await _notifySubmission(subTaskId, assigneeId, auth.user.id, null, isSelfAssigned)
+    await _notifySubmission(subTaskId, assigneeId, auth.userID, null, isSelfAssigned)
     await fetchSubTasks()
   }
 
