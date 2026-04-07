@@ -1,7 +1,7 @@
 <script setup vapor>
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { onMounted, reactive, ref, computed } from 'vue'
+import { onMounted, reactive, ref, computed, watch } from 'vue'
 import Icons from '@/components/Icons.vue'
 import { usePosStore } from '@/stores/positions'
 import { useUnitStore } from '@/stores/unit'
@@ -22,6 +22,46 @@ const units = useUnitStore()
 const addressStore = useAddressStore()
 const genders = useGenderStore()
 const saveDialog = ref(null)
+
+const resolveExposedValue = (value) => {
+  if (value && typeof value === 'object' && 'value' in value) {
+    return value.value
+  }
+  return value
+}
+
+const saveSuccessVisible = computed(() => {
+  return Boolean(resolveExposedValue(saveDialog.value?.saveSuccess))
+})
+
+const showSaveModal = ref(false)
+
+watch(saveSuccessVisible, (isSuccess, wasSuccess) => {
+  // Open modal only when save transitions from not-success to success.
+  if (isSuccess && !wasSuccess) {
+    showSaveModal.value = true
+  }
+})
+
+const saveErrorMessage = computed(() => {
+  const value = resolveExposedValue(saveDialog.value?.saveError)
+  return typeof value === 'string' ? value : ''
+})
+
+const closeSaveModal = () => {
+  showSaveModal.value = false
+
+  const dialog = saveDialog.value
+  if (!dialog || dialog.saveSuccess === undefined) return
+
+  const exposed = dialog.saveSuccess
+  if (exposed && typeof exposed === 'object' && 'value' in exposed) {
+    exposed.value = false
+    return
+  }
+
+  dialog.saveSuccess = false
+}
 
 const infoSection = ref('personal')
 
@@ -114,9 +154,12 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="relative flex h-full min-h-0 justify-center overflow-y-auto bg-slate-100 px-3 py-4 sm:px-6 sm:py-6 lg:px-10 lg:py-8">
+  <div
+    class="profile-view relative flex justify-center bg-slate-100 px-3 py-4 sm:px-6 sm:py-6 lg:px-10 lg:py-8"
+    :class="infoSection === 'personal' ? 'h-auto min-h-fit overflow-visible' : 'h-full min-h-0 overflow-y-auto'">
 
-    <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(6,95,70,0.1),_transparent_38%),radial-gradient(circle_at_bottom_right,_rgba(20,83,45,0.08),_transparent_45%)]"></div>
+    <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(6,95,70,0.15),_transparent_40%),radial-gradient(circle_at_bottom_right,_rgba(15,23,42,0.12),_transparent_48%)]"></div>
+    <div class="pointer-events-none absolute inset-x-0 top-0 h-52 bg-gradient-to-b from-white/55 to-transparent"></div>
 
     <!-- Loading skeleton -->
     <div v-if="loading" class="relative z-10 flex w-full max-w-[1200px] gap-6 items-start animate-pulse">
@@ -140,35 +183,32 @@ onMounted(async () => {
     </div>
 
     <!-- Main content -->
-    <div v-else class="relative z-10 flex w-full max-w-[1220px] flex-col gap-5 overflow-hidden rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-sm sm:p-6 lg:min-h-0 lg:flex-row lg:p-8">
+    <div v-else
+      class="profile-shell relative z-10 flex w-full max-w-[1220px] flex-col gap-5 rounded-3xl border border-slate-200/80 bg-white/90 p-4 shadow-[0_26px_65px_rgba(15,23,42,0.12)] backdrop-blur-md sm:p-6 lg:min-h-0 lg:flex-row lg:p-8"
+      :class="infoSection === 'personal' ? 'overflow-visible' : 'overflow-hidden'">
 
       <!-- Navbar -->
       <div class="w-full lg:w-72 lg:flex-shrink-0">
         <ul class="flex w-full flex-col gap-2 border-b border-slate-200 pb-4 lg:border-b-0 lg:border-r lg:pr-5 lg:pb-0">
-          <li class="flex items-center p-4 block text-sm font-semibold rounded-2xl transition-colors hover:cursor-pointer"
-            :class="infoSection === section.key ? 'bg-green-950 text-white shadow-sm' : 'text-slate-800 hover:bg-slate-100'"
+          <li class="group flex items-center p-4 block text-sm font-semibold rounded-2xl transition-all duration-200 hover:cursor-pointer"
+            :class="infoSection === section.key ? 'bg-gradient-to-r from-emerald-950 via-green-900 to-green-800 text-white shadow-[0_10px_30px_rgba(6,78,59,0.28)]' : 'text-slate-700 hover:bg-slate-100/90 hover:text-slate-900'"
             v-for="section in infoTabs" :key="section.key" @click="infoSection = section.key">
-            <Icons :icon="section.icon" />
+            <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-white/10 text-current transition-colors group-hover:bg-white/40">
+              <Icons :icon="section.icon" />
+            </span>
             <span class="flex-1 px-2">{{ section.label }}</span>
-            <Icons :icon="'chevronRight'" />
+            <span class="transition-transform duration-200 group-hover:translate-x-0.5">
+              <Icons :icon="'chevronRight'" />
+            </span>
           </li>
         </ul>
       </div>
 
-      <div class="min-w-0 flex-1 overflow-x-hidden">
+      <div class="min-w-0 flex-1 overflow-x-hidden rounded-2xl border border-slate-200/90 bg-white/80 p-4 shadow-inner shadow-slate-200/40 sm:p-6 lg:p-7">
         <!-- Feedback banners -->
         <Transition name="fade">
-          <div v-if="saveDialog?.saveSuccess"
-            class="mb-5 flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 flex-shrink-0">
-              <path d="M4 10l4 4 8-8" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            Profile saved successfully!
-          </div>
-        </Transition>
-        <Transition name="fade">
-          <div v-if="saveDialog?.saveError" class="mb-5 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">
-            {{ saveDialog?.saveError }}
+          <div v-if="saveErrorMessage" class="mb-5 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">
+            {{ saveErrorMessage }}
           </div>
         </Transition>
 
@@ -186,10 +226,63 @@ onMounted(async () => {
       </div>
 
     </div>
+
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="showSaveModal"
+          class="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-[1px]"
+          @click.self="closeSaveModal">
+          <div class="relative w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_24px_50px_rgba(15,23,42,0.25)]">
+            <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="h-6 w-6">
+                <path d="M5 12l5 5L20 7" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </div>
+
+            <h3 class="text-center text-lg font-bold text-slate-900">Saved Successfully</h3>
+            <p class="mt-1 text-center text-sm text-slate-600">Your profile details have been updated.</p>
+
+            <div class="mt-5 flex justify-center">
+              <button
+                type="button"
+                class="rounded-full bg-emerald-700 px-8 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-600"
+                @click="closeSaveModal">
+                OK
+              </button>
+            </div>
+
+            <button
+              type="button"
+              class="absolute right-4 top-4 text-slate-400 transition-colors hover:text-slate-600"
+              @click="closeSaveModal"
+              aria-label="Close modal">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4">
+                <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <style scoped>
+.profile-view::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(to right, rgba(15, 23, 42, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), transparent 75%);
+}
+
+.profile-shell {
+  animation: shellIn 0.45s ease-out;
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.3s ease;
@@ -198,5 +291,17 @@ onMounted(async () => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+@keyframes shellIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

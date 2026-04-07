@@ -149,9 +149,9 @@ const handleSave = async () => {
 </script>
 
 <template>
-    <div class="grid min-w-0 grid-cols-1 gap-6 overflow-x-hidden xl:grid-cols-[300px_minmax(0,1fr)]">
-        <div class="flex flex-col items-center gap-4 pt-2">
-            <div class="relative h-44 w-44 overflow-hidden rounded-full border-4 border-gray-300 bg-gray-200 sm:h-56 sm:w-56 lg:h-64 lg:w-64">
+    <div class="grid min-w-0 grid-cols-1 gap-4 overflow-x-hidden xl:grid-cols-[280px_minmax(0,1fr)]">
+        <div class="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4 pt-5 shadow-sm">
+            <div class="relative h-40 w-40 overflow-hidden rounded-full border-4 border-emerald-100 bg-gray-200 shadow-[0_10px_30px_rgba(2,132,199,0.15)] sm:h-48 sm:w-48 lg:h-56 lg:w-56">
                 <img v-if="imagePreview" :src="imagePreview" alt="Profile" class="w-full h-full object-cover" />
                 <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
                     <Icons icon="profile" class="h-16 w-16 text-gray-400 sm:h-20 sm:w-20" />
@@ -166,7 +166,7 @@ const handleSave = async () => {
             <input ref="fileInput" type="file" accept=".jpg,.jpeg,.png,.webp" class="hidden"
                 @change="handleImageUpload" />
             <button
-                class="w-full max-w-[220px] rounded-full border-2 border-gray-800 px-5 py-2 text-sm font-semibold text-gray-800 transition-colors hover:bg-gray-200 cursor-pointer"
+                class="w-full max-w-[210px] rounded-full border border-emerald-200 bg-white px-5 py-1.5 text-sm font-semibold text-emerald-900 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-emerald-50 hover:shadow-md cursor-pointer"
                 @click="triggerUpload">
                 Upload Image
             </button>
@@ -174,49 +174,49 @@ const handleSave = async () => {
             <!-- Upload validation error -->
             <p v-if="uploadError" class="text-red-500 text-xs text-center">{{ uploadError }}</p>
 
-            <ul class="w-full max-w-[260px] list-inside list-disc space-y-1 text-xs leading-snug text-red-500">
+            <ul class="w-full max-w-[240px] list-inside list-disc space-y-1 text-[11px] leading-snug text-rose-500">
                 <li>Max file size is 2 MB</li>
                 <li>Only JPG, PNG, and WEBP files are accepted</li>
                 <li>Image must not violate the rules of the institution</li>
             </ul>
         </div>
 
-        <div class="min-w-0 overflow-x-hidden pr-3 sm:pr-5 lg:pr-6">
+        <div class="min-w-0 overflow-x-hidden rounded-2xl border border-slate-200 bg-white p-3.5 pr-3 shadow-sm sm:p-4 sm:pr-4 lg:p-4 lg:pr-4">
             <!-- Last Name, First Name, M.I. -->
-            <div class="mb-5 grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_92px]">
+            <div class="mb-3.5 grid grid-cols-1 gap-2.5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_84px]">
                 <div class="min-w-0">
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">Last name</label>
+                    <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Last name</label>
                     <input v-model="form.lname" type="text" placeholder="Last name"
-                        class="w-full border border-gray-300 rounded-lg p-4 text-sm focus:outline-none focus:ring-1 focus:ring-green-700" />
+                        class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-[13px] shadow-[0_2px_8px_rgba(15,23,42,0.03)] transition focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100" />
                 </div>
                 <div class="min-w-0">
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">First name</label>
+                    <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">First name</label>
                     <input v-model="form.fname" type="text" placeholder="First name"
-                        class="w-full border border-gray-300 rounded-lg p-4 text-sm focus:outline-none focus:ring-1 focus:ring-green-700" />
+                        class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-[13px] shadow-[0_2px_8px_rgba(15,23,42,0.03)] transition focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100" />
                 </div>
                 <div class="min-w-0">
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">M.I.</label>
+                    <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">M.I.</label>
                     <input v-model="form.middle_initial" type="text" maxlength="3" placeholder="M.I."
-                        class="w-full border border-gray-300 rounded-lg p-4 text-sm focus:outline-none focus:ring-1 focus:ring-green-700" />
+                        class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-[13px] shadow-[0_2px_8px_rgba(15,23,42,0.03)] transition focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100" />
                 </div>
             </div>
 
             <!-- Address + Birthdate -->
-            <div class="flex flex-col gap-4 mb-5">
+            <div class="mb-3.5 flex flex-col gap-2.5">
                 <div class="flex-1">
                     <AddressEdit :form="form" :errors="errors" :clear-error="clearError" ref="addressInfo" />
                 </div>
 
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div class="grid grid-cols-1 gap-2.5 md:grid-cols-2">
                     <div class="min-w-0">
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Birthdate</label>
+                        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Birthdate</label>
                         <input v-model="form.birthdate" type="date"
-                            class="w-full border border-gray-300 rounded-lg p-4 text-sm focus:outline-none focus:ring-1 focus:ring-green-700" />
+                            class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-[13px] shadow-[0_2px_8px_rgba(15,23,42,0.03)] transition focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100" />
                     </div>
                     <div class="min-w-0">
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Gender</label>
+                        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Gender</label>
                         <select v-model="form.genderId"
-                            class="w-full border border-gray-300 rounded-lg p-4 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-700 bg-white cursor-pointer">
+                            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-[13px] text-gray-700 shadow-[0_2px_8px_rgba(15,23,42,0.03)] transition focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100 cursor-pointer">
                             <option :selected="form.genderId !== NaN" disabled :value="NaN">Choose</option>
                             <option v-for="g in gender" :key="g.id" :value="g.id">{{ g.type }}</option>
                         </select>
@@ -227,13 +227,13 @@ const handleSave = async () => {
         </div>
     </div>
     <!-- Action Buttons -->
-    <div class="mt-2 flex w-full flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+    <div class="mt-1 flex w-full flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <button @click="auth.fetchUserData(auth.user)" :disabled="saving"
-            class="w-full rounded-full border-2 border-red-800 px-6 py-2 text-sm font-semibold text-red-800 transition-colors hover:bg-red-100 cursor-pointer disabled:opacity-50 sm:w-auto sm:min-w-[120px]">
+            class="w-full rounded-full border border-rose-300 bg-white px-6 py-2 text-sm font-semibold text-rose-700 transition-all hover:-translate-y-0.5 hover:bg-rose-50 hover:shadow-sm cursor-pointer disabled:opacity-50 sm:w-auto sm:min-w-[120px]">
             Reset
         </button>
         <button @click="handleSave" :disabled="saving"
-            class="flex w-full items-center justify-center gap-2 rounded-full bg-green-900 px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-800 cursor-pointer disabled:opacity-60 sm:w-auto sm:min-w-[120px]">
+            class="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-emerald-800 to-green-700 px-6 py-2 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(4,120,87,0.25)] transition-all hover:-translate-y-0.5 hover:from-emerald-700 hover:to-green-600 hover:shadow-[0_10px_24px_rgba(4,120,87,0.32)] cursor-pointer disabled:opacity-60 sm:w-auto sm:min-w-[120px]">
             <svg v-if="saving" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />

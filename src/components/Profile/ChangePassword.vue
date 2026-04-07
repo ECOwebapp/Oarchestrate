@@ -148,9 +148,9 @@ async function handleSave() {
 
 <template>
   <div class="flex min-h-[380px] flex-col pt-2">
-    <div class="mb-5 grid grid-cols-1 gap-5">
+    <div class="mb-5 grid grid-cols-1 gap-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
       <div class="min-w-0 lg:max-w-[520px]">
-        <label class="mb-1 block text-sm font-semibold text-gray-700">Current Password</label>
+        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Current Password</label>
         <div class="flex flex-col gap-3 sm:flex-row">
           <div class="relative min-w-0 flex-1">
             <input
@@ -158,8 +158,8 @@ async function handleSave() {
               :type="showCurrent ? 'text' : 'password'"
               placeholder="Enter current password"
               @input="clearError('currentPassword')"
-              class="w-full rounded-lg border p-4 pr-11 text-sm text-gray-700 placeholder-gray-400 transition focus:outline-none focus:ring-1 focus:ring-green-700"
-              :class="errors.currentPassword ? 'border-red-400' : 'border-gray-300'"
+              class="w-full rounded-xl border p-3.5 pr-11 text-sm text-gray-700 placeholder-gray-400 shadow-[0_2px_8px_rgba(15,23,42,0.03)] transition focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              :class="errors.currentPassword ? 'border-red-400' : 'border-slate-300 focus:border-emerald-600'"
               :disabled="oldPasswordVerified"
             />
             <button
@@ -184,7 +184,7 @@ async function handleSave() {
             type="button"
             @click="verifyCurrentPassword"
             :disabled="verifyingCurrent || oldPasswordVerified"
-            class="rounded-lg bg-green-950 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-green-900 disabled:opacity-60"
+            class="rounded-full bg-gradient-to-r from-emerald-800 to-green-700 px-5 py-3 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(4,120,87,0.25)] transition-all hover:-translate-y-0.5 hover:from-emerald-700 hover:to-green-600 hover:shadow-[0_10px_24px_rgba(4,120,87,0.32)] disabled:opacity-60"
           >
             {{ verifyingCurrent ? 'Verifying...' : oldPasswordVerified ? 'Verified' : 'Verify' }}
           </button>
@@ -194,15 +194,15 @@ async function handleSave() {
 
       <div v-if="oldPasswordVerified" class="grid grid-cols-1 gap-5 lg:grid-cols-2">
       <div class="min-w-0">
-        <label class="mb-1 block text-sm font-semibold text-gray-700">New Password</label>
+        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">New Password</label>
         <div class="relative">
           <input
             v-model="form.password"
             :type="showPassword ? 'text' : 'password'"
             placeholder="Enter new password"
             @input="clearError('password')"
-              class="w-full rounded-lg border p-4 text-sm text-gray-700 placeholder-gray-400 transition focus:outline-none focus:ring-1 focus:ring-green-700"
-            :class="errors.password ? 'border-red-400' : 'border-gray-300'"
+              class="w-full rounded-xl border p-3.5 text-sm text-gray-700 placeholder-gray-400 shadow-[0_2px_8px_rgba(15,23,42,0.03)] transition focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            :class="errors.password ? 'border-red-400' : 'border-slate-300 focus:border-emerald-600'"
           />
           <button
             type="button"
@@ -231,15 +231,15 @@ async function handleSave() {
       </div>
 
       <div class="min-w-0">
-        <label class="mb-1 block text-sm font-semibold text-gray-700">Confirm Password</label>
+        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Confirm Password</label>
         <div class="relative">
           <input
             v-model="form.confirmPassword"
             :type="showConfirm ? 'text' : 'password'"
             placeholder="Confirm Password"
             @input="clearError('confirmPassword')"
-              class="w-full rounded-lg border p-4 text-sm text-gray-700 placeholder-gray-400 transition focus:outline-none focus:ring-1 focus:ring-green-700"
-            :class="errors.confirmPassword ? 'border-red-400' : 'border-gray-300'"
+              class="w-full rounded-xl border p-3.5 text-sm text-gray-700 placeholder-gray-400 shadow-[0_2px_8px_rgba(15,23,42,0.03)] transition focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            :class="errors.confirmPassword ? 'border-red-400' : 'border-slate-300 focus:border-emerald-600'"
           />
           <button
             type="button"

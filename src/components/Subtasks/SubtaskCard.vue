@@ -69,6 +69,7 @@ const handleCheckboxClick = (e) => {
 const handleEditClick = () => {
   emit('assignSubtask', {
     id: props.task.id,
+    parentId: props.task.parentTaskId,
     name: props.task.name,
     description: props.task.description,
     endDate: props.task.endDate,
@@ -77,7 +78,20 @@ const handleEditClick = () => {
     urgent: props.task.urgent,
     design: props.task.design,
     outputLink: props.task.outputLink,
-  }); 
+  });
+}
+
+const canEdit = () => {
+  // 1. Directors always have access
+  if (auth.isDirector) return true;
+
+  // 2. If it's unassigned, only the Unit Head (or the person who created it) should touch it
+  if (!props.task?.assignee) {
+    return auth.isUnitHead || auth.isSeniorDraftsman; 
+  }
+
+  // 3. If it IS assigned, only the original assigner can edit it
+  return props.task?.assigner === auth.userID;
 }
 </script>
 
@@ -102,7 +116,7 @@ const handleEditClick = () => {
       </svg>
     </div>
 
-    <div v-else-if="auth.isDirector || (props.task?.assigner === auth.userID)" @click.stop="handleEditClick" class="absolute top-2.5 right-2.5 z-20 w-10 h-5 rounded-sm flex items-center justify-center
+    <div v-else-if="canEdit" @click.stop="handleEditClick" class="absolute top-2.5 right-2.5 z-20 w-10 h-5 rounded-sm flex items-center justify-center
               transition-all duration-150 shadow-sm text-xs bg-yellow-500">
       Edit
     </div>
@@ -111,11 +125,12 @@ const handleEditClick = () => {
 
     <div v-if="task.urgent || task.design" class="absolute top-0 right-0 h-16 w-16 overflow-hidden pointer-events-none">
       <div class="absolute transform rotate-45 text-white text-[10px]
-                font-bold py-0.5 w-40 bottom-7 -right-14 text-center uppercase tracking-wide" :class="task.urgent ? 'bg-red-800' : 'bg-green-800'">
+                font-bold py-0.5 w-40 bottom-7 -right-14 text-center uppercase tracking-wide"
+        :class="task.urgent ? 'bg-red-800' : 'bg-green-800'">
         {{ task.urgent ? 'Urgent' : 'Design' }}
       </div>
     </div>
-    
+
 
 
     <div class="flex items-center gap-1.5 mb-2 flex-wrap">
