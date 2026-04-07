@@ -1,10 +1,9 @@
-import { deleteOutputFile } from '@/lib/uploadOutput'
 import { supabase } from '@/lib/supabaseClient'
+import { deleteOutputFile } from '@/lib/uploadOutput'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { usePosStore } from './positions'
-import { defineStore } from 'pinia'
+import { defineStore, storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
-import { storeToRefs } from 'pinia'
+import { usePosStore } from './positions'
 
 const OFFICE_UNIT_ID = 3
 
@@ -592,13 +591,59 @@ export const taskStore = defineStore('tasks', () => {
   // ── APPROVE ─────────────────────────────────────────────────────────────────
   const approveTask = async (taskId, role) => {
     const auth = useAuthStore()
-    const col = role === 'director' ? 'director' : 'unit_head'
-    await supabase.from('task_approval')
-      .update({ [col]: true, revision_comment: null, revised_at: null })
-      .eq('task_id', taskId)
-
     const task = tasks.value.find(t => t.id === taskId)
-    if (task) {
+    
+    if (!task) {
+      throw new Error('Task not found')
+    }
+
+    // Handle design task approvals
+    if (task.design) {
+      // For design tasks, update the design_approval table
+      const designApprovalUpdate = {}
+      let approvalMessage = ''
+      
+      if (role === 'senior_draftsman') {
+        designApprovalUpdate.senior_draftsman = true
+        approvalMessage = '✅ Design approved by Senior Draftsman — forwarded to Engineers.'
+      } else if (role === 'engineers') {
+        designApprovalUpdate.engineers = true
+        approvalMessage = '✅ Design approved by Engineer — forwarded to Unit Head.'
+      } else if (role === 'unit_head') {
+        designApprovalUpdate.unit_head = true
+        approvalMessage = '✅ Design approved by Unit Head — forwarded to Director.'
+      } else if (role === 'director') {
+        designApprovalUpdate.director = true
+        approvalMessage = '✅ Design fully approved by Director.'
+      }
+      
+      // Update design_approval table (using id from subtask relationship if exists)
+      const { error: updateErr } = await supabase
+        .from('design_approval')
+        .update(designApprovalUpdate)
+        .eq('id', taskId)
+      
+      if (updateErr) throw new Error(updateErr.message)
+      
+      // Log the approval in task_revision
+      await supabase.from('task_revision').insert({
+        task_id: taskId,
+        from_user: auth.user.id,
+        to_user: task.assignee,
+        role,
+        comment: approvalMessage,
+        is_read: false,
+      })
+    } else {
+      // Handle regular task approvals
+      const col = role === 'director' ? 'director' : 'unit_head'
+      const { error: updateErr } = await supabase
+        .from('task_approval')
+        .update({ [col]: true, revision_comment: null, revised_at: null })
+        .eq('task_id', taskId)
+      
+      if (updateErr) throw new Error(updateErr.message)
+
       await supabase.from('task_revision').insert({
         task_id: taskId,
         from_user: auth.user.id,
@@ -619,22 +664,56 @@ export const taskStore = defineStore('tasks', () => {
     const task = tasks.value.find(t => t.id === taskId)
     if (!task) return
 
-    const resetCols = role === 'director'
-      ? { unit_head: false, director: false, revision_comment: comment, revised_at: new Date().toISOString() }
-      : { unit_head: false, revision_comment: comment, revised_at: new Date().toISOString() }
+    if (task.design) {
+      // For design tasks, reset the relevant approval flag based on the role
+      const designResetCols = {}
+      
+      if (role === 'director') {
+        // Director resets all flags
+        designResetCols.senior_draftsman = false
+        designResetCols.engineers = false
+        designResetCols.unit_head = false
+        designResetCols.director = false
+      } else if (role === 'unit_head') {
+        // Unit head resets from engineers onwards
+        designResetCols.engineers = false
+        designResetCols.unit_head = false
+      } else if (role === 'engineers') {
+        // Engineers reset themselves
+        designResetCols.engineers = false
+      }
+      
+      await Promise.all([
+        supabase.from('design_approval').update(designResetCols).eq('id', taskId),
+        supabase.from('task_profile').update({ revision: true }).eq('task_id', taskId),
+        supabase.from('task_revision').insert({
+          task_id: taskId,
+          from_user: auth.user.id,
+          to_user: task.assignee,
+          role,
+          comment,
+          is_read: false,
+        })
+      ])
+    } else {
+      // Regular task revision logic
+      const resetCols = role === 'director'
+        ? { unit_head: false, director: false, revision_comment: comment, revised_at: new Date().toISOString() }
+        : { unit_head: false, revision_comment: comment, revised_at: new Date().toISOString() }
 
-    await Promise.all([
-      supabase.from('task_approval').update(resetCols).eq('task_id', taskId),
-      supabase.from('task_profile').update({ revision: true }).eq('task_id', taskId),
-      supabase.from('task_revision').insert({
-        task_id: taskId,
-        from_user: auth.user.id,
-        to_user: task.assignee,
-        role,
-        comment,
-        is_read: false,
-      })
-    ])
+      await Promise.all([
+        supabase.from('task_approval').update(resetCols).eq('task_id', taskId),
+        supabase.from('task_profile').update({ revision: true }).eq('task_id', taskId),
+        supabase.from('task_revision').insert({
+          task_id: taskId,
+          from_user: auth.user.id,
+          to_user: task.assignee,
+          role,
+          comment,
+          is_read: false,
+        })
+      ])
+    }
     await fetchTasks()
   }
 
