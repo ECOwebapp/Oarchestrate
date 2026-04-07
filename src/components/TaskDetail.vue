@@ -2,13 +2,12 @@
 import { uploadOutputFile } from '@/lib/uploadOutput'
 import { useMemberStore } from '@/stores/member'
 import { usePosStore } from '@/stores/positions'
+import { useSubtaskStore } from '@/stores/subtasks'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import Icons from './Icons.vue'
-import Loading from './Loading.vue'
-import { useSubtaskStore } from '@/stores/subtasks'
 
 // MDI icon paths
 const mdiLink = 'M3.9,12C3.9,10.29 5.29,8.9 7,8.9H11V7H7A5,5 0 0,0 2,12A5,5 0 0,0 7,17H11V15.1H7C5.29,15.1 3.9,13.71 3.9,12M8,13H16V11H8V13M17,7H13V8.9H17C18.71,8.9 20.1,10.29 20.1,12C20.1,13.71 18.71,15.1 17,15.1H13V17H17A5,5 0 0,0 22,12A5,5 0 0,0 17,7Z'
@@ -306,9 +305,53 @@ const canApproveAsUnitHead = computed(() => {
   if (props.task?.assigneeIsOffice) return false
   return true
 })
-const canApproveAsDirector = computed(() =>
-  auth.isDirector && !props.task?.director && !!props.task?.outputLink
-)
+
+// For regular tasks: Director can only approve AFTER unit head approves
+// For design tasks: Depends on the design approval chain
+const canApproveAsDirector = computed(() => {
+  if (!auth.isDirector || props.task?.director || !props.task?.outputLink) return false
+  
+  // Regular task: requires unit_head approval first
+  if (!props.task?.design) {
+    return props.task?.unitHead === true
+  }
+  
+  // Design task: director can approve only after unit_head approves
+  return props.task?.designApproval?.unit_head === true &&
+         props.task?.designApproval?.director === false
+})
+
+// Design-specific approval logic based on user position
+const canApproveAsDesignRole = computed(() => {
+  if (props.task?.director) return false  // Already fully approved
+  if (!props.task?.outputLink) return false  // No output to approve
+  if (!props.task?.design) return false  // Not a design task
+
+  const designApp = props.task?.designApproval || {}
+  const userPosId = auth.positions?.[0]?.pos_id
+
+  // Senior Draftsman (pos_id = 6): First to approve after draftsman submits
+  if (userPosId === 6) {
+    return !designApp.senior_draftsman  // Can approve if not already approved
+  }
+
+  // Engineer (pos_id = 7): Approves after senior draftsman
+  if (userPosId === 7) {
+    return designApp.senior_draftsman === true && !designApp.engineers
+  }
+
+  // Unit Head (pos_id = 4): Approves after all engineers (if design task)
+  if (userPosId === 4) {
+    return designApp.engineers === true && !designApp.unit_head
+  }
+
+  // Director (pos_id = 1): Final approval after unit head
+  if (userPosId === 1) {
+    return designApp.unit_head === true && !designApp.director
+  }
+
+  return false
+})
 const canSubmitOutput = computed(() =>
   (auth.isMember || (auth.isUnitHead && props.task?.isOwnTask)) &&
   !props.task?.outputLink && !props.task?.director
@@ -331,9 +374,10 @@ const canManageSubmission = computed(() => {
     !props.task?.director
 })
 
-const canRequestRevision = computed(() =>
-  (canApproveAsUnitHead.value || canApproveAsDirector.value) && revisionComment.value.trim().length > 0
-)
+const canRequestRevision = computed(() => {
+  const hasComment = revisionComment.value.trim().length > 0
+  return hasComment && !!props.task?.outputLink && !props.task?.director
+})
 const isOverdue = computed(() =>
   props.task?.to && new Date(props.task.to) < new Date() && !props.task?.director
 )
@@ -370,7 +414,20 @@ const fmt = (d) => d
 const approve = async () => {
   acting.value = 'approve'
   try {
-    const role = auth.isDirector ? 'director' : 'unit_head'
+    let role = 'unit_head'  // default
+    
+    if (props.task?.design) {
+      // Design task: determine role based on user position
+      const userPosId = auth.positions?.[0]?.pos_id
+      if (userPosId === 6) role = 'senior_draftsman'
+      else if (userPosId === 7) role = 'engineers'
+      else if (userPosId === 1) role = 'director'
+      else role = 'unit_head'
+    } else {
+      // Regular task: use director or unit_head
+      role = auth.isDirector ? 'director' : 'unit_head'
+    }
+    
     await store.approveTask(props.task.id, role)
     emit('refresh')
     emit('close')
@@ -381,7 +438,20 @@ const requestRevision = async () => {
   if (!revisionComment.value.trim()) return
   acting.value = 'revise'
   try {
-    const role = auth.isDirector ? 'director' : 'unit_head'
+    let role = 'unit_head'  // default
+    
+    if (props.task?.design) {
+      // Design task: determine role based on user position
+      const userPosId = auth.positions?.[0]?.pos_id
+      if (userPosId === 6) role = 'senior_draftsman'
+      else if (userPosId === 7) role = 'engineers'
+      else if (userPosId === 1) role = 'director'
+      else role = 'unit_head'
+    } else {
+      // Regular task: use director or unit_head
+      role = auth.isDirector ? 'director' : 'unit_head'
+    }
+    
     await store.requestRevision(props.task.id, revisionComment.value.trim(), role)
     revisionComment.value = ''
     await loadRevisions()
@@ -1047,7 +1117,7 @@ const confirmDeleteOutput = async () => {
           </div>
 
           <!-- REVISION NOTES -->
-          <div v-if="canApproveAsUnitHead || canApproveAsDirector">
+          <div v-if="canApproveAsUnitHead || canApproveAsDirector || canApproveAsDesignRole">
             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Revision Notes
               <span class="ml-1.5 text-gray-400 font-normal normal-case"
@@ -1171,7 +1241,26 @@ const confirmDeleteOutput = async () => {
 
       <!-- FOOTER -->
       <div class="flex gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 flex-shrink-0 bg-white">
-        <template v-if="canApproveAsUnitHead">
+        <!-- Design Task Approvals -->
+        <template v-if="props.task?.design && canApproveAsDesignRole">
+          <button @click="requestRevision" :disabled="acting !== '' || !canRequestRevision"
+            :title="!revisionComment.trim() ? 'Write revision notes above first' : ''"
+            class="flex-1 h-11 rounded-xl border-2 border-amber-400 text-amber-600 font-bold text-sm
+                   hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 hover:cursor-pointer">
+            {{ acting === 'revise' ? 'Sending…' : 'Request Revision' }}
+          </button>
+          <button @click="approve" :disabled="acting !== ''" class="flex-1 h-11 rounded-xl bg-blue-600 text-white font-bold text-sm
+                   hover:bg-blue-500 disabled:opacity-40 transition-all active:scale-95
+                   flex items-center justify-center gap-2 hover:cursor-pointer">
+            <svg v-if="acting === 'approve'" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
+              <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
+            </svg>
+            {{ acting === 'approve' ? 'Approving…' : 'Approve Design' }}
+          </button>
+        </template>
+        <!-- Regular Task - Unit Head Approval -->
+        <template v-else-if="!props.task?.design && canApproveAsUnitHead">
           <button @click="requestRevision" :disabled="acting !== '' || !canRequestRevision"
             :title="!revisionComment.trim() ? 'Write revision notes above first' : ''"
             class="flex-1 h-11 rounded-xl border-2 border-amber-400 text-amber-600 font-bold text-sm
@@ -1188,7 +1277,8 @@ const confirmDeleteOutput = async () => {
             {{ acting === 'approve' ? 'Approving…' : 'Approve & Send to Director' }}
           </button>
         </template>
-        <template v-else-if="canApproveAsDirector">
+        <!-- Regular Task - Director Approval (only after unit head approves) -->
+        <template v-else-if="!props.task?.design && canApproveAsDirector">
           <button @click="requestRevision" :disabled="acting !== '' || !canRequestRevision"
             :title="!revisionComment.trim() ? 'Write revision notes above first' : ''"
             class="flex-1 h-11 rounded-xl border-2 border-amber-400 text-amber-600 font-bold text-sm
@@ -1205,6 +1295,7 @@ const confirmDeleteOutput = async () => {
             {{ acting === 'approve' ? 'Approving…' : 'Final Approve' }}
           </button>
         </template>
+        <!-- Fully Approved State -->
         <template v-else-if="task.director">
           <div
             class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-green-50 border border-green-200">
