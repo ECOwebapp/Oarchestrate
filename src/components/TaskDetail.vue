@@ -8,6 +8,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import Icons from './Icons.vue'
 import Loading from './Loading.vue'
+import { useSubtaskStore } from '@/stores/subtasks'
 
 // MDI icon paths
 const mdiLink = 'M3.9,12C3.9,10.29 5.29,8.9 7,8.9H11V7H7A5,5 0 0,0 2,12A5,5 0 0,0 7,17H11V15.1H7C5.29,15.1 3.9,13.71 3.9,12M8,13H16V11H8V13M17,7H13V8.9H17C18.71,8.9 20.1,10.29 20.1,12C20.1,13.71 18.71,15.1 17,15.1H13V17H17A5,5 0 0,0 22,12A5,5 0 0,0 17,7Z'
@@ -31,6 +32,7 @@ const props = defineProps(['task', 'loading'])
 const emit = defineEmits(['close', 'refresh', 'assignSubtask'])
 const auth = useAuthStore()
 const store = taskStore()
+const subtaskStore = useSubtaskStore()
 const memberStore = useMemberStore()
 const posStore = usePosStore()
 const memberPos = storeToRefs(posStore)?.memberPos
@@ -398,7 +400,8 @@ const submitOutput = async () => {
       file: uploadFile.value,
       onProgress: (p) => { uploadProgress.value = p }
     })
-    await store.submitOutput(props.task.id, result.fileUrl)
+    if (Object.hasOwn(props.task, "parentTaskId")) await subtaskStore.submitOutput(props.task.id, result.fileUrl)
+    else await store.submitOutput(props.task.id, result.fileUrl)
     emit('refresh')
     emit('close')
   } catch (err) {
@@ -419,7 +422,8 @@ const resubmit = async () => {
       file: resubmitFile.value,
       onProgress: (p) => { uploadProgress.value = p }
     })
-    await store.resubmitTask(props.task.id, result.fileUrl)
+    if (Object.hasOwn(props.task, "parentTaskId")) await subtaskStore.resubmitTask(props.task.id, result.fileUrl)
+    else await store.resubmitTask(props.task.id, result.fileUrl)
     resubmitFile.value = null
     uploadProgress.value = 0
     await loadRevisions()
@@ -444,7 +448,8 @@ const saveEditedOutput = async () => {
       file: editFile.value,
       onProgress: (p) => { uploadProgress.value = p }
     })
-    await store.editOutput(props.task.id, result.fileUrl)
+    if(Object.hasOwn(props.task, "parentTaskId")) await subtaskStore.editOutput(props.task.id, result.fileUrl)
+    else await store.editOutput(props.task.id, result.fileUrl)
     editFile.value = null
     editingSubmission.value = false
     uploadProgress.value = 0
@@ -462,7 +467,8 @@ const saveEditedOutput = async () => {
 const confirmDeleteOutput = async () => {
   acting.value = 'deleteOutput'
   try {
-    await store.deleteOutput(props.task.id)
+    if(Object.hasOwn(props.task, "parentTaskId")) await subtaskStore.deleteOutput(props.task.id)
+    else await store.deleteOutput(props.task.id)
     confirmingDelete.value = false
     emit('refresh')
     // Stay open; task now shows the upload UI again
