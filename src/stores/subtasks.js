@@ -77,7 +77,7 @@ export const useSubtaskStore = defineStore('subtasks', () => {
   task_approval!subtask_id ( unit_head, director, revision_comment, revised_at ),
   task_duration!subtask_id ( created, deadline ),
   task_output!subtask_id ( link ),
-  task!inner(*)
+  task:task!inner(assignee)
 `
 
   const subtaskRow = (st) => ({
@@ -180,6 +180,8 @@ export const useSubtaskStore = defineStore('subtasks', () => {
         const { data: subtaskRows, error: subtaskErr } = await query
           .order('id', { ascending: false })
 
+        console.log(subtaskRows)
+
         if (subtaskErr) throw subtaskErr
 
         const allUserIds = [...new Set([
@@ -216,18 +218,34 @@ export const useSubtaskStore = defineStore('subtasks', () => {
         const unitUserIds = (unitUsers || []).map(m => m.user_id)
         const allIds = [...new Set([uid, ...unitUserIds])]
 
+        let subtaskRows = []
+
         let query = supabase.from('subtask').select(SUBTASK_SELECT)
-        if (parentTaskId) query = query.eq('parent_task_id', parentTaskId)
-        else {
-          const idsString = `(${allIds.join(',')})`;
-          query = query.or(`assignee.in.${idsString},task.assignee.in.${idsString}`);
+        if (parentTaskId) {
+          // Scenario A: Simple, direct fetch
+          const { data, error } = await supabase
+            .from('subtask')
+            .select(SUBTASK_SELECT)
+            .eq('parent_task_id', parentTaskId)
+            .order('id', { ascending: false });
+
+          if (error) throw error
+          subtaskRows = data || [];
         }
+        else {
+          // Scenario B: The "Front-End OR"
+          const ids = allIds; // Array of UUIDs
 
-        const { data: subtaskRows, error } = await query
-          .order('id', { ascending: false })
-        if (error) throw error
+          const [resDirect, resParent] = await Promise.all([
+            supabase.from('subtask').select(SUBTASK_SELECT).in('assignee', ids),
+            supabase.from('subtask').select(SUBTASK_SELECT).in('task.assignee', ids)
+          ]);
 
-        // console.log(rows)
+          // Merge and remove duplicates by ID
+          const combined = [...(resDirect.data || []), ...(resParent.data || [])];
+          subtaskRows = Array.from(new Map(combined.map(s => [s.id, s])).values())
+            .sort((a, b) => b.id - a.id); // Re-apply the ordering
+        }
 
         const allUserIds = [...new Set([
           // Users assigned to the Subtasks themselves
@@ -651,19 +669,11 @@ export const useSubtaskStore = defineStore('subtasks', () => {
     const task = subtasks.value.find(t => t.id === subTaskId)
 
     if (newOutputLink) {
-      const { data: updated, error: updErr } = await supabase
+      const { error: updErr } = await supabase
         .from('task_output')
         .upsert({ link: newOutputLink })
         .eq('subtask_id', subTaskId).select('id')
       if (updErr) throw new Error(updErr.message)
-
-      // if (!updated || updated.length === 0) {
-      //   const { error: insErr } = await supabase
-      //     .from('task_output')
-      //     .insert({ subtask_id: subTaskId, link: newOutputLink })
-
-      //   if (insErr) throw new Error(insErr.message)
-      // }
     }
 
     const { data: lastRevision } = await supabase
@@ -739,12 +749,15 @@ export const useSubtaskStore = defineStore('subtasks', () => {
 
     const unread = (data || []).filter(r => r.to_user === auth.user?.id && !r.is_read).map(r => r.id)
     if (unread.length) {
-      await supabase.from('task_revision').update({ is_read: true }).in('subtask_id', unread)
+      await supabase.from('task_revision').update({ is_read: true }).in('id', unread)
     }
+
+    const uids = (data || []).map(u => u.from_user)
+    await resolveNames(uids)
 
     return (data || []).map(r => ({
       ...r,
-      fromName: nameMap.value[r.from_user] || r.from_user,
+      fromName: nameMap.value[r.from_user] || r.from_user
     }))
   }
 
