@@ -295,31 +295,17 @@ const submitForm = async () => {
     if (!newTask.value.description.trim()) throw new Error('Description is required.')
     if (!newTask.value.type) throw new Error('Task type is required.')
     if (!newTask.value.endDate) throw new Error('Deadline is required.')
-    // if (!auth.isMember && !newTask.value.assignee)
-    //   throw new Error('Please select an assignee.')
 
     const assigneeId = auth.isMember ? auth.userID : newTask.value.assignee
 
-    // if (props.preFill && newTask.value.assignee) {
-    //   await taskStore.addTasks({
-    //     mainTask: {
-    //       spawnedTaskId: newTask.value.subtaskId,
-    //       assigneeId: assigneeId,
-    //       urgent: newTask.value.urgent,
-    //       design: newTask.value.design
-    //     }
-    //   })
-    // } else if (props.preFill && !newTask.value.assignee) {
-    //   await taskStore.addTasks({
-    //     subtaskId: newTask.value.subtaskId,
-    //     assigneeId: assigneeId,
-    //     parentTask: newTask.value.parentTask,
-    //     urgent: newTask.value.urgent,
-    //     design: newTask.value.design
-    //   })
-    // }
+    if (props.design && newTask.value.id) {
+      if (!assigneeId) throw new Error('Please select an assignee for the design task.')
+      
+      await designStore.submitDesignTask(newTask.value.id, assigneeId)
+      emit('success')
+      return
+    }
 
-    // else {
     await store.addTasks({
       mainTask: {
         id: newTask.value.id,

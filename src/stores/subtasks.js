@@ -80,7 +80,7 @@ export const useSubtaskStore = defineStore('subtasks', () => {
   task!inner(*)
 `
 
-  const subtaskRow = (st, spawnedMap = {}) => ({
+  const subtaskRow = (st) => ({
     id: st.id,
     parentTaskId: st.parent_task_id,
     parentSubsubTaskId: st.parent_subtask_id,
@@ -130,21 +130,6 @@ export const useSubtaskStore = defineStore('subtasks', () => {
       }
     }
     return map
-  }
-
-  // ── fetchSpawnedForSubtasks ─────────────────────────────────────────────────
-  const fetchSpawnedForSubtasks = async (spawnedTaskIds) => {
-    if (!spawnedTaskIds.length) return []
-    const { data, error } = await supabase
-      .from('subtask')
-      .select(SPAWNED_SELECT)
-      .in('parent_subtask_id', spawnedTaskIds)
-      .is('parent_task_id', null)
-    if (error) {
-      console.error('[fetchSpawnedForSubtasks]', error.message)
-      return []
-    }
-    return data || []
   }
 
   // ── FETCH UNIT MEMBERS ──────────────────────────────────────────────────────
@@ -214,7 +199,7 @@ export const useSubtaskStore = defineStore('subtasks', () => {
         const posRes = memberPos.value.filter(mp => mp.user_id === assigneeIds)
         const roleMap = Object.fromEntries((posRes || []).map(r => [r.user_id, r.pos_id]))
 
-        subtasks.value = parentRows.map(t => ({
+        subtasks.value = subtaskRows.map(t => ({
           ...subtaskRow(t),
           assigneeRole: roleMap[t.assignee] || null,
           assigneeUnitId: getAssigneeUnitId(t.assignee),

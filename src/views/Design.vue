@@ -179,7 +179,24 @@ const preFillData = ref(null)
 
 const onAssignSubtask = (data) => {
 
-  preFillData.value = (data || {})
+  if (!data) return
+
+  // Extract subtask from event data (comes from TaskDetail.pickMemberAndAssign)
+  const subtask = data.subtask || data
+  const parentTask = data.parentTask
+
+  // Get deadline from multiple possible sources
+  const deadline = parentTask?.to || parentTask?.endDate || subtask?.to || subtask?.endDate || null
+
+  preFillData.value = {
+    id: subtask.id,                              // CRITICAL: Must have ID for update-only logic
+    name: subtask.name || '',
+    description: subtask.description || '',
+    endDate: deadline,                          // Use the resolved deadline
+    type: parentTask?.typeId || 1,
+    urgent: subtask.urgent || false,
+    design: true,                                // Always mark prefilled tasks as design tasks
+  }
   addTask.value = true
 }
 

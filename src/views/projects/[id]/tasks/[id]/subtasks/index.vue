@@ -1,9 +1,5 @@
 <script setup vapor>
-import AddTask from '@/components/Subtasks/AddSubtask.vue'
-import ChartTasks from '@/components/Subtasks/ChartSubtasks.vue'
-import GridTasks from '@/components/Subtasks/GridSubtasks.vue'
 import Icons from '@/components/Icons.vue'
-import TableTasks from '@/components/Subtasks/TableSubtasks.vue'
 import Loading from '@/components/Loading.vue'
 import { useSubtaskStore } from '@/stores/subtasks'
 import { useAuthStore } from '@/stores/useAuthStore'
