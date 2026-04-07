@@ -21,6 +21,12 @@ const filter = ref("All");
 const sortBy = ref("Recently Assigned");
 const loading = storeToRefs(projectStore)?.loading;
 
+const isInsertionProject = (item) =>
+  item.type?.toLowerCase() === "insertion" ||
+  item.typeId === 2 ||
+  item.isInsertion === true ||
+  item.is_insertion === true;
+
 // ── Only Directors and Unit Heads can select / delete ──────────────────────
 const canDelete = computed(() => auth.isDirector || auth.isUnitHead);
 
@@ -51,14 +57,28 @@ const filterOpts = computed(() => {
 
 const sortOpts = ["Recently Assigned", "Date Due", "Name A→Z", "Urgent First"];
 
+const modeCounts = computed(() => ({
+  PPA: projects.value.filter((item) => !isInsertionProject(item)).length,
+  Insertions: projects.value.filter((item) => isInsertionProject(item)).length,
+}));
+
+const projectEmptyTitle = computed(() =>
+  activeTaskMode.value === "Insertions"
+    ? "No insertions found"
+    : "No PPAs found",
+);
+
+const projectEmptyHint = computed(() => {
+  if (search.value || filter.value !== "All") {
+    return "Try clearing search or adjusting the filters.";
+  }
+  return activeTaskMode.value === "Insertions"
+    ? "Add an insertion or switch back to PPA mode."
+    : "Add a PPA to populate this view.";
+});
+
 const filtered = computed(() => {
   let list = projects.value;
-
-  const isInsertionProject = (item) =>
-    item.type?.toLowerCase() === "insertion" ||
-    item.typeId === 2 ||
-    item.isInsertion === true ||
-    item.is_insertion === true;
 
   if (activeTaskMode.value === "PPA") {
     list = list.filter((t) => !isInsertionProject(t));
@@ -390,30 +410,42 @@ const onCloseAddProject = async (success) => {
       <div
         class="flex-1 flex flex-col bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0 overflow-hidden"
       >
-        <div class="flex border-b border-gray-200 flex-shrink-0">
-          <button
-            v-for="tab in taskModeTabs"
-            :key="tab"
-            @click="activeTaskMode = tab"
-            class="relative flex items-center gap-2 px-6 py-3 text-sm font-semibold transition-colors hover:bg-gray-50 cursor-pointer"
-            :class="
-              activeTaskMode === tab
-                ? 'text-green-800'
-                : 'text-gray-500 hover:text-gray-700'
-            "
+        <div
+          class="px-5 py-3.5 border-b border-gray-200 bg-white flex items-center"
+        >
+          <div
+            class="inline-flex flex-wrap items-center gap-1 rounded-2xl bg-gray-100 p-1"
           >
-            <Icons
-              v-if="tab === 'PPA'"
-              :icon="'projects'"
-              iconClass="w-4 h-4"
-            />
-            <Icons v-else :icon="'file'" iconClass="w-4 h-4" />
-            {{ tab }}
-            <span
-              v-if="activeTaskMode === tab"
-              class="absolute left-0 right-0 -bottom-px h-0.5 bg-green-800"
-            />
-          </button>
+            <button
+              v-for="tab in taskModeTabs"
+              :key="tab"
+              @click="activeTaskMode = tab"
+              class="group flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all cursor-pointer"
+              :class="
+                activeTaskMode === tab
+                  ? 'bg-white text-green-900 shadow-sm ring-1 ring-green-900/10'
+                  : 'text-gray-600 hover:text-green-900 hover:bg-white/80'
+              "
+            >
+              <Icons
+                v-if="tab === 'PPA'"
+                :icon="'projects'"
+                iconClass="w-4 h-4"
+              />
+              <Icons v-else :icon="'file'" iconClass="w-4 h-4" />
+              <span>{{ tab }}</span>
+              <span
+                class="min-w-6 px-1.5 py-0.5 rounded-full text-[11px] font-bold text-center"
+                :class="
+                  activeTaskMode === tab
+                    ? 'bg-green-900 text-white'
+                    : 'bg-white text-gray-500 group-hover:text-green-800'
+                "
+              >
+                {{ modeCounts[tab] }}
+              </span>
+            </button>
+          </div>
         </div>
 
         <div class="flex-1 overflow-auto min-h-0">
@@ -426,6 +458,8 @@ const onCloseAddProject = async (success) => {
             @toggle-select="toggleTaskSelect"
             :modal="loading"
             @open="taskDetail = true"
+            :empty-title="projectEmptyTitle"
+            :empty-hint="projectEmptyHint"
             @success="onCloseAddProject(true)"
           />
           <TableProjects

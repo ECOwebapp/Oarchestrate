@@ -63,6 +63,29 @@ const parentProjectTitle = computed(() => {
   return project?.title || project?.name || "Unknown PPA";
 });
 
+const hierarchyItems = computed(() => {
+  const items = [
+    {
+      label: parentProjectTitle.value,
+      to: "/projects",
+      title: parentProjectTitle.value,
+    },
+  ];
+
+  if (parentTask.value) {
+    items.push({
+      label: parentTask.value.name,
+      to: `/projects/${parentTask.value.parentId}/tasks`,
+      title: parentTask.value.name,
+    });
+  } else {
+    items.push({ label: "Task" });
+  }
+
+  items.push({ label: "Subtasks", current: true });
+  return items;
+});
+
 const filterOpts = computed(() => {
   const base = ["All", "Regular", "Insertion", "Urgent", "Revision", "Overdue"];
   if (auth.isDirector || auth.isUnitHead) base.push("Pending", "Approved");
@@ -70,6 +93,15 @@ const filterOpts = computed(() => {
 });
 
 const sortOpts = ["Recently Assigned", "Date Due", "Name A→Z", "Urgent First"];
+
+const emptyTitle = computed(() => "No subtasks found");
+
+const emptyHint = computed(() => {
+  if (search.value || filter.value !== "All") {
+    return "Try clearing search or adjusting the filters.";
+  }
+  return "Add a subtask to break this task into actionable work.";
+});
 
 const filtered = computed(() => {
   let list = subtasks.value;
@@ -383,49 +415,52 @@ const onCloseAddTask = async (success) => {
       <div
         class="flex-1 flex flex-col bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0 overflow-hidden"
       >
-        <div
-          class="px-5 py-3 flex items-center flex-wrap gap-2 border-b border-gray-200 flex-shrink-0 bg-white"
+        <nav
+          class="px-5 py-3 flex items-center border-b border-gray-200 bg-white"
+          aria-label="Hierarchy"
         >
-          <router-link
-            to="/projects"
-            class="text-sm font-semibold text-gray-900 hover:text-gray-700 hover:bg-gray-100 px-2.5 py-1 rounded-md transition-colors truncate max-w-[170px] sm:max-w-[320px]"
-            :title="parentProjectTitle"
-          >
-            {{ parentProjectTitle }}
-          </router-link>
-          <svg
-            class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" />
-          </svg>
-          <router-link
-            v-if="parentTask"
-            :to="`/projects/${parentTask.parentId}/tasks`"
-            class="text-sm font-medium text-gray-700 hover:text-gray-600 hover:bg-gray-100 px-2.5 py-1 rounded-md transition-colors truncate max-w-[170px] sm:max-w-[320px]"
-            :title="parentTask.name"
-          >
-            {{ parentTask.name }}
-          </router-link>
-          <span
-            v-else
-            class="text-sm font-medium text-gray-700 px-2.5 py-1 truncate max-w-[170px] sm:max-w-[320px]"
-            title="Task"
-          >
-            Task
-          </span>
-          <svg
-            class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" />
-          </svg>
-          <span class="text-sm font-medium text-gray-600 px-2.5 py-1"
-            >Subtasks</span
-          >
-        </div>
+          <ol class="flex items-center flex-wrap gap-1.5">
+            <template
+              v-for="(item, index) in hierarchyItems"
+              :key="`${item.label}-${index}`"
+            >
+              <li class="flex items-center gap-1.5 min-w-0">
+                <router-link
+                  v-if="item.to && !item.current"
+                  :to="item.to"
+                  :title="item.title || item.label"
+                  class="text-sm font-semibold text-gray-900 hover:text-gray-700 hover:bg-gray-100 px-2.5 py-1 rounded-md transition-colors truncate max-w-[180px] sm:max-w-[360px]"
+                >
+                  {{ item.label }}
+                </router-link>
+                <span
+                  v-else
+                  :title="item.title || item.label"
+                  class="text-sm px-2.5 py-1 truncate max-w-[180px] sm:max-w-[360px]"
+                  :class="
+                    item.current
+                      ? 'font-medium text-gray-600'
+                      : 'font-medium text-gray-700'
+                  "
+                >
+                  {{ item.label }}
+                </span>
+
+                <svg
+                  v-if="index < hierarchyItems.length - 1"
+                  class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"
+                  />
+                </svg>
+              </li>
+            </template>
+          </ol>
+        </nav>
 
         <div class="flex-1 overflow-auto min-h-0">
           <GridSubtasks
@@ -437,6 +472,8 @@ const onCloseAddTask = async (success) => {
             @toggle-select="toggleTaskSelect"
             @assign-subtask="onAssignSubtask"
             :modal="loading"
+            :empty-title="emptyTitle"
+            :empty-hint="emptyHint"
             @open="taskDetail = true"
             @close="taskDetail = false"
             @success="
