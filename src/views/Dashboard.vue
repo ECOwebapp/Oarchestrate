@@ -125,21 +125,14 @@ const uhDonut = computed(() => {
   ].map(s => { const len = CIRC * (s.value / total); const seg = { ...s, len, offset: -offset }; offset += len; return seg })
 })
 
-// Members: show only their own subtasks (Task > Subtask level)
-const memberRegular = computed(() => store.tasks
-  .filter(t => t.parentId && t.assignee === auth.userID && (t.type?.toLowerCase() !== 'insertion' || t.design))
-  .sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)))
-const memberInsertion = computed(() => store.tasks
-  .filter(t => t.parentId && t.assignee === auth.userID && t.type?.toLowerCase() === 'insertion' && !t.design)
-  .sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)))
-const memberRevisions = computed(() => store.tasks
-  .filter(t => t.parentId && t.assignee === auth.userID && t.revision && !t.director))
+const memberRegular = computed(() => store.tasks.filter(t => t.type?.toLowerCase() !== 'insertion' || t.design).sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)))
+const memberInsertion = computed(() => store.tasks.filter(t => t.type?.toLowerCase() === 'insertion' && !t.design).sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)))
+const memberRevisions = computed(() => store.tasks.filter(t => t.revision && !t.director))
 
 const memberDonut = computed(() => {
-  const memberTasks = store.tasks.filter(t => t.parentId && t.assignee === auth.userID)
-  const approved = memberTasks.filter(t => t.director).length
-  const submitted = memberTasks.filter(t => t.outputLink && !t.director || t.design).length
-  const pending = memberTasks.filter(t => !t.outputLink && !t.director && !t.design).length
+  const approved = store.tasks.filter(t => t.director).length
+  const submitted = store.tasks.filter(t => t.outputLink && !t.director || t.design).length
+  const pending = store.tasks.filter(t => !t.outputLink && !t.director && !t.design).length
   const total = approved + submitted + pending || 1
   let offset = 0
   return [
@@ -150,8 +143,7 @@ const memberDonut = computed(() => {
 })
 
 const activeDonut = computed(() => auth.isDirector ? directorDonut.value : auth.isUnitHead ? uhDonut.value : memberDonut.value)
-const memberTasks = computed(() => store.tasks.filter(t => t.parentId && t.assignee === auth.userID))
-const activePending = computed(() => auth.isDirector ? directorMonth.value : auth.isUnitHead ? uhMonth.value : memberTasks.value)
+const activePending = computed(() => auth.isDirector ? directorMonth.value : auth.isUnitHead ? uhMonth.value : store.tasks)
 const activeRegular = computed(() => auth.isDirector ? directorRegular.value : auth.isUnitHead ? uhRegular.value : memberRegular.value)
 const activeInsertion = computed(() => auth.isDirector ? directorInsertion.value : auth.isUnitHead ? uhInsertion.value : memberInsertion.value)
 
