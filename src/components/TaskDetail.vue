@@ -20,7 +20,6 @@ const mdiCheck = 'M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z'
 const mdiAccount = 'M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z'
 const mdiCommentOutline = 'M9,22A1,1 0 0,1 8,21V18H4A2,2 0 0,1 2,16V4C2,2.89 2.9,2 4,2H20A2,2 0 0,1 22,4V16A2,2 0 0,1 20,18H13.9L10.2,21.71C10,21.9 9.75,22 9.5,22V22H9M10,16V19.08L13.08,16H20V4H4V16H10Z'
 const mdiPaperclip = 'M16.5,6V17.5A4,4 0 0,1 12.5,21.5A4,4 0 0,1 8.5,17.5V5A2.5,2.5 0 0,1 11,2.5A2.5,2.5 0 0,1 13.5,5V15.5A1,1 0 0,1 12.5,16.5A1,1 0 0,1 11.5,15.5V6H10V15.5A2.5,2.5 0 0,0 12.5,18A2.5,2.5 0 0,0 15,15.5V5A4,4 0 0,0 11,1A4,4 0 0,0 7,5V17.5A5.5,5.5 0 0,0 12.5,23A5.5,5.5 0 0,0 18,17.5V6H16.5Z'
-const mdiChevronDown = 'M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z'
 const mdiClose = 'M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z'
 const mdiCheckCircle = 'M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z'
 const mdiClockOutline = 'M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z'
@@ -49,7 +48,6 @@ const loadingRevs = ref(false)
 const chatBottom = ref(null)
 
 const openDropdownId = ref(null)
-const assigningId = ref(null)
 
 const uploadFile = ref(null)
 const resubmitFile = ref(null)
@@ -61,23 +59,20 @@ const dragOverEdit = ref(false)
 const fileInputRef = ref(null)
 const resubInputRef = ref(null)
 const editInputRef = ref(null)
-const action = ref(null)
-
-const handleOutsideClick = (e) => {
-  if (!e.target.closest('[data-dropdown]')) openDropdownId.value = null
-}
 
 onMounted(async () => {
-  loadRevisions()
 
   await Promise.all([
     posStore.fetchMemberPos(),
     posStore.fetchPos(),
+    loadRevisions()
   ])
-
   document.addEventListener('click', handleOutsideClick)
 })
-onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
+
+const handleOutsideClick = (e) => {
+  if (!e.target.closest('[data-dropdown]')) openDropdownId.value = null
+}
 
 // A simple method is best for this use case
 // ── Edit submission UI state ─────────────────────────────────────────────────
@@ -86,24 +81,6 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 const editingSubmission = ref(false)
 // true  = user clicked "Delete" and we show a confirm prompt
 const confirmingDelete = ref(false)
-
-// A simple method is best for this use case
-const currentlyAssignedMember = (sub, selectedMember) => {
-  if (!sub.spawnedTaskId || !sub.spawnedAssignee) {
-    action.value = 'assign'
-    return false;
-  }
-  else if (sub.spawnedAssignee) {
-    if (String(sub.spawnedAssignee) === String(selectedMember.id)) return true
-    else {
-      action.value = 'reassign'
-      return false
-    }
-  }
-  else {
-    action.value = ''
-  };
-};
 
 const formatBytes = (bytes) => {
   if (!bytes) return ''
@@ -142,43 +119,38 @@ const onFilePickEdit = (e) => {
 
 const loadRevisions = async () => {
   loadingRevs.value = true
-  revisions.value = await store.fetchRevisions(props.task?.id)
+  if (Object.hasOwn(props.task, "parentTaskId")) {
+    revisions.value = await subtaskStore.fetchRevisions(props.task?.id) || []
+  }
+  else {
+    revisions.value = await store.fetchRevisions(props.task?.id) || []
+  }
   loadingRevs.value = false
   await nextTick()
   chatBottom.value?.scrollIntoView({ behavior: 'smooth' })
 }
 
 const filteredRevisions = computed(() => {
-  const currentUserId = auth.user?.id
-  const assignerId = props.task?.assigner
-  const assigneeId = props.task?.assignee
-  const otherPartyId = currentUserId === assignerId ? assigneeId : assignerId
+  // If there's no data yet, return empty array immediately
+  if (!revisions.value.length) return []
 
-  return revisions.value
-    .filter(rev => {
-      const sentByMeToOther = rev.from_user === currentUserId && rev.to_user === otherPartyId
-      const receivedFromOther = rev.from_user === otherPartyId && rev.to_user === currentUserId
-      return sentByMeToOther || receivedFromOther
-    })
-    .map(rev => {
-      // Perform the lookup once here
-      const membership = memberPos.value.find(m =>
-        String(m.user_id).trim() === String(rev.from_user).trim()
-      );
+  return revisions.value.map(rev => {
+    // 1. Look up the sender's role
+    const membership = (memberPos.value || [])
+      .filter(m => String(m.user_id).trim() === String(rev.from_user).trim())
+      .map(m => Number(m.pos_id));
 
-      // Assign a clean string for the template to use
-      let displayRole = 'Unit Member';
-      if (membership) {
-        const id = Number(membership.pos_id);
-        if (id === 1) displayRole = 'Director';
-        else if (id === 4) displayRole = 'Unit Head';
-      }
+    let displayRole = 'Unit Member'
+    if (membership.includes(1)) displayRole = 'Director'
+    else if (membership.includes(4)) displayRole = 'Unit Head'
 
-      return {
-        ...rev,
-        roleLabel: displayRole
-      }
-    })
+    return {
+      ...rev,
+      roleLabel: displayRole,
+      // Add a flag so the UI knows if the CURRENT user sent it
+      isMine: rev.from_user === auth.user?.id
+    }
+  })
 })
 
 // In your component or Store
@@ -192,7 +164,7 @@ const avatarMap = computed(() => {
 // Then your function becomes instant:
 const getAvatarUrl = (userId) => avatarMap.value[userId]
 
-watch(() => props.task?.id, () => {
+watch(() => props.task?.id, async () => {
   outputUrl.value = props.task?.outputLink || ''
   newOutputUrl.value = ''
   revisionComment.value = ''
@@ -202,7 +174,7 @@ watch(() => props.task?.id, () => {
   editingSubmission.value = false
   confirmingDelete.value = false
   editFile.value = null
-  loadRevisions()
+  await loadRevisions()
 })
 
 watch(tab, async (val) => {
@@ -215,87 +187,6 @@ watch(tab, async (val) => {
 const unreadCount = computed(() =>
   filteredRevisions.value.filter(r => r.to_user === auth.user?.id && !r.is_read).length
 )
-
-// ── Subtask display helpers ──────────────────────────────────────────────────
-const isSubtaskUnassigned = (sub) => !sub.isAssigned
-const subtaskDisplayName = (sub) => sub.spawnedAssigneeName || ''
-const subtaskAssigneeId = (sub) => sub.spawnedAssignee || null
-
-// ── Unit members for dropdown ────────────────────────────────────────────────
-const unitMembersForAssign = computed(() => {
-  if (!auth.isUnitHead) return []
-
-  const uhPos = auth.positions.find(p => p.pos_id === 4)
-  const unitId = uhPos?.unit_id ?? null
-  if (!unitId) return []
-
-  const uhProfile = memberStore.members.find(mb => String(mb.id) === String(auth.userID))
-  const uhPosName = (posStore.position || []).find(p => p.id === 4)?.name || 'Unit Head'
-  const selfEntry = uhProfile
-    ? {
-      id: auth.userID,
-      fname: uhProfile.fname || '',
-      lname: uhProfile.lname || '',
-      middle_initial: uhProfile.middle_initial || '',
-      pos_name: uhPosName,
-      isSelf: true,
-    }
-    : null
-
-  const unitRows = (memberPos.value || []).filter(p =>
-    p.unit_id === unitId &&
-    String(p.user_id) !== String(auth.userID)
-  )
-
-  const seen = new Set()
-  const members = unitRows
-    .map(p => {
-      const m = (memberStore.members || []).find(mb => String(mb.id) === String(p.user_id))
-      if (!m) return null
-      const posName = (posStore.position || []).find(pos => pos.id === p.pos_id)?.name || ''
-      return {
-        id: m.id,
-        fname: m.fname || '',
-        lname: m.lname || '',
-        middle_initial: m.middle_initial || '',
-        pos_name: posName,
-        isSelf: false,
-      }
-    })
-    .filter(Boolean)
-    .filter(u => u.fname || u.lname)
-    .filter(u => {
-      const key = String(u.id)
-      if (seen.has(key)) return false
-      seen.add(key)
-      return true
-    })
-
-  return selfEntry ? [selfEntry, ...members] : members
-})
-
-const toggleDropdown = (sub) => {
-  openDropdownId.value = openDropdownId.value === sub.id ? null : sub.id
-}
-
-const pickMemberAndAssign = async (sub, member) => {
-  openDropdownId.value = null;
-  assigningId.value = sub.id;
-  // currentlyAssignedMember(sub, member)
-  emit('assignSubtask', {
-    subtask: sub,
-    // assignedMemberId: member.id,
-    // assignedMemberName: [
-    //   member.fname,
-    //   member.middle_initial ? member.middle_initial + '.' : '',
-    //   member.lname
-    // ].filter(Boolean).join(' '),
-    parentTask: props.task,
-    // action: action.value
-  });
-  assigningId.value = null;
-};
-
 // ── Capabilities ─────────────────────────────────────────────────────────────
 const canApproveAsUnitHead = computed(() => {
   if (!auth.isUnitHead) return false
@@ -337,12 +228,6 @@ const canRequestRevision = computed(() =>
 const isOverdue = computed(() =>
   props.task?.to && new Date(props.task.to) < new Date() && !props.task?.director
 )
-const canAssignSubtasks = computed(() =>
-  auth.isUnitHead &&
-  String(props.task?.assignee) === String(auth.userID) &&
-  !props.task?.director &&
-  !!props.task?.subtasks?.length
-)
 
 const statusLabel = computed(() => {
   if (props.task?.director) return { label: 'Approved by Director', cls: 'bg-green-100 text-green-800', icon: mdiCheckCircle }
@@ -371,7 +256,8 @@ const approve = async () => {
   acting.value = 'approve'
   try {
     const role = auth.isDirector ? 'director' : 'unit_head'
-    await store.approveTask(props.task.id, role)
+    if (Object.hasOwn(props.task, "parentTaskId")) await subtaskStore.approveSubTask(props.task.id, role)
+    else await store.approveTask(props.task.id, role)
     emit('refresh')
     emit('close')
   } finally { acting.value = '' }
@@ -382,7 +268,8 @@ const requestRevision = async () => {
   acting.value = 'revise'
   try {
     const role = auth.isDirector ? 'director' : 'unit_head'
-    await store.requestRevision(props.task.id, revisionComment.value.trim(), role)
+    if (Object.hasOwn(props.task, "parentTaskId")) await subtaskStore.requestRevision(props.task.id, revisionComment.value.trim(), role)
+    else await store.requestRevision(props.task.id, revisionComment.value.trim(), role)
     revisionComment.value = ''
     await loadRevisions()
     emit('refresh')
@@ -448,7 +335,7 @@ const saveEditedOutput = async () => {
       file: editFile.value,
       onProgress: (p) => { uploadProgress.value = p }
     })
-    if(Object.hasOwn(props.task, "parentTaskId")) await subtaskStore.editOutput(props.task.id, result.fileUrl)
+    if (Object.hasOwn(props.task, "parentTaskId")) await subtaskStore.editOutput(props.task.id, result.fileUrl)
     else await store.editOutput(props.task.id, result.fileUrl)
     editFile.value = null
     editingSubmission.value = false
@@ -467,7 +354,7 @@ const saveEditedOutput = async () => {
 const confirmDeleteOutput = async () => {
   acting.value = 'deleteOutput'
   try {
-    if(Object.hasOwn(props.task, "parentTaskId")) await subtaskStore.deleteOutput(props.task.id)
+    if (Object.hasOwn(props.task, "parentTaskId")) await subtaskStore.deleteOutput(props.task.id)
     else await store.deleteOutput(props.task.id)
     confirmingDelete.value = false
     emit('refresh')
@@ -478,6 +365,7 @@ const confirmDeleteOutput = async () => {
     acting.value = ''
   }
 }
+onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 </script>
 
 <template>
@@ -603,8 +491,7 @@ const confirmDeleteOutput = async () => {
 
               <!-- Edit / Delete buttons — only shown when submission is still pending review -->
               <div v-if="canManageSubmission" class="flex gap-2 mt-2">
-                <button @click="editingSubmission = true; submitError = ''"
-                  class="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-gray-300
+                <button @click="editingSubmission = true; submitError = ''" class="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-gray-300
                          text-xs font-semibold text-gray-600 hover:border-green-700 hover:text-green-800
                          hover:bg-green-50 transition-colors hover:cursor-pointer disabled:cursor-not-allowed">
                   <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="currentColor">
@@ -612,8 +499,7 @@ const confirmDeleteOutput = async () => {
                   </svg>
                   Edit submission
                 </button>
-                <button @click="confirmingDelete = true; submitError = ''"
-                  class="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-gray-300
+                <button @click="confirmingDelete = true; submitError = ''" class="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-gray-300
                          text-xs font-semibold text-gray-600 hover:border-red-400 hover:text-red-600
                          hover:bg-red-50 transition-colors hover:cursor-pointer disabled:cursor-not-allowed">
                   <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="currentColor">
@@ -640,13 +526,11 @@ const confirmDeleteOutput = async () => {
                 </div>
 
                 <input ref="editInputRef" type="file" class="hidden" @change="onFilePickEdit" />
-                <div v-if="!editFile" @dragover.prevent="dragOverEdit = true"
-                  @dragleave.prevent="dragOverEdit = false" @drop.prevent="onDropEdit" @click="editInputRef?.click()"
-                  class="border-2 border-dashed rounded-2xl px-5 py-6 flex flex-col items-center
-                         justify-center gap-2 cursor-pointer transition-all select-none"
-                  :class="dragOverEdit
-                    ? 'border-green-700 bg-green-50'
-                    : 'border-gray-300 bg-gray-50 hover:border-green-700 hover:bg-green-50'">
+                <div v-if="!editFile" @dragover.prevent="dragOverEdit = true" @dragleave.prevent="dragOverEdit = false"
+                  @drop.prevent="onDropEdit" @click="editInputRef?.click()" class="border-2 border-dashed rounded-2xl px-5 py-6 flex flex-col items-center
+                         justify-center gap-2 cursor-pointer transition-all select-none" :class="dragOverEdit
+                          ? 'border-green-700 bg-green-50'
+                          : 'border-gray-300 bg-gray-50 hover:border-green-700 hover:bg-green-50'">
                   <div class="w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
                     :class="dragOverEdit ? 'bg-green-100' : 'bg-white border border-gray-200'">
                     <svg viewBox="0 0 24 24" class="w-5 h-5" :class="dragOverEdit ? 'text-green-700' : 'text-gray-400'"
@@ -660,8 +544,7 @@ const confirmDeleteOutput = async () => {
                   <p class="text-xs text-gray-400">Replaces the current submission</p>
                 </div>
 
-                <div v-else
-                  class="flex items-center gap-3 border-2 border-green-200 bg-green-50 rounded-2xl px-4 py-3">
+                <div v-else class="flex items-center gap-3 border-2 border-green-200 bg-green-50 rounded-2xl px-4 py-3">
                   <div
                     class="w-9 h-9 rounded-xl bg-white border border-green-200 flex items-center justify-center flex-shrink-0">
                     <svg viewBox="0 0 24 24" class="w-4 h-4 text-green-700" fill="currentColor">
@@ -687,8 +570,7 @@ const confirmDeleteOutput = async () => {
                       :style="{ width: uploadProgress + '%' }" />
                   </div>
                   <p class="text-xs text-gray-500 text-right">
-                    {{ uploadProgress < 100 ? `Uploading… ${uploadProgress}%` : 'Saving…' }}
-                  </p>
+                    {{ uploadProgress < 100 ? `Uploading… ${uploadProgress}%` : 'Saving…' }} </p>
                 </div>
 
                 <p v-if="submitError" class="text-xs text-red-600 font-medium flex items-center gap-1.5">
@@ -705,8 +587,7 @@ const confirmDeleteOutput = async () => {
                            hover:border-gray-400 hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 transition-colors active:scale-95">
                     Cancel
                   </button>
-                  <button @click="saveEditedOutput" :disabled="acting === 'editOutput' || !editFile"
-                    class="flex-1 h-10 rounded-xl bg-green-950 text-white text-sm font-bold
+                  <button @click="saveEditedOutput" :disabled="acting === 'editOutput' || !editFile" class="flex-1 h-10 rounded-xl bg-green-950 text-white text-sm font-bold
                            hover:bg-green-800 disabled:opacity-40 transition-all active:scale-95
                            flex items-center justify-center gap-2 hover:cursor-pointer disabled:cursor-not-allowed">
                     <svg v-if="acting === 'editOutput'" class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24"
@@ -715,9 +596,8 @@ const confirmDeleteOutput = async () => {
                       <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
                     </svg>
                     {{ acting === 'editOutput'
-                      ? (uploadProgress < 100 ? `Uploading ${uploadProgress}%…` : 'Saving…')
-                      : 'Save new file' }}
-                  </button>
+                      ? (uploadProgress < 100 ? `Uploading ${uploadProgress}%…` : 'Saving…') : 'Save new file' }}
+                      </button>
                 </div>
               </div>
             </template>
@@ -744,14 +624,12 @@ const confirmDeleteOutput = async () => {
                   {{ submitError }}
                 </p>
                 <div class="flex gap-2">
-                  <button @click="confirmingDelete = false; submitError = ''"
-                    :disabled="acting === 'deleteOutput'"
+                  <button @click="confirmingDelete = false; submitError = ''" :disabled="acting === 'deleteOutput'"
                     class="flex-1 h-9 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm
                            hover:border-gray-400 disabled:opacity-40 transition-colors active:scale-95">
                     Cancel
                   </button>
-                  <button @click="confirmDeleteOutput" :disabled="acting === 'deleteOutput'"
-                    class="flex-1 h-9 rounded-xl bg-red-600 text-white text-sm font-bold
+                  <button @click="confirmDeleteOutput" :disabled="acting === 'deleteOutput'" class="flex-1 h-9 rounded-xl bg-red-600 text-white text-sm font-bold
                            hover:bg-red-500 disabled:opacity-40 transition-all active:scale-95
                            flex items-center justify-center gap-2">
                     <svg v-if="acting === 'deleteOutput'" class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24"
@@ -810,8 +688,7 @@ const confirmDeleteOutput = async () => {
                     :style="{ width: uploadProgress + '%' }" />
                 </div>
                 <p class="text-xs text-gray-500 text-right">
-                  {{ uploadProgress < 100 ? `Uploading… ${uploadProgress}%` : 'Saving…' }}
-                </p>
+                  {{ uploadProgress < 100 ? `Uploading… ${uploadProgress}%` : 'Saving…' }} </p>
               </div>
               <p v-if="submitError" class="text-xs text-red-600 font-medium flex items-center gap-1.5">
                 <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor">
@@ -827,8 +704,7 @@ const confirmDeleteOutput = async () => {
                   <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
                 </svg>
                 {{ submitting ? (uploadProgress < 100 ? `Uploading ${uploadProgress}%…` : 'Saving…')
-                  : 'Upload & Submit' }}
-              </button>
+                  : 'Upload & Submit' }} </button>
             </div>
 
             <!-- ── RESUBMIT (revision requested) ── -->
@@ -883,8 +759,7 @@ const confirmDeleteOutput = async () => {
                     :style="{ width: uploadProgress + '%' }" />
                 </div>
                 <p class="text-xs text-orange-500 text-right">
-                  {{ uploadProgress < 100 ? `Uploading… ${uploadProgress}%` : 'Saving…' }}
-                </p>
+                  {{ uploadProgress < 100 ? `Uploading… ${uploadProgress}%` : 'Saving…' }} </p>
               </div>
               <p v-if="submitError" class="text-xs text-red-600 font-medium flex items-center gap-1.5">
                 <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor">
@@ -901,148 +776,13 @@ const confirmDeleteOutput = async () => {
                 </svg>
                 {{ acting === 'resubmit'
                   ? (uploadProgress < 100 ? `Uploading ${uploadProgress}%…` : 'Saving…') : 'Upload & Resubmit' }}
-              </button>
+                  </button>
             </div>
 
             <!-- ── FALLBACK ── -->
             <div v-else
               class="border border-dashed border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-400 text-center">
               No output submitted yet
-            </div>
-          </div>
-
-          <!-- ── SUBTASKS ── -->
-          <div v-if="task.subtasks?.length">
-            <div class="flex items-center justify-between mb-2">
-              <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Sub-tasks
-                <span class="normal-case font-normal">({{ task.subtasks.length }})</span>
-              </p>
-              <span v-if="canAssignSubtasks"
-                class="text-[10px] text-green-700 font-semibold bg-green-50 px-2 py-0.5 rounded-full">
-                Click to assign or reassign
-              </span>
-            </div>
-            <div class="space-y-2">
-              <div v-for="(sub, i) in task.subtasks" :key="sub.id ?? i"
-                class="flex items-center gap-3 border rounded-xl px-4 py-2.5 bg-white transition-colors" :class="isSubtaskUnassigned(sub) && canAssignSubtasks
-                  ? 'border-amber-200 bg-amber-50/40'
-                  : 'border-gray-200'">
-
-                <span class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center
-                             text-white text-[10px] font-bold"
-                  :class="isSubtaskUnassigned(sub) ? 'bg-gray-300' : 'bg-green-900'">
-                  {{ i + 1 }}
-                </span>
-
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm text-gray-700 leading-snug truncate">{{ sub.name }}</p>
-                  <div class="flex items-center gap-1.5 mt-0.5">
-                    <span v-if="!isSubtaskUnassigned(sub)" class="text-[10px] text-green-700 font-semibold bg-green-50 border border-green-200
-                             px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                      <svg viewBox="0 0 24 24" class="w-2.5 h-2.5 flex-shrink-0" fill="currentColor">
-                        <path :d="mdiAccount" />
-                      </svg>
-                      {{ subtaskDisplayName(sub) }}
-                    </span>
-                    <span v-else class="text-[10px] text-amber-600 font-semibold bg-amber-50 border border-amber-200
-                             px-1.5 py-0.5 rounded-full">
-                      Unassigned
-                    </span>
-                  </div>
-                </div>
-
-                <div class="flex items-center gap-2 flex-shrink-0">
-                  <a v-if="sub.outputLink" :href="sub.outputLink" target="_blank"
-                    class="text-xs text-green-800 font-semibold hover:underline flex-shrink-0">
-                    ↗ View
-                  </a>
-
-                  <div v-if="canAssignSubtasks" class="relative" data-dropdown>
-                    <div v-if="assigningId === sub.id" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg
-                             border-2 border-gray-200 bg-gray-50 text-gray-400 text-xs font-bold
-                             cursor-not-allowed select-none">
-                      <svg class="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="10" stroke="#d1d5db" stroke-width="3" />
-                        <path d="M12 2a10 10 0 0 1 10 10" stroke="#6b7280" stroke-width="3" stroke-linecap="round" />
-                      </svg>
-                      Saving…
-                    </div>
-
-                    <template v-else>
-                      <button @click.stop="pickMemberAndAssign(sub)" :disabled="!!sub.outputLink" class="hover:cursor-pointer flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg
-                               transition-all active:scale-95 disabled:pointer-events-none group"
-                        :class="isSubtaskUnassigned(sub)
-                          ? 'bg-green-950 text-white hover:bg-green-800'
-                          : 'border-2 border-green-200 bg-green-50 text-green-800 hover:border-green-400 hover:bg-green-100 disabled:bg-gray-50 disabled:border-gray-200 disabled:text-gray-500'">
-                        <template v-if="!isSubtaskUnassigned(sub)">
-                          <div class="w-4 h-4 rounded-full bg-green-900 text-white text-[9px] font-bold
-                                      flex items-center justify-center uppercase flex-shrink-0 group-disabled:bg-gray-900">
-                            {{ (subtaskDisplayName(sub) || '?')[0] }}
-                          </div>
-                          <span class="truncate max-w-[90px]">{{ subtaskDisplayName(sub) }}</span>
-                        </template>
-                        <template v-else>Assign</template>
-                        <!-- <svg viewBox="0 0 24 24" class="w-3 h-3 flex-shrink-0 transition-transform duration-150"
-                          :class="openDropdownId === sub.id ? 'rotate-180' : ''" fill="currentColor">
-                          <path :d="mdiChevronDown" />
-                        </svg> -->
-                        <Icons :icon="'chevronRight'" :icon-class="'w-3 h-3'" />
-                      </button>
-
-                      <!-- <Transition enter-active-class="transition duration-100 ease-out"
-                        enter-from-class="opacity-0 scale-95 -translate-y-1"
-                        enter-to-class="opacity-100 scale-100 translate-y-0"
-                        leave-active-class="transition duration-75 ease-in"
-                        leave-from-class="opacity-100 scale-100 translate-y-0"
-                        leave-to-class="opacity-0 scale-95 -translate-y-1">
-                        <div v-if="openDropdownId === sub.id" class="absolute right-0 top-full mt-1 z-30 min-w-[180px] max-w-[240px]
-                                 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                          <div class="px-3 py-2 border-b border-gray-100 bg-gray-50">
-                            <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                              {{ isSubtaskUnassigned(sub) ? 'Assign to' : 'Reassign to' }}
-                            </p>
-                            <p v-if="!isSubtaskUnassigned(sub)" class="text-[10px] text-gray-400 mt-0.5">
-                              Currently: <span class="font-semibold text-gray-600">{{ subtaskDisplayName(sub) }}</span>
-                            </p>
-                          </div>
-                          <div v-if="!unitMembersForAssign.length" class="px-3 py-3 text-xs text-gray-400 text-center">
-                            No members found
-                          </div>
-                          <button v-for="member in unitMembersForAssign" :key="member.id"
-                            @click.stop="pickMemberAndAssign(sub, member)" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left
-                                   hover:bg-green-50 transition-colors group">
-                            <div class="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center
-                                        text-[11px] font-bold text-white uppercase"
-                              :class="member.isSelf ? 'bg-green-700' : 'bg-green-900'">
-                              {{ (member.fname || '?')[0] }}{{ (member.lname || '')[0] }}
-                            </div>
-                            <div class="flex-1 min-w-0">
-                              <div class="flex items-center gap-1.5">
-                                <p class="text-xs font-semibold text-gray-800 truncate group-hover:text-green-900">
-                                  {{ member.fname }}{{ member.middle_initial ? ' ' + member.middle_initial + '.' : '' }}
-                                  {{ member.lname }}
-                                </p>
-                                <span v-if="member.isSelf"
-                                  class="text-[9px] font-bold px-1 py-0.5 rounded bg-green-100 text-green-700 flex-shrink-0">
-                                  You
-                                </span>
-                              </div>
-                              <p v-if="member.pos_name" class="text-[10px] text-gray-400 truncate">
-                                {{ member.pos_name }}
-                              </p>
-                            </div>
-                            <svg v-if="String(subtaskAssigneeId(sub)) === String(member.id)" viewBox="0 0 24 24"
-                              class="w-3.5 h-3.5 text-green-600 flex-shrink-0" fill="currentColor">
-                              <path :d="mdiCheck" />
-                            </svg>
-                          </button>
-                        </div>
-                      </Transition> -->
-                    </template>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -1163,8 +903,7 @@ const confirmDeleteOutput = async () => {
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
               </svg>
               {{ acting === 'resubmit'
-                ? (uploadProgress < 100 ? `Uploading ${uploadProgress}%…` : 'Saving…') : 'Upload & Resubmit' }}
-            </button>
+                ? (uploadProgress < 100 ? `Uploading ${uploadProgress}%…` : 'Saving…') : 'Upload & Resubmit' }} </button>
           </div>
         </div>
       </div>
@@ -1215,7 +954,8 @@ const confirmDeleteOutput = async () => {
           </div>
         </template>
         <template v-else>
-          <button @click="emit('close')" :disabled="loading" class="flex-1 h-11 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm
+          <button @click="emit('close')" :disabled="loading"
+            class="flex-1 h-11 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm
                    hover:border-green-800 hover:text-green-800 transition-colors active:scale-95 hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-50">
             Close
           </button>

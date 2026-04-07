@@ -716,7 +716,7 @@ export const taskStore = defineStore('tasks', () => {
     const auth = useAuthStore()
     const { data } = await supabase
       .from('task_revision')
-      .select('id, from_user, to_user, role, comment, is_read, created_at')
+      .select('id, task_id, from_user, to_user, role, comment, is_read, created_at')
       .eq('task_id', taskId)
       .order('created_at', { ascending: true })
 
