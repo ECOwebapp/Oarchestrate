@@ -77,7 +77,8 @@ export const useSubtaskStore = defineStore('subtasks', () => {
   task_approval!subtask_id ( unit_head, director, revision_comment, revised_at ),
   task_duration!subtask_id ( created, deadline ),
   task_output!subtask_id ( link ),
-  task:task!inner(assignee)
+  task:task!inner(assignee),
+  design_approval!id(*)
 `
 
   const subtaskRow = (st) => ({
@@ -117,6 +118,7 @@ export const useSubtaskStore = defineStore('subtasks', () => {
     })(),
     design: !!st.design,
     isSelfAssigned: st.assigner === st.assignee,
+    designApproval: (st.design_approval || {})
 
   })
 
@@ -219,8 +221,6 @@ export const useSubtaskStore = defineStore('subtasks', () => {
         const allIds = [...new Set([uid, ...unitUserIds])]
 
         let subtaskRows = []
-
-        let query = supabase.from('subtask').select(SUBTASK_SELECT)
         if (parentTaskId) {
           // Scenario A: Simple, direct fetch
           const { data, error } = await supabase
@@ -349,10 +349,11 @@ export const useSubtaskStore = defineStore('subtasks', () => {
         }
       }
       await supabase.from('task_notif').upsert(
-        { task_id: null, subtask_id: subTaskId, read_by_assignee: true, read_by_unit_head: true },
+        { subtask_id: subTaskId, read_by_assignee: true, read_by_unit_head: true },
         { onConflict: 'subtask_id' }
       )
     } else {
+      // 1. Identify the Unit Heads
       const { data: uhRows } = await supabase
         .from('position_of_members')
         .select('user_id')
@@ -360,39 +361,36 @@ export const useSubtaskStore = defineStore('subtasks', () => {
         .eq('pos_id', 4)
 
       const uhIds = [...new Set((uhRows || []).map(r => r.user_id))]
+      const isSenderAUnitHead = uhIds.includes(fromUserId)
 
-      const allUnitHeads = uhRows
-        .map(link => link.user_id)
+      // 2. Determine Recipient(s)
+      let recipients = []
+      let targetRole = 4 // Default role for Unit Head
 
-      // 2. Check if the current sender is in that list
-      const isSenderAUnitHead = allUnitHeads.includes(fromUserId)
+      if (isSenderAUnitHead) {
+        const directorId = await getDirectorId()
+        if (directorId) recipients = [directorId]
+        targetRole = 1 // Role for Director
+      } else {
+        recipients = uhIds
+      }
 
-      for (const uhId of uhIds) {
-        const { data: existing } = await supabase
-          .from('task_revision')
-          .select('id')
+      // 3. Send Notifications (No "existing" check - always provide the latest info)
+      for (const targetId of recipients) {
+        // Optional: Mark previous unread messages to this user as 'read' 
+        // so the new one is the only "active" one.
+        await supabase.from('task_revision')
+          .update({ is_read: true })
           .eq('subtask_id', subTaskId)
-          .eq('to_user', uhId)
-          .eq('is_read', false)
-          .maybeSingle()
+          .eq('to_user', targetId)
 
-        if (!existing) {
-          await supabase.from('task_revision').insert({
-            subtask_id: subTaskId,
-            from_user: fromUserId,
-            to_user: uhId,
-            role: 4,
-            comment: message || 'From Unit Head: Output submitted — awaiting your review.',
-          })
-        } else if (!existing && isSenderAUnitHead) {
-          await supabase.from('task_revision').insert({
-            subtask_id: subTaskId,
-            from_user: fromUserId,
-            to_user: directorId,
-            role: 4,
-            comment: message || 'From Unit Head: Output submitted — awaiting your review.',
-          })
-        }
+        await supabase.from('task_revision').insert({
+          subtask_id: subTaskId,
+          from_user: fromUserId,
+          to_user: targetId,
+          role: targetRole,
+          comment: message || 'Revised output submitted — awaiting your review.',
+        })
       }
 
       await supabase.from('task_notif').upsert(
@@ -531,7 +529,7 @@ export const useSubtaskStore = defineStore('subtasks', () => {
     // 2. Swap the output link in Supabase
     const { error: updErr } = await supabase
       .from('task_output')
-      .upsert({ link: newLink })
+      .update({ link: newLink })
       .eq('subtask_id', subTaskId)
     if (updErr) throw new Error(updErr.message)
 
@@ -671,8 +669,8 @@ export const useSubtaskStore = defineStore('subtasks', () => {
     if (newOutputLink) {
       const { error: updErr } = await supabase
         .from('task_output')
-        .upsert({ link: newOutputLink })
-        .eq('subtask_id', subTaskId).select('id')
+        .update({ link: newOutputLink })
+        .eq('subtask_id', subTaskId)
       if (updErr) throw new Error(updErr.message)
     }
 
@@ -684,15 +682,15 @@ export const useSubtaskStore = defineStore('subtasks', () => {
       .limit(1)
       .maybeSingle()
 
-    const revisorRole = lastRevision?.role || 'unit_head'
+    const revisorRole = lastRevision?.role || 4
     const assigneeId = task?.assignee || auth.user.id
 
-    await supabase.from('task_profile').update({ revision: false }).eq('id', subTaskId)
+    await supabase.from('task_profile').update({ revision: false }).eq('subtask_id', subTaskId)
 
-    if (revisorRole === 'director') {
+    if (revisorRole === 1) {
       await supabase.from('task_approval')
         .update({ unit_head: true, director: false, revision_comment: null, revised_at: null })
-        .eq('id', subTaskId)
+        .eq('subtask_id', subTaskId)
 
       if (lastRevision?.from_user) {
         await supabase.from('task_revision').insert({
@@ -713,7 +711,7 @@ export const useSubtaskStore = defineStore('subtasks', () => {
       const assignerData = await supabase
         .from('subtask')
         .select('assigner')
-        .eq('subtask_id', subTaskId)
+        .eq('id', subTaskId)
         .maybeSingle()
       const isSelfAssigned = assignerData?.data?.assigner === assigneeId
 
@@ -728,7 +726,6 @@ export const useSubtaskStore = defineStore('subtasks', () => {
           .update({ unit_head: false, director: false, revision_comment: null, revised_at: null })
           .eq('subtask_id', subTaskId)
       }
-
       await _notifySubmission(
         subTaskId, assigneeId, auth.user.id,
         '📎 Revised output resubmitted — awaiting your review.',

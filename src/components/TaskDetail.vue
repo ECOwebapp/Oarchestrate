@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import Icons from './Icons.vue'
+import { useDesignStore } from '@/stores/design'
 
 // MDI icon paths
 const mdiLink = 'M3.9,12C3.9,10.29 5.29,8.9 7,8.9H11V7H7A5,5 0 0,0 2,12A5,5 0 0,0 7,17H11V15.1H7C5.29,15.1 3.9,13.71 3.9,12M8,13H16V11H8V13M17,7H13V8.9H17C18.71,8.9 20.1,10.29 20.1,12C20.1,13.71 18.71,15.1 17,15.1H13V17H17A5,5 0 0,0 22,12A5,5 0 0,0 17,7Z'
@@ -33,6 +34,8 @@ const store = taskStore()
 const subtaskStore = useSubtaskStore()
 const memberStore = useMemberStore()
 const posStore = usePosStore()
+const designStore = useDesignStore()
+const { plenary } = storeToRefs(designStore)
 const memberPos = storeToRefs(posStore)?.memberPos
 
 const outputUrl = ref(props.task?.outputLink || '')
@@ -64,6 +67,7 @@ onMounted(async () => {
   await Promise.all([
     posStore.fetchMemberPos(),
     posStore.fetchPos(),
+    designStore.getPlenaryMembers(),
     loadRevisions()
   ])
   document.addEventListener('click', handleOutsideClick)
@@ -201,48 +205,54 @@ const canApproveAsUnitHead = computed(() => {
 // For design tasks: Depends on the design approval chain
 const canApproveAsDirector = computed(() => {
   if (!auth.isDirector || props.task?.director || !props.task?.outputLink) return false
-  
+
   // Regular task: requires unit_head approval first
   if (!props.task?.design) {
     return props.task?.unitHead === true
   }
-  
+
   // Design task: director can approve only after unit_head approves
   return props.task?.designApproval?.unit_head === true &&
-         props.task?.designApproval?.director === false
+    props.task?.designApproval?.director === false
 })
 
 // Design-specific approval logic based on user position
 const canApproveAsDesignRole = computed(() => {
-  if (props.task?.director) return false  // Already fully approved
-  if (!props.task?.outputLink) return false  // No output to approve
-  if (!props.task?.design) return false  // Not a design task
+  if (props.task?.director) return false
+  if (!props.task?.outputLink) return false
+  if (!props.task?.design) return false
 
   const designApp = props.task?.designApproval || {}
-  const userPosId = auth.positions?.[0]?.pos_id
+  const userPosIds = (auth.positions || []).map(p => p.pos_id);
 
-  // Senior Draftsman (pos_id = 6): First to approve after draftsman submits
-  if (userPosId === 6) {
-    return !designApp.senior_draftsman  // Can approve if not already approved
+  // 1. Senior Draftsman (pos_id = 6)
+  if (userPosIds.includes(6)) {
+    return !designApp.senior_draftsman
   }
 
-  // Engineer (pos_id = 7): Approves after senior draftsman
-  if (userPosId === 7) {
+  // 2. Plenary Roles (Engineers - pos_ids in plenary.value)
+  // We check if ANY of the user's IDs match ANY ID in the plenary array
+  const isPlenaryUser = userPosIds.some(id => plenary.value.map(p => p.pos_id).includes(id));
+
+  if (isPlenaryUser) {
     return designApp.senior_draftsman === true && !designApp.engineers
   }
 
-  // Unit Head (pos_id = 4): Approves after all engineers (if design task)
-  if (userPosId === 4) {
+  // 3. Unit Head (pos_id = 4)
+  if (userPosIds.includes(4)) {
     return designApp.engineers === true && !designApp.unit_head
   }
 
-  // Director (pos_id = 1): Final approval after unit head
-  if (userPosId === 1) {
+  // 4. Director (pos_id = 1)
+  if (userPosIds.includes(1)) {
     return designApp.unit_head === true && !designApp.director
   }
 
   return false
 })
+
+console.log(canApproveAsDesignRole.value)
+
 const canSubmitOutput = computed(() =>
   (auth.isMember || (auth.isUnitHead && props.task?.isOwnTask)) &&
   !props.task?.outputLink && !props.task?.director
@@ -300,7 +310,7 @@ const approve = async () => {
   acting.value = 'approve'
   try {
     let role = 'unit_head'  // default
-    
+
     if (props.task?.design) {
       // Design task: determine role based on user position
       const userPosId = auth.positions?.[0]?.pos_id // <<--- Needs to be reviewed
@@ -324,7 +334,7 @@ const requestRevision = async () => {
   acting.value = 'revise'
   try {
     let role = 'unit_head'  // default
-    
+
     if (props.task?.design) {
       // Design task: determine role based on user position
       const userPosId = auth.positions?.[0]?.pos_id // <<--- Needs to be reviewed
@@ -559,7 +569,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
               </div>
 
               <!-- Edit / Delete buttons — only shown when submission is still pending review -->
-              <div v-if="canManageSubmission" class="flex gap-2 mt-2">
+              <div v-if="canManageSubmission && !canResubmit" class="flex gap-2 mt-2">
                 <button @click="editingSubmission = true; submitError = ''" class="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-gray-300
                          text-xs font-semibold text-gray-600 hover:border-green-700 hover:text-green-800
                          hover:bg-green-50 transition-colors hover:cursor-pointer disabled:cursor-not-allowed">

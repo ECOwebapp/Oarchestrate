@@ -16,11 +16,24 @@ export const useDesignStore = defineStore('design', () => {
   const auth = useAuthStore()
   const posStore = usePosStore()
   const { memberPos } = storeToRefs(posStore)
+  const plenary = ref([])
 
   const designSubtasks = ref([])
   const loading = ref(false)
   const nameMap = ref({})
   const pduMembers = ref([])
+
+  const getPlenaryMembers = async() => {
+    try{
+
+      const { data, error } = await supabase.rpc('get_design_plenary')
+      if(error) throw error
+      plenary.value = data
+
+    } catch(e) {
+      console.log('Failed to fetch plenary members: ', e)
+    }
+  }
 
   // ── Get PDU members filtered by role ──────────────────────────────────────
   const getPDUMembersByRole = async (roleId) => {
@@ -272,6 +285,7 @@ export const useDesignStore = defineStore('design', () => {
     loading,
     pduMembers,
     nameMap,
+    plenary,
 
     // Computed
     getJuniorDraftsmen,
@@ -288,6 +302,7 @@ export const useDesignStore = defineStore('design', () => {
     engineerAction,
     checkAllEngineersApproved,
     unitHeadAction,
-    directorAction
+    directorAction,
+    getPlenaryMembers
   }
 })

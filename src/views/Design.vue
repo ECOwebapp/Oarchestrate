@@ -4,7 +4,6 @@ import Loading from '@/components/Loading.vue'
 import ChartSubtasks from '@/components/Subtasks/ChartSubtasks.vue'
 import GridSubtasks from '@/components/Subtasks/GridSubtasks.vue'
 import TableSubtasks from '@/components/Subtasks/TableSubtasks.vue'
-import AddTask from '@/components/Tasks/AddTask.vue'
 import { useSubtaskStore } from '@/stores/subtasks'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -332,16 +331,6 @@ const onCloseAddTask = async (success) => {
       </div>
 
     </div>
-
-    <!-- ── Add Task Modal ── -->
-    <Teleport to="#add-task">
-      <Transition name="modal">
-        <div v-if="addTask" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-          @click.self="onCloseAddTask">
-          <AddTask @close="onCloseAddTask" @success="onCloseAddTask(true)" :design="true" :pre-fill="preFillData" />
-        </div>
-      </Transition>
-    </Teleport>
 
     <!-- ── Delete Confirm Modal ── -->
     <Teleport to="body">
