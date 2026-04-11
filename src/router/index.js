@@ -108,7 +108,6 @@ router.beforeEach(async (to) => {
   isPageLoading.value = true
 
   // 1. Run initialization first (Security Priority)
-  if (!auth.initialized) await auth.init()
   const loggedIn = auth.isLoggedIn
 
   // 2. Security Gates (Instant Returns)

@@ -4,7 +4,6 @@ import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/useAuthStore';
 
 const auth = useAuthStore()
-const contact = useContactStore()
 
 const form = ref({
     phone: [],
@@ -15,26 +14,18 @@ const saving = ref(false)
 const saveSuccess = ref(false)
 const saveError = ref('')
 
-defineExpose({saveSuccess, saveError})
+defineExpose({ saveSuccess, saveError })
 
 onMounted(async () => {
-    await Promise.all([
-        contact.fetchEmails(),
-        contact.fetchPhoneNumbers()
-    ])
-
-    const userId = auth.user?.id || auth.userID
+    const userId = auth.userID
     if (!userId) {
         form.value.phone = ['']
         form.value.email_address = ['']
         return
     }
-
-    const userPhones = contact.phone.filter(p => p.user_id === userId)
-    const userEmail = contact.emails.filter(e => e.user_id === userId)
     // Extract just the strings into the form array
-    form.value.phone = userPhones.map(p => p.phone)
-    form.value.email_address = userEmail.map(e => e.email_address)
+    form.value.phone = auth.profile.contact || ['']
+    form.value.email_address = auth.profile.email_address || ['']
     if (form.value.phone.length === 0) form.value.phone = ['']
     if (form.value.email_address.length === 0) form.value.email_address = ['']
 
@@ -45,22 +36,22 @@ const handleSave = async () => {
     saveSuccess.value = false
     saveError.value = ''
 
-    const userId = auth.user?.id
+    const userId = auth.userID
     if (!userId) { saving.value = false; return }
 
     try {
+        let payload = {}
 
         if (form.value.email_address && form.value.email_address.length > 0) {
-            const response = await contact.editUserEmail(form.value.email_address)
-            console.log('Email: ', response)
+            payload.email_address = form.value.email_address
         }
-
         if (form.value.phone && form.value.phone.length > 0) {
-            const response = await contact.editPhoneNumber(form.value.phone)
-            console.log('Phone: ', response)
+            payload.phone = form.value.phone
         }
 
-        await auth.fetchUserData(auth.user)
+        const response = await auth.editProfile(payload, 'contact')
+        console.log('Response: ', response)
+
     } catch (e) {
         console.log('Error processing forms: ', e)
         saveError.value = err.message || 'Something went wrong.'
@@ -75,10 +66,13 @@ const handleSave = async () => {
     <div class="mb-5 flex flex-col gap-4">
         <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <div class="flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                <label for="phone" class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Contact Number</label>
+                <label for="phone"
+                    class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Contact
+                    Number</label>
                 <div v-for="(num, index) in form.phone" :key="index" class="relative">
                     <input v-model="form.phone[index]" type="tel" inputmode="numeric" pattern="^09\d{9}$"
-                        placeholder="09 123 45678" maxlength="11" class="mb-4 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-gray-700 shadow-[0_2px_8px_rgba(15,23,42,0.03)] transition focus:border-emerald-600 focus:text-black focus:outline-none focus:ring-2 focus:ring-emerald-100" />
+                        placeholder="09 123 45678" maxlength="11"
+                        class="mb-4 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-gray-700 shadow-[0_2px_8px_rgba(15,23,42,0.03)] transition focus:border-emerald-600 focus:text-black focus:outline-none focus:ring-2 focus:ring-emerald-100" />
                 </div>
 
                 <button type="button" @click="form.phone.push('')"

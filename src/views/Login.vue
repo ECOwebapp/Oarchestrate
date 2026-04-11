@@ -38,11 +38,11 @@ const handleSubmit = async () => {
     // Reconstruct internal email from ID number (same formula used at registration)
     const response = await auth.login(form)
 
-    if (response?.message) {
-      if (response?.message?.toLowerCase().includes('invalid')) {
+    if (response?.error) {
+      if (response?.error?.toLowerCase().includes('invalid')) {
         errors.password = 'Incorrect password.'
       } else {
-        errors.general = response?.message
+        errors.general = response?.error
       }
       loading.value = false
       return

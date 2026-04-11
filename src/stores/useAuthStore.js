@@ -1,11 +1,12 @@
 import { supabase } from '@/lib/supabaseClient'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { apiFetch, session } from '@/lib/api'
+import router from '@/router'
 
 export const useAuthStore = defineStore('auth', () => {
 
   // ── State ──
-  const user = ref(null)
   const userID = ref(null)
   const profile = ref(null)
   const positions = ref([])
@@ -14,8 +15,9 @@ export const useAuthStore = defineStore('auth', () => {
   const initialized = ref(false)
   const avatarUrl = ref(null) // ── NEW ──
 
+
   // ── Derived ──
-  const isLoggedIn = computed(() => !!user.value)
+  const isLoggedIn = computed(() => !!userID.value)
 
   const fullName = computed(() => {
     if (!profile.value) return ''
@@ -38,9 +40,8 @@ export const useAuthStore = defineStore('auth', () => {
   const avatarColor = computed(() => {
     const str = fullName.value || '?'
     let hash = 0
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash)
-    }
+    for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash)
+
     // Hue locked to green range (100–160°), vary saturation/lightness slightly
     const hue = 100 + (Math.abs(hash) % 60)
     const sat = 38 + (Math.abs(hash >> 4) % 20)
@@ -48,72 +49,52 @@ export const useAuthStore = defineStore('auth', () => {
     return `hsl(${hue}, ${sat}%, ${lit}%)`
   })
 
-  const isDirector = computed(() => {
-    return positions?.value.some(p => p.pos_id === 1) ?? false
-  })
-  const isUnitHead = computed(() => {
-    return positions?.value.some(p => p.pos_id === 4) ?? false
-  })
-  const isAdmin = computed(() => {
-    return positions?.value.some(p => p.pos_id === 11) ?? false
-  })
+  const isDirector = computed(() => { return positions?.value.some(p => p.pos_id === 1) ?? false })
+  const isUnitHead = computed(() => { return positions?.value.some(p => p.pos_id === 4) ?? false })
+  const isAdmin = computed(() => { return positions?.value.some(p => p.pos_id === 11) ?? false })
+
   const isMember = computed(() => {
     const excludedIds = [1, 4, 11];
     const hasPositions = positions.value?.length > 0;
 
     // .every() ensures that NOT ONE of their roles is in the excluded list
-    const hasNoSpecialRoles = positions.value?.every(p =>
-      !excludedIds.includes(Number(p.pos_id))
-    );
-
+    const hasNoSpecialRoles = positions.value?.every(p => !excludedIds.includes(Number(p.pos_id)) );
     return hasPositions && hasNoSpecialRoles;
   })
-  // Office unit members bypass unit head — go straight to director
-  const isOffice = computed(() => {
-    return positions?.value.some(p => p.unit_id === 3) ?? false
-  })
 
-  const isSeniorDraftsman = computed(() => {
-    return positions?.value.some(p => p.pos_id === 6)
-  })
+  // Office unit members bypass unit head — go straight to director
+  const isOffice = computed(() => { return positions?.value.some(p => p.unit_id === 3) ?? false })
+  const isSeniorDraftsman = computed(() => { return positions?.value.some(p => p.pos_id === 6) })
 
   const login = async (form) => {
     try {
-      const internalEmail = `${form?.idNumber.trim().toLowerCase().replace(/[^a-z0-9]/g, '-')}@carsu.edu.ph`
-
-      // Sign in directly — no email lookup needed
-      const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
-        email: internalEmail,
-        password: form?.password,
+      const response = await apiFetch('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          idNumber: form.idNumber, // Matches your req.body destructuring
+          password: form.password
+        }),
       })
 
-      if(authErr) return authErr
+      const result = await response.json();
 
-      const userId = authData.user?.id
+      if (response.ok) {
+        const { userData, session } = result
+        userID.value = session.user.id;
+        localStorage.setItem('eco_session', JSON.stringify(session));
+        $fill(userData)
+        initialized.value = true
 
-      // 3. Check account_status
-      const { data: statusData } = await supabase
-        .from('account_status')
-        .select('status_id, notes')
-        .eq('user_id', userId)
-        .single()
-
-      const status = statusData || {}
-
-      if (status?.status_id === 1) {
-        // Sign them back out — don't let them in yet
-        await supabase.auth.signOut()
-        return status
+      } else if (response.status === 401) {
+        return { error: result.error }
+      }
+      else {
+        return {
+          status_id: result?.status_id,
+          notes: result?.notes
+        }
       }
 
-      else if (status?.status_id === 3) {
-        await supabase.auth.signOut()
-        return status
-      } else {
-        const authUser = {id: userId}
-        const response = await fetchUserData(authUser, true)
-        if (response) return status
-      }
     } catch (e) {
       console.log('Failed to login: ', e)
     }
@@ -121,161 +102,103 @@ export const useAuthStore = defineStore('auth', () => {
 
   // ── Fetch user data ──
   // force=true bypasses the early-return guard (used after profile save)
-  async function fetchUserData(authUser, force = false) {
-    if (!force && initialized.value && user.value) return
-    if (!authUser) return
+  const fetchUserData = async () => {
+    if (initialized.value && userID.value) {
+      console.log("Already initialized. Skipping.");
+      return;
+    }
+
+    if (!session && !userID.value) {
+      console.log("No session found. Aborting fetch.");
+      return;
+    }
+    else if (!session && userID.value) await logout()
 
     loading.value = true
-    userID.value = authUser.id
     console.log('Fetching ->', loading.value)
 
-    const [profRes, posRes, statusRes, avatarRes] = await Promise.all([
-      supabase
-        .from('members')
-        .select('*')
-        .eq('user_id', authUser.id)
-        .maybeSingle(),
+    try {
+      const response = await apiFetch('/auth/me', { method: 'GET' })
 
-      supabase
-        .from('position_of_members')
-        .select('pos_id, unit_id, pos_name, unit_name')
-        .eq('user_id', authUser.id),
+      if (response && response.ok) {
+        const { userData, user_id } = await response.json();
+        userID.value = user_id
+        $fill(userData)
+        initialized.value = true
+      } else await logout();
 
-      supabase
-        .from('account_status')
-        .select('status_id')
-        .eq('user_id', authUser.id)
-        .maybeSingle(),
-
-      // ── NEW: fetch avatar_url from user_profile ──
-      supabase
-        .from('user_profile')
-        .select('avatar_url')
-        .eq('user_id', authUser.id)
-        .maybeSingle(),
-    ])
-
-    if (profRes.error) console.error('[auth] members:', profRes.error.message)
-    if (posRes.error) console.error('[auth] position:', posRes.error.message)
-    if (statusRes.error) console.error('[auth] account_status:', statusRes.error.message)
-    if (avatarRes.error) console.error('[auth] avatar:', avatarRes.error.message)
-
-    profile.value = profRes.data ?? null
-    positions.value = posRes.data || []
-    accountStatus.value = statusRes.data?.status_id ?? 1
-
-    // ── NEW: set avatarUrl with cache-buster ──
-    const raw = avatarRes.data?.avatar_url
-    avatarUrl.value = raw
-      ? `${raw.split('?')[0]}?t=${Date.now()}`
-      : null
-
-    // console.log('isDirector ->', isDirector.value)
-    // console.log('isUnitHead ->', isUnitHead.value)
-    // console.log('isUnitMember ->', isMember.value)
-    // console.log('isOffice ->', isOffice.value)
-
-    loading.value = false
-    initialized.value = true
-
-    console.log('Fetching ->', loading.value)
-  }
-
-  async function init() {
-    if (initialized.value && user.value) return;
-
-    loading.value = true
-
-    console.log('Init ->', loading.value)
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.user) {
-      user.value = session.user
-      await fetchUserData(session.user)
-    } else {
+    } catch (e) {
+      console.log('Failed to fetch user data: ', e)
+    } finally {
       loading.value = false
-      initialized.value = true
-
-      console.log('Init ->', loading.value)
+      console.log('Fetching ->', loading.value)
     }
   }
 
-  function listenToAuthChanges() {
-    supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        user.value = session.user
-        await fetchUserData(session.user)
-      }
-      else if (event === 'SIGNED_OUT') {
-        console.log('signed out')
-        $reset()
-      }
-    })
-  }
+  const editProfile = async (payload, type) => {
+    if(!type) {
+      console.log('Please provide instance type')
+      return
+    }
 
-  async function editProfile(payload) {
     try {
-      const { data, error, status } = await supabase
-        .from('user_profile')
-        .update(payload)
-        .eq('user_id', userID.value)
-        .select()
+      const response = await apiFetch(`/profile/${type}`, {
+        method: 'POST',
+        body: JSON.stringify({
+          payload: payload, // Matches your req.body destructuring
+          userId: userID.value
+        }),
+      })
 
-      if (error) throw error
+      const result = await response.json()
+      if (response.ok) $fill(result?.userData)
+      else throw new Error(result.error)
 
-      await fetchUserData(user.value)
-
-      return status
+      return response.status || 200
     } catch (e) {
       console.log('Error updating profile: ', e)
     }
   }
 
-  // ── Upload avatar to Supabase Storage ──
-  const uploadAvatar = async (userId, imageFile) => {
-    if (!imageFile) {
-      console.log('[avatar] No new image staged, skipping upload.')
-      return null
+  // const listenToAuthChanges = async () => {
+  //   const res = await apiFetch('/auth/state')
+
+  //   if (res.status === 200) await fetchUserData()
+  //   else if (res.status === 401) await logout()
+  // }
+
+  const logout = async () => {
+
+    if (userID.value) {
+      try {
+        const response = await apiFetch('/auth/logout', { method: 'POST' })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result.error || 'Logout failed');
+      
+      } catch (e) {
+        console.log('Error logout: ', e)
+      }
     }
 
-    console.log('[avatar] Starting upload for user:', userId)
-
-    const ext = imageFile.name.split('.').pop().toLowerCase()
-    const filePath = `${userId}/avatar.${ext}`
-
-    console.log('[avatar] Uploading to path:', filePath)
-
-    const { data, error } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, imageFile, {
-        upsert: true,
-        contentType: imageFile.type,
-      })
-
-    if (error) {
-      console.error('[avatar] Upload failed:', error.message, error)
-      throw new Error(`Avatar upload failed: ${error.message}`)
-    }
-
-    console.log('[avatar] Upload success:', data)
-
-    const { data: urlData } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(filePath)
-
-    // Add timestamp to bust browser cache (same filename = stale cache)
-    const bustUrl = `${urlData.publicUrl}?t=${Date.now()}`
-    console.log('[avatar] Public URL:', bustUrl)
-    return bustUrl
-  }
-
-  async function logout(router) {
-    await supabase.auth.signOut()
+    localStorage.removeItem('eco_session');
     $reset()
+    initialized.value = false
     router.replace({ name: 'Login' })
   }
 
+  function $fill(userData) {
+    // Destructure the object into your existing refs
+    profile.value = userData?.profile || null;
+    positions.value = userData?.positions || [];
+    accountStatus.value = userData?.accountStatus || null;
+
+    // Handle the cache-buster logic here on the frontend
+    avatarUrl.value = userData?.profile.avatar_url
+      ? `${userData?.profile.avatar_url.split('?')[0]}?t=${Date.now()}`
+      : null;
+  }
+
   function $reset() {
-    user.value = null
     userID.value = null
     positions.value = []
     profile.value = null
@@ -285,9 +208,9 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    user, userID, profile, positions, accountStatus, loading, initialized,
+    userID, profile, positions, accountStatus, loading, initialized,
     isLoggedIn, fullName, initials, avatarColor, avatarUrl, // ← avatarUrl added
-    isDirector, isUnitHead, isMember, isAdmin, isOffice, isSeniorDraftsman, login,
-    init, listenToAuthChanges, fetchUserData, logout, $reset, editProfile, uploadAvatar
+    isDirector, isUnitHead, isMember, isAdmin, isOffice, isSeniorDraftsman,
+    login, fetchUserData, logout, $reset, editProfile
   }
 })
