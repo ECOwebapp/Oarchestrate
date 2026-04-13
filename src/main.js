@@ -10,13 +10,11 @@ import router from './router';
   app.use(pinia)
 
   const auth = useAuthStore()
-  await auth.init()       // restore session — no listener yet
+  await auth.fetchUserData()       // restore session — no listener yet
 
   app.use(router)
   app.use(vaporInteropPlugin)
   app.mount('#app')
 
-  // Register AFTER mount so reactive updates from auth events
-  // never fire while the component tree is still being set up
-  auth.listenToAuthChanges()
+  // auth.listenToAuthChanges()
 })()

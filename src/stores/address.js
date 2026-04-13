@@ -36,19 +36,5 @@ export const useAddressStore = defineStore('address', () => {
         }
     }
 
-    const changeUserAddress = async(payload) => {
-        try {
-            const { data, error, status } = await supabase
-                .from('address')
-                .update(payload)
-                .eq('user_id', auth.userID)
-
-            if(error) throw error
-            return status
-        } catch(e) {
-            console.log('Error editing address: ', e)
-        }
-    }
-
-    return { address, userAddress, fetchUserAddresses, fetchUserAddress, changeUserAddress }
+    return { address, userAddress, fetchUserAddresses, fetchUserAddress }
 })

@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { defineStore, storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
 import { usePosStore } from './positions'
+import { apiFetch } from '@/lib/api'
 
 const OFFICE_UNIT_ID = 3
 
@@ -165,124 +166,18 @@ export const taskStore = defineStore('tasks', () => {
   // ── FETCH TASKS ─────────────────────────────────────────────────────────────
   const fetchTasks = async (parentId = null) => {
     const auth = useAuthStore()
-    const uid = auth.user?.id
+    const uid = auth.userID
     if (!uid) return
     loading.value = true
 
     try {
-      if (auth.isDirector) {
-        let query = supabase
-          .from('task')
-          .select(TASK_SELECT);
+      const response = await apiFetch(`/tasks/fetch?parentId=${parentId}`, {
+        method: 'GET'
+      })
 
-        if (parentId) {
-          // If design is true, we filter by the parent_ppa_id
-          query = query.eq('parent_ppa_id', Number(parentId));
-        }
-
-        const { data: taskRows, error: taskError } = await query
-          .order('id', { ascending: false });
-
-        if (taskError) throw taskError
-
-        const allUserIds = [...new Set((taskRows || []).flatMap(t => [
-          t.assigner, t.assignee
-        ]).filter(Boolean))]
-        const assigneeIds = [...new Set((taskRows || []).map(t => t.assignee).filter(Boolean))]
-        const allIdsToResolve = [...new Set([...allUserIds])]
-
-        await Promise.all([
-          resolveNames(allIdsToResolve),
-          resolveUnitIds(assigneeIds),
-        ])
-        const posRes = memberPos.value.filter(mp => mp.user_id === assigneeIds)
-        const roleMap = Object.fromEntries((posRes || []).map(r => [r.user_id, r.pos_id]))
-
-        tasks.value = taskRows.map(t => ({
-          ...mapRow(t),
-          assigneeRole: roleMap[t.assignee] || null,
-          assigneeUnitId: getAssigneeUnitId(t.assignee),
-          assigneeIsOffice: isOfficeUser(t.assignee),
-        }))
-
-      } else if (auth.isUnitHead) {
-        const activeUnitId = computed(() => {
-          const headRole = auth.positions?.find(p => p.pos_id === 4)
-          return headRole?.unit_id ?? null
-        })
-        if (!activeUnitId.value) { tasks.value = []; return }
-
-        // const { data: unitUsers } = await supabase
-        //   .from('position_of_members').select('user_id').eq('unit_id', activeUnitId.value)
-
-        const unitUsers = memberPos.value.filter(mp => mp.unit_id === activeUnitId.value)
-
-        const unitUserIds = (unitUsers || []).map(m => m.user_id)
-        const allIds = [...new Set([uid, ...unitUserIds])]
-
-        let query = supabase
-          .from('task')
-          .select(TASK_SELECT);
-
-        if (parentId) {
-          // If design is true, we filter by the parent_ppa_id
-          query = query.eq('parent_ppa_id', Number(parentId));
-        }
-
-        const { data: taskRows, error } = await query
-          .or(allIds.map(id => `assignee.eq.${id}`).join(','))
-          .order('id', { ascending: false })
-        if (error) throw error
-
-        // console.log(rows)
-
-        const allUserIds = [...new Set((taskRows || [])
-          .flatMap(t => [t.assigner, t.assignee])
-          .filter(Boolean))]
-        const assigneeIds = [...new Set((taskRows || []).map(t => t.assignee).filter(Boolean))]
-        const allIdsToResolve = [...new Set([...allUserIds])]
-
-        await Promise.all([
-          resolveNames(allIdsToResolve),
-          resolveUnitIds(assigneeIds),
-        ])
-
-        const posRes = memberPos.value.filter(mp => mp.user_id === assigneeIds)
-        const roleMap = Object.fromEntries((posRes || []).map(r => [r.user_id, r.pos_id]))
-
-        tasks.value = taskRows.map(t => ({
-          ...mapRow(t),
-          assigneeRole: roleMap[t.assignee] || null,
-          assigneeUnitId: getAssigneeUnitId(t.assignee),
-          assigneeIsOffice: isOfficeUser(t.assignee),
-          isOwnTask: t.assignee === uid,
-        }))
-
-        await fetchUnitMembers()
-
-      } else {
-        let query = supabase
-          .from('task')
-          .select(TASK_SELECT);
-
-        if (parentId) {
-          // If design is true, we filter by the parent_ppa_id
-          query = query.eq('parent_ppa_id', Number(parentId));
-        }
-
-        const { data: taskRows, error } = await query
-          .order('id', { ascending: false })
-        if (error) throw error
-
-        const allUserIds = [...new Set((taskRows || []).flatMap(t => [t.assigner, t.assignee]).filter(Boolean))]
-        await Promise.all([resolveNames(allUserIds), resolveUnitIds([uid])])
-
-        tasks.value = (taskRows || []).map(t => ({
-          ...mapRow(t),
-          assigneeUnitId: getAssigneeUnitId(uid),
-          assigneeIsOffice: isOfficeUser(uid),
-        }))
-      }
+      const result = await response.json()
+      if(response.ok) tasks.value = result
+      else throw new Error(result.error)
 
     } catch (e) {
       console.error('[taskStore] fetchTasks:', e)

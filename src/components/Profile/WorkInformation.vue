@@ -66,18 +66,25 @@ const openDeleteModal = (payload) => {
 
 const handleSave = async () => {
     try {
-        if (modalMode.value === 'add') {
-            const response = await positions.addUserPos(localForm.value)
-            console.log(response)
-        } else if (modalMode.value === 'edit') {
-            const response = await positions.updateUserPos(localForm.value, oldPos.value)
+        // if (modalMode.value === 'add') {
+        //     const response = await positions.addUserPos(localForm.value)
+        //     console.log(response)
+        // } else if (modalMode.value === 'edit') {
+        //     const response = await positions.updateUserPos(localForm.value, oldPos.value)
+        //     console.log(response)
+        // } else {
+        //     const response = await positions.deleteUserPos(localForm.value)
+        //     console.log(response)
+        // }
+
+        // Requires testing when internet connection returns
+        if(modalMode.value === 'delete') {
+            const response = await auth.editProfile(localForm.value, 'work', 'delete')
             console.log(response)
         } else {
-            const response = await positions.deleteUserPos(localForm.value)
+            const response = await auth.editProfile(localForm.value, 'work')
             console.log(response)
         }
-        // Refresh the auth store so the table updates
-        await auth.fetchUserData(auth.user)
     } catch (err) {
         console.error("Failed to save:", err)
     } finally {

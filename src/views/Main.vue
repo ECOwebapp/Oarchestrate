@@ -10,8 +10,6 @@ import Loading from '@/components/Loading.vue';
 const auth = useAuthStore()
 const videoRef = ref(null)
 onMounted(async () => {
-    await auth.fetchUserData(auth.user, true)
-
     if (videoRef.value) {
         videoRef.value.play().catch(error => {
             console.warn("Autoplay was prevented by the browser:", error)

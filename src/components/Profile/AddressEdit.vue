@@ -19,12 +19,15 @@ const props = defineProps(['form', 'errors'])
 
 // ── Load static dropdowns + regions on mount ──
 onMounted(async () => {
+  loadingRegions.value = true
   const [r] = await Promise.all([
     fetch(`${PSGC}/regions/`).then(r => r.json()).catch(() => []),
   ])
   regions.value      = Array.isArray(r)
     ? r.sort((a, b) => a.name.localeCompare(b.name))
     : []
+
+  loadingRegions.value = false
 })
 
 // ── PSGC cascading watchers ──
@@ -96,7 +99,7 @@ defineExpose({ fullAddress })
         <!-- Region -->
         <div class="flex-1">
             <div v-if="loadingRegions" class="w-full h-10 rounded-lg bg-gray-100 animate-pulse"></div>
-            <select v-else v-model="form.regionCode" @change="() => { form.provinceCode = '';  form.cityCode = ''; form.barangayCode = '' }"
+            <select v-else v-model="props.form.regionCode" @change="() => { form.provinceCode = '';  form.cityCode = ''; form.barangayCode = '' }"
               class="w-full rounded-lg border bg-white px-3.5 py-2 text-[13px] text-gray-700 transition hover:cursor-pointer focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-700"
                 :class="errors.regionCode ? 'border-red-400' : 'border-gray-300'">
                 <option selected disabled value="">Region</option>

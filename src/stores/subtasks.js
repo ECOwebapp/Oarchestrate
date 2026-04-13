@@ -5,6 +5,7 @@ import { usePosStore } from './positions'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
+import { apiFetch } from '@/lib/api'
 
 const OFFICE_UNIT_ID = 3
 
@@ -170,129 +171,18 @@ export const useSubtaskStore = defineStore('subtasks', () => {
   // ── FETCH SUBTASKS ─────────────────────────────────────────────────────────────
   const fetchSubTasks = async (parentTaskId = null) => {
     const auth = useAuthStore()
-    const uid = auth.user?.id
+    const uid = auth.userID
     if (!uid) return
     loading.value = true
 
     try {
-      if (auth.isDirector) {
-        let query = supabase.from('subtask').select(SUBTASK_SELECT)
-        if (parentTaskId) query = query.eq('parent_task_id', parentTaskId)
+      const response = await apiFetch(`/subtasks/fetch?parentId=${parentTaskId}`, {
+        method: 'GET'
+      })
 
-        const { data: subtaskRows, error: subtaskErr } = await query
-          .order('id', { ascending: false })
-
-        console.log(subtaskRows)
-
-        if (subtaskErr) throw subtaskErr
-
-        const allUserIds = [...new Set([
-          // Users assigned to the Subtasks themselves
-          ...(subtaskRows || []).flatMap(s => [s.assigner, s.assignee]),
-        ].filter(Boolean))]
-        const assigneeIds = [...new Set((subtaskRows || []).map(t => t.assignee).filter(Boolean))]
-
-        const allIdsToResolve = [...new Set([...allUserIds])]
-
-        await Promise.all([
-          resolveNames(allIdsToResolve),
-          resolveUnitIds(assigneeIds),
-        ])
-
-        const posRes = memberPos.value.filter(mp => mp.user_id === assigneeIds)
-        const roleMap = Object.fromEntries((posRes || []).map(r => [r.user_id, r.pos_id]))
-
-        subtasks.value = subtaskRows.map(t => ({
-          ...subtaskRow(t),
-          assigneeRole: roleMap[t.assignee] || null,
-          assigneeUnitId: getAssigneeUnitId(t.assignee),
-          assigneeIsOffice: isOfficeUser(t.assignee),
-        }))
-
-      } else if (auth.isUnitHead) {
-        const activeUnitId = computed(() => {
-          const headRole = auth.positions?.find(p => p.pos_id === 4)
-          return headRole?.unit_id ?? null
-        })
-        if (!activeUnitId.value) { subtasks.value = []; return }
-
-        const unitUsers = memberPos.value.filter(mp => mp.unit_id === activeUnitId.value)
-        const unitUserIds = (unitUsers || []).map(m => m.user_id)
-        const allIds = [...new Set([uid, ...unitUserIds])]
-
-        let subtaskRows = []
-        if (parentTaskId) {
-          // Scenario A: Simple, direct fetch
-          const { data, error } = await supabase
-            .from('subtask')
-            .select(SUBTASK_SELECT)
-            .eq('parent_task_id', parentTaskId)
-            .order('id', { ascending: false });
-
-          if (error) throw error
-          subtaskRows = data || [];
-        }
-        else {
-          // Scenario B: The "Front-End OR"
-          const ids = allIds; // Array of UUIDs
-
-          const [resDirect, resParent] = await Promise.all([
-            supabase.from('subtask').select(SUBTASK_SELECT).in('assignee', ids),
-            supabase.from('subtask').select(SUBTASK_SELECT).in('task.assignee', ids)
-          ]);
-
-          // Merge and remove duplicates by ID
-          const combined = [...(resDirect.data || []), ...(resParent.data || [])];
-          subtaskRows = Array.from(new Map(combined.map(s => [s.id, s])).values())
-            .sort((a, b) => b.id - a.id); // Re-apply the ordering
-        }
-
-        const allUserIds = [...new Set([
-          // Users assigned to the Subtasks themselves
-          ...(subtaskRows || []).flatMap(s => [s.assigner, s.assignee]),
-        ].filter(Boolean))]
-        const assigneeIds = [...new Set((subtaskRows || []).map(t => t.assignee).filter(Boolean))]
-        const allIdsToResolve = [...new Set([...allUserIds])]
-
-        await Promise.all([
-          resolveNames(allIdsToResolve),
-          resolveUnitIds(assigneeIds),
-        ])
-
-        const posRes = memberPos.value.filter(mp => mp.user_id === assigneeIds)
-        const roleMap = Object.fromEntries((posRes || []).map(r => [r.user_id, r.pos_id]))
-
-        subtasks.value = subtaskRows.map(t => ({
-          ...subtaskRow(t),
-          assigneeRole: roleMap[t.assignee] || null,
-          assigneeUnitId: getAssigneeUnitId(t.assignee),
-          assigneeIsOffice: isOfficeUser(t.assignee),
-          isOwnTask: t.assignee === uid,
-        }))
-
-        await fetchUnitMembers()
-
-      } else {
-
-
-        let query = supabase.from('subtask').select(SUBTASK_SELECT)
-        if (parentTaskId) query = query.eq('parent_task_id', parentTaskId)
-
-        const { data: subtaskRows, error } = await query
-          .order('id', { ascending: false })
-          .eq('assignee', uid)
-          .order('id', { ascending: false })
-        if (error) throw error
-
-        const allUserIds = [...new Set((subtaskRows || []).flatMap(t => [t.assigner, t.assignee]).filter(Boolean))]
-        await Promise.all([resolveNames(allUserIds), resolveUnitIds([uid])])
-
-        subtasks.value = (subtaskRows || []).map(t => ({
-          ...subtaskRow(t, {}),
-          assigneeUnitId: getAssigneeUnitId(uid),
-          assigneeIsOffice: isOfficeUser(uid),
-        }))
-      }
+      const result = await response.json()
+      if (response.ok) subtasks.value = result
+      else throw new Error(result.error)
 
     } catch (e) {
       console.error('[taskStore] fetchSubTasks:', e)
