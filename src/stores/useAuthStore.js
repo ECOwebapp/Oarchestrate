@@ -1,4 +1,3 @@
-import { supabase } from '@/lib/supabaseClient'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { apiFetch, session } from '@/lib/api'
@@ -58,7 +57,7 @@ export const useAuthStore = defineStore('auth', () => {
     const hasPositions = positions.value?.length > 0;
 
     // .every() ensures that NOT ONE of their roles is in the excluded list
-    const hasNoSpecialRoles = positions.value?.every(p => !excludedIds.includes(Number(p.pos_id)) );
+    const hasNoSpecialRoles = positions.value?.every(p => !excludedIds.includes(Number(p.pos_id)));
     return hasPositions && hasNoSpecialRoles;
   })
 
@@ -135,19 +134,22 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  const editProfile = async (payload, type) => {
-    if(!type) {
+  const editProfile = async (payload, type, status = null) => {
+    if (!type) {
       console.log('Please provide instance type')
-      return
+      return 'Please provide instance type'
     }
 
     try {
+      let newPayload = {
+        payload: payload, // Matches your req.body destructuring
+        userId: userID.value
+      }
+      if(status) newPayload.status = status
+
       const response = await apiFetch(`/profile/${type}`, {
         method: 'POST',
-        body: JSON.stringify({
-          payload: payload, // Matches your req.body destructuring
-          userId: userID.value
-        }),
+        body: JSON.stringify(newPayload),
       })
 
       const result = await response.json()
@@ -158,6 +160,27 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (e) {
       console.log('Error updating profile: ', e)
     }
+  }
+
+// Requires testing when internet connection returns
+// >> Hexer <<
+  const passManagement = async(payload, status) => {
+    if(!status) return new Error('Please provide instance type')
+
+      try {
+        const response = await apiFetch(`/auth/pass`, {
+          method: 'POST',
+          body: JSON.stringify({
+            payload: payload,
+            status: status
+          }),
+        })
+
+        return await response.json()
+      } catch (e) {
+        console.log('Process failed: ', e)
+        return new Error('Process failed: ', e)
+      }
   }
 
   // const listenToAuthChanges = async () => {
@@ -174,7 +197,7 @@ export const useAuthStore = defineStore('auth', () => {
         const response = await apiFetch('/auth/logout', { method: 'POST' })
         const result = await response.json()
         if (!response.ok) throw new Error(result.error || 'Logout failed');
-      
+
       } catch (e) {
         console.log('Error logout: ', e)
       }
@@ -211,6 +234,6 @@ export const useAuthStore = defineStore('auth', () => {
     userID, profile, positions, accountStatus, loading, initialized,
     isLoggedIn, fullName, initials, avatarColor, avatarUrl, // ← avatarUrl added
     isDirector, isUnitHead, isMember, isAdmin, isOffice, isSeniorDraftsman,
-    login, fetchUserData, logout, $reset, editProfile
+    login, fetchUserData, logout, $reset, editProfile, passManagement
   }
 })

@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { supabase } from "@/lib/supabaseClient";
+import { apiFetch, session } from '@/lib/api'
 import { ref } from 'vue'
 import { useAuthStore } from "./useAuthStore";
 
@@ -11,20 +11,14 @@ export const useProjectStore = defineStore('ppa', () => {
     const fetchProjects = async () => {
         try {
             loading.value = true
-            const { data: projectRes, error: projectErr } = await supabase.rpc('get_ppa', { user_uuid: auth.userID })
-
-            if (projectErr) throw projectErr
-
-            projects.value = (projectRes || []).map(p => ({
-                ...p,
-                director: p.director
-                    ? `${p.director.fname} 
-                        ${p.director.middle_initial !== null ? p.director.middle_initial : ''} 
-                        ${p.director.lname}`
-                    : null,
-
-                is_involved: auth.isDirector ? true : p.is_involved
-            }))
+            const response = await apiFetch('/ppa/fetch', { method: 'GET' })
+            const result = await response.json()
+            
+            if(response.ok) {
+                projects.value = result.projects
+            } else {
+                throw new Error(result.error)
+            }
 
         } catch (e) {
             console.log('Error fetching PPAs: ', e)
@@ -40,19 +34,17 @@ export const useProjectStore = defineStore('ppa', () => {
                 return
             } else {
                 loading.value = true
-                const { data: projectRes, error: projectErr } = await supabase
-                    .from('ppa')
-                    .insert({
+                const response = await apiFetch('/ppa/insert', {
+                    method: 'POST',
+                    body: JSON.stringify({
                         title: project.title,
-                        description: project.description || null,
-                        deadline: project.deadline,
-                        director_id: auth.userID
+                        description: project.description,
+                        deadline: project.deadline
                     })
-                    .select()
+                })
 
-                if (projectErr) throw projectErr
-
-                return projectRes ? 'success' : 'failed'
+                console.log(await response.json())
+                return response.ok ? 'success' : 'failed'
             }
         } catch (e) {
             console.log('Error adding PPAs: ', e)
@@ -64,15 +56,12 @@ export const useProjectStore = defineStore('ppa', () => {
     const updateProjects = async (project) => {
         try {
             loading.value = true
-            const { data: projectRes, error: projectErr } = await supabase
-                .from('ppa')
-                .update({ project })
-                .eq('id', project.id)
-                .select()
+            const response = await apiFetch('/ppa/insert', {
+                method: 'POST',
+                body: JSON.stringify(project)
+            })
 
-            if (projectErr) throw projectErr
-
-            return projectRes ? 'success' : 'failed'
+            return response.ok ? 'success' : 'failed'
 
         } catch (e) {
             console.log('Error updating PPAs: ', e)
