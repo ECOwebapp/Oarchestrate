@@ -1,20 +1,24 @@
-import { useAuthStore } from '@/stores/useAuthStore';
-import { createPinia } from 'pinia';
-import { createApp, vaporInteropPlugin } from 'vue';
-import App from './App.vue';
-import router from './router';
+import { useAuthStore } from "@/stores/useAuthStore";
+import { createPinia } from "pinia";
+import { createApp, vaporInteropPlugin } from "vue";
+import App from "./App.vue";
+import router from "./router";
 (async () => {
-  const app   = createApp(App)
-  const pinia = createPinia()
+  const app = createApp(App);
+  const pinia = createPinia();
 
-  app.use(pinia)
+  app.use(pinia);
 
-  const auth = useAuthStore()
-  await auth.fetchUserData()       // restore session — no listener yet
+  const auth = useAuthStore();
+  await auth.fetchUserData(); // restore session — no listener yet
 
-  app.use(router)
-  app.use(vaporInteropPlugin)
-  app.mount('#app')
+  window.addEventListener("auth:unauthorized", () => {
+    auth.$reset();
+  });
+
+  app.use(router);
+  app.use(vaporInteropPlugin);
+  app.mount("#app");
 
   // auth.listenToAuthChanges()
-})()
+})();
