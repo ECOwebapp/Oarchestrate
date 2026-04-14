@@ -176,7 +176,8 @@ export const useSubtaskStore = defineStore('subtasks', () => {
     loading.value = true
 
     try {
-      const response = await apiFetch(`/subtasks/fetch?parentId=${parentTaskId}`, {
+      const taskId = parentTaskId ? `?parentId=${parentTaskId}` : ''
+      const response = await apiFetch(`/subtasks/fetch${taskId}`, {
         method: 'GET'
       })
 
@@ -293,7 +294,7 @@ export const useSubtaskStore = defineStore('subtasks', () => {
   // ── ADD TASK ────────────────────────────────────────────────────────────────
   const addSubTasks = async ({ subTask }) => {
     const auth = useAuthStore()
-    const uid = auth.user?.id
+    const uid = auth.userID
     const assigneeId = auth.isMember ? uid : subTask.assignee
 
     const calculateAssigner = () => {
@@ -368,139 +369,48 @@ export const useSubtaskStore = defineStore('subtasks', () => {
   }
 
   // ── SUBMIT OUTPUT ───────────────────────────────────────────────────────────
-  const submitOutput = async (subTaskId, link) => {
-    const auth = useAuthStore()
+  const submitOutput = async (subtaskId, link) => {
+    try {
+      const response = await apiFetch('/output/insert', {
+        method: 'POST',
+        body: JSON.stringify({ subtaskId, link })
+      })
 
-    let query = {
-      link: link
+      const result = await response.json()
+      console.log(result)
+    } catch (err) {
+      console.log('Failed to submit output: ', err.message)
     }
-
-    if (subTaskId) {
-      query.subtask_id = subTaskId
-    }
-
-    console.log(query)
-
-    const { data: updated, error: updErr } = await supabase
-      .from('task_output').upsert(query, { onConflict: 'subtask_id' })
-    if (updErr) throw new Error(updErr.message)
-    // if (!updated || updated.length === 0) {
-    //   const { error: insErr } = await supabase.from('task_output').insert({ id: subTaskId, link })
-    //   if (insErr) throw new Error(insErr.message)
-    // }
-
-    const { data: taskRow } = await supabase
-      .from('subtask').select('assignee, assigner').eq('id', subTaskId).maybeSingle()
-    const assigneeId = taskRow?.assignee || auth.userID
-    const assignerId = taskRow?.assigner || auth.userID
-    const isSelfAssigned = assigneeId === assignerId
-
-    await resolveUnitIds([assigneeId])
-    if (isSelfAssigned || isOfficeUser(assigneeId)) {
-      await supabase.from('task_approval').update({ unit_head: true }).eq('subtask_id', subTaskId)
-    }
-
-    await _notifySubmission(subTaskId, assigneeId, auth.userID, null, isSelfAssigned)
-    await fetchSubTasks()
   }
 
   // ── EDIT OUTPUT ───────────────────────────────────────────────────────────────────────
-  const editOutput = async (subTaskId, newLink) => {
-    const auth = useAuthStore()
+  const editOutput = async (subtaskId, newLink) => {
+    try {
+      const response = await apiFetch('/output/update', {
+        method: 'POST',
+        body: JSON.stringify({ subtaskId, newLink })
+      })
 
-    // 1. Grab the old link before overwriting so we can delete it from Drive
-    const { data: oldOutput } = await supabase
-      .from('task_output')
-      .select('link')
-      .eq('subtask_id', subTaskId)
-      .maybeSingle()
-    const oldLink = oldOutput?.link || null
-
-    // 2. Swap the output link in Supabase
-    const { error: updErr } = await supabase
-      .from('task_output')
-      .update({ link: newLink })
-      .eq('subtask_id', subTaskId)
-    if (updErr) throw new Error(updErr.message)
-
-    // 3. Delete the old Drive file (fire-and-forget)
-    if (oldLink && oldLink !== newLink) {
-      deleteOutputFile(oldLink).catch((e) =>
-        console.warn('[editOutput] Could not delete old Drive file:', e.message)
-      )
+      const result = await response.json()
+      console.log(result)
+    } catch (err) {
+      console.log('Failed to submit output: ', err.message)
     }
-
-    // 4. Mark old pending notifications as read so a fresh one can go through
-    await supabase
-      .from('task_revision')
-      .update({ is_read: true })
-      .eq('subtask_id', subTaskId)
-      .eq('is_read', false)
-
-    // 5. Re-notify the reviewer with the updated file
-    const { data: taskRow } = await supabase
-      .from('subtask').select('assignee, assigner').eq('id', subTaskId).maybeSingle()
-    const assigneeId = taskRow?.assignee || auth.user.id
-    const assignerId = taskRow?.assigner || auth.user.id
-    const isSelfAssigned = assigneeId === assignerId
-
-    await _notifySubmission(
-      subTaskId,
-      assigneeId,
-      auth.user.id,
-      '📝 Submission updated — please review the new file.',
-      isSelfAssigned
-    )
-
-    await fetchSubTasks()
   }
 
   // ── DELETE OUTPUT ───────────────────────────────────────────────────────────────────────
-  const deleteOutput = async (subTaskId) => {
-    // 1. Grab the current link so we can delete it from Drive
-    const { data: currentOutput } = await supabase
-      .from('task_output')
-      .select('link')
-      .eq('subtask_id', subTaskId)
-      .maybeSingle()
-    const currentLink = currentOutput?.link || null
+  const deleteOutput = async (subtaskId) => {
+    try {
+      const response = await apiFetch('/output/delete', {
+        method: 'POST',
+        body: JSON.stringify({ subtaskId })
+      })
 
-    if (currentLink) {
-      // 2. Clear the link in Supabase
-      const { error: clearErr } = await supabase
-        .from('task_output')
-        .update({ link: '' })
-        .eq('subtask_id', subTaskId)
-      if (clearErr) throw new Error(clearErr.message)
-
-      // 3. Delete the Drive file (fire-and-forget)
-      deleteOutputFile(currentLink).catch((e) =>
-        console.warn('[deleteOutput] Could not delete Drive file:', e.message)
-      )
+      const result = await response.json()
+      console.log(result)
+    } catch (err) {
+      console.log('Failed to submit output: ', err.message)
     }
-
-    await Promise.all([
-      // 4. Reset approval flags back to pre-submission state
-      supabase
-        .from('task_approval')
-        .update({ unit_head: false, revision_comment: null, revised_at: null })
-        .eq('subtask_id', subTaskId),
-
-      // 5. Dismiss pending reviewer notifications
-      supabase
-        .from('task_revision')
-        .update({ is_read: true })
-        .eq('subtask_id', subTaskId)
-        .eq('is_read', false),
-
-      // 6. Defensive: clear revision flag
-      supabase
-        .from('task_profile')
-        .update({ revision: false })
-        .eq('subtask_id', subTaskId)
-    ])
-
-    await fetchSubTasks()
   }
 
   // ── APPROVE ─────────────────────────────────────────────────────────────────
