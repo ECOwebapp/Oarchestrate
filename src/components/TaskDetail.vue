@@ -122,12 +122,7 @@ const onFilePickEdit = (e) => {
 
 const loadRevisions = async () => {
   loadingRevs.value = true
-  if (Object.hasOwn(props.task, "parentTaskId")) {
-    revisions.value = await subtaskStore.fetchRevisions(props.task?.id) || []
-  }
-  else {
-    revisions.value = await store.fetchRevisions(props.task?.id) || []
-  }
+  revisions.value = await store.fetchRevisions(props.task?.id) || []
   loadingRevs.value = false
   await nextTick()
   chatBottom.value?.scrollIntoView({ behavior: 'smooth' })
@@ -309,21 +304,28 @@ const fmt = (d) => d
 const approve = async () => {
   acting.value = 'approve'
   try {
-    let role = 'unit_head'  // default
+    let role = 4  // default
+    const engineers = new Set([13, 14, 15, 16, 18, 19])
 
     if (props.task?.design) {
       // Design task: determine role based on user position
-      const userPosId = auth.positions?.[0]?.pos_id // <<--- Needs to be reviewed
-      if (userPosId === 6) role = 'senior_draftsman'
-      else if (userPosId === 7) role = 'engineers'
-      else if (userPosId === 1) role = 'director'
-      else role = 'unit_head'
+      const userPosId = auth.positions?.map(p => p.pos_id) || []
+      const engineersId = userPosId.find(id => engineers.has(id))
+
+      // 'senior_draftsman'
+      if (userPosId.includes(6)) role = 6
+      // 'engineers'
+      else if (engineersId) role = engineersId
+      // 'director'
+      else if (userPosId.includes(1)) role = 1
+      // 'unit_head'
+      else role = 4
     } else {
       // Regular task: use director or unit_head
-      role = auth.isDirector ? 'director' : 'unit_head'
+      role = auth.isDirector ? 1 : 4
     }
-    if (Object.hasOwn(props.task, "parentTaskId")) await subtaskStore.approveSubTask(props.task.id, role)
-    else await store.approveTask(props.task.id, role)
+    if (Object.hasOwn(props.task, "designApproval")) await subtaskStore.approveSubTask(props.task.id, role, props.task.parentId)
+    else await store.approveTask(props.task.id, role, props.task.parentId)
     emit('refresh')
     emit('close')
   } finally { acting.value = '' }
@@ -333,22 +335,36 @@ const requestRevision = async () => {
   if (!revisionComment.value.trim()) return
   acting.value = 'revise'
   try {
-    let role = 'unit_head'  // default
+    let role = 4  // default
+    const engineers = new Set([13, 14, 15, 16, 18, 19])
 
     if (props.task?.design) {
       // Design task: determine role based on user position
-      const userPosId = auth.positions?.[0]?.pos_id // <<--- Needs to be reviewed
-      if (userPosId === 6) role = 'senior_draftsman'
-      else if (userPosId === 7) role = 'engineers'
-      else if (userPosId === 1) role = 'director'
-      else role = 'unit_head'
+      const userPosId = auth.positions?.map(p => p.pos_id) || []
+      const engineersId = userPosId.find(id => engineers.has(id))
+
+      // 'senior_draftsman'
+      if (userPosId.includes(6)) role = 6
+      // 'engineers'
+      else if (engineersId) role = engineersId
+      // 'director'
+      else if (userPosId.includes(1)) role = 1
+      // 'unit_head'
+      else role = 4
     } else {
       // Regular task: use director or unit_head
-      role = auth.isDirector ? 'director' : 'unit_head'
+      role = auth.isDirector ? 1 : 4
     }
 
-    if (Object.hasOwn(props.task, "parentTaskId")) await subtaskStore.requestRevision(props.task.id, revisionComment.value.trim(), role)
-    else await store.requestRevision(props.task.id, revisionComment.value.trim(), role)
+    if(Object.hasOwn(props.task, "designApproval")) {
+      await subtaskStore.requestRevision(
+        props.task.id,
+        revisionComment.value.trim(),
+        role,
+        props.task.parentId
+      )
+    }
+    else await store.requestRevision(props.task.id, revisionComment.value.trim(), role, props.task.parentId)
     revisionComment.value = ''
     await loadRevisions()
     emit('refresh')
@@ -366,7 +382,7 @@ const submitOutput = async () => {
       file: uploadFile.value,
       onProgress: (p) => { uploadProgress.value = p }
     })
-    if (Object.hasOwn(props.task, "parentTaskId")) await subtaskStore.submitOutput(props.task.id, result.fileUrl)
+    if(Object.hasOwn(props.task, "designApproval")) await subtaskStore.submitOutput(props.task.id, result.fileUrl)
     else await store.submitOutput(props.task.id, result.fileUrl)
     emit('refresh')
     emit('close')
@@ -388,8 +404,8 @@ const resubmit = async () => {
       file: resubmitFile.value,
       onProgress: (p) => { uploadProgress.value = p }
     })
-    if (Object.hasOwn(props.task, "parentTaskId")) await subtaskStore.resubmitTask(props.task.id, result.fileUrl)
-    else await store.resubmitTask(props.task.id, result.fileUrl)
+    if (Object.hasOwn(props.task, "designApproval")) await subtaskStore.resubmitTask(props.task.id, result.fileUrl, props.task.parentId)
+    else await store.resubmitTask(props.task.id, result.fileUrl, props.task.parentId)
     resubmitFile.value = null
     uploadProgress.value = 0
     await loadRevisions()
@@ -414,7 +430,7 @@ const saveEditedOutput = async () => {
       file: editFile.value,
       onProgress: (p) => { uploadProgress.value = p }
     })
-    if (Object.hasOwn(props.task, "parentTaskId")) await subtaskStore.editOutput(props.task.id, result.fileUrl)
+    if(Object.hasOwn(props.task, "designApproval")) await subtaskStore.editOutput(props.task.id, result.fileUrl)
     else await store.editOutput(props.task.id, result.fileUrl)
     editFile.value = null
     editingSubmission.value = false
@@ -433,7 +449,7 @@ const saveEditedOutput = async () => {
 const confirmDeleteOutput = async () => {
   acting.value = 'deleteOutput'
   try {
-    if (Object.hasOwn(props.task, "parentTaskId")) await subtaskStore.deleteOutput(props.task.id)
+    if(Object.hasOwn(props.task, "designApproval")) await subtaskStore.deleteOutput(props.task.id)
     else await store.deleteOutput(props.task.id)
     confirmingDelete.value = false
     emit('refresh')

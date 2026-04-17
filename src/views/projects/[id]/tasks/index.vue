@@ -231,7 +231,7 @@ const deleteTasks = async () => {
   deleteError.value = "";
   try {
     const ids = [...selectedIds.value];
-    await store.deleteTasks(ids); // store handles auth filtering internally too
+    await store.deleteTasks(ids, parentId); // store handles auth filtering internally too
     selectedIds.value = new Set();
     selectionMode.value = false;
     showDeleteConfirm.value = false;

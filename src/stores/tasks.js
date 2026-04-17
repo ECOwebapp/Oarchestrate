@@ -51,19 +51,96 @@ export const taskStore = defineStore('tasks', () => {
   // ── ADD TASK ────────────────────────────────────────────────────────────────
   const addTasks = async ({ mainTask }) => {
     try {
-      loading.value = true
       const response = await apiFetch('/tasks/upsert', {
         method: 'POST',
         body: JSON.stringify({ mainTask })
       })
 
       const result = await response.json()
+      if (response.ok) tasks.value = result
+      else throw new Error(result.error)
       console.log(result)
 
     } catch (e) {
       console.log('Failed to add task: ', e)
-    } finally {
-      loading.value = false
+    }
+  }
+
+  // ── APPROVE ─────────────────────────────────────────────────────────────────
+  const approveTask = async (taskId, role, parentId) => {
+    try {
+      const response = await apiFetch('/tasks/approve', {
+        method: 'POST',
+        body: JSON.stringify({ taskId, role, parentId })
+      })
+
+      const result = await response.json()
+      if (response.ok) tasks.value = result
+      else throw new Error(result.error)
+    } catch (err) {
+      console.log('Failed to approve task: ', err.message)
+    }
+  }
+
+  // ── RESUBMIT ────────────────────────────────────────────────────────────────
+  const resubmitTask = async (taskId, newOutputLink, parentId) => {
+    try {
+      const response = await apiFetch('/tasks/resubmit', {
+        method: 'POST',
+        body: JSON.stringify({ taskId, newOutputLink, parentId })
+      })
+
+      const result = await response.json()
+      if (response.ok) tasks.value = result
+      else throw new Error(result.error)
+    } catch (err) {
+      console.log('Failed to resubmit task: ', err.message)
+    }
+  }
+
+  // ── DELETE TASKS ────────────────────────────────────────────────────────────
+  const deleteTasks = async (taskIds, parentId) => {
+    try {
+      const response = await apiFetch('/tasks/delete', {
+        method: 'POST',
+        body: JSON.stringify({ taskIds, parentId })
+      })
+      const result = await response.json()
+      if (response.ok) tasks.value = result
+      else throw new Error(result.error)
+      console.log(result)
+
+    } catch (err) {
+      console.log('Error deleting tasks: ', err)
+    }
+  }
+
+  // ── FETCH REVISIONS ─────────────────────────────────────────────────────────
+  const fetchRevisions = async (taskId) => {
+    try {
+      const response = await apiFetch(`/tasks/fetch_revisions?taskId=${taskId}`, {
+        method: 'POST'
+      })
+      if (response.ok) return await response.json()
+
+    } catch (err) {
+      console.log('Error deleting tasks: ', err)
+    }
+  }
+
+  // ── REQUEST REVISION ────────────────────────────────────────────────────────
+  const requestRevision = async (taskId, comment, role, parentId) => {
+    try {
+      const response = await apiFetch('/tasks/revision_request', {
+        method: 'POST',
+        body: JSON.stringify({ taskId, comment, role, parentId })
+      })
+
+      const result = await response.json()
+      if (response.ok) tasks.value = result
+      else throw new Error(result.error)
+    } catch (err) {
+      console.log('Failed to submit output: ', err.message)
     }
   }
 
@@ -76,6 +153,8 @@ export const taskStore = defineStore('tasks', () => {
       })
 
       const result = await response.json()
+      if (response.ok) tasks.value = result
+      else throw new Error(result.error)
       console.log(result)
     } catch (err) {
       console.log('Failed to submit output: ', err.message)
@@ -91,6 +170,8 @@ export const taskStore = defineStore('tasks', () => {
       })
 
       const result = await response.json()
+      if (response.ok) tasks.value = result
+      else throw new Error(result.error)
       console.log(result)
     } catch (err) {
       console.log('Failed to submit output: ', err.message)
@@ -106,83 +187,11 @@ export const taskStore = defineStore('tasks', () => {
       })
 
       const result = await response.json()
+      if (response.ok) tasks.value = result
+      else throw new Error(result.error)
       console.log(result)
     } catch (err) {
       console.log('Failed to submit output: ', err.message)
-    }
-  }
-
-  // ── APPROVE ─────────────────────────────────────────────────────────────────
-  const approveTask = async (taskId, role) => {
-    try {
-      const response = await apiFetch('/tasks/approve', {
-        method: 'POST',
-        body: JSON.stringify({ taskId, role })
-      })
-
-      const result = await response.json()
-      console.log(result)
-    } catch (err) {
-      console.log('Failed to submit output: ', err.message)
-    }
-  }
-
-  // ── REQUEST REVISION ────────────────────────────────────────────────────────
-  const requestRevision = async (taskId, comment, role) => {
-    try {
-      const response = await apiFetch('/tasks/revision_request', {
-        method: 'POST',
-        body: JSON.stringify({ taskId, comment, role })
-      })
-
-      const result = await response.json()
-      console.log(result)
-    } catch (err) {
-      console.log('Failed to submit output: ', err.message)
-    }
-  }
-
-  // ── RESUBMIT ────────────────────────────────────────────────────────────────
-  const resubmitTask = async (taskId, newOutputLink) => {
-    try {
-      const response = await apiFetch('/tasks/resubmit', {
-        method: 'POST',
-        body: JSON.stringify({ taskId, comment, role })
-      })
-
-      const result = await response.json()
-      console.log(result)
-    } catch (err) {
-      console.log('Failed to submit output: ', err.message)
-    }
-  }
-
-  // ── FETCH REVISIONS ─────────────────────────────────────────────────────────
-  const fetchRevisions = async (taskId) => {
-    try {
-      const response = await apiFetch('/tasks/fetch_revisions', {
-        method: 'POST',
-        body: JSON.stringify({ taskId })
-      })
-      if (response.ok) return await response.json()
-
-    } catch (err) {
-      console.log('Error deleting tasks: ', err)
-    }
-
-  }
-
-  // ── DELETE TASKS ────────────────────────────────────────────────────────────
-  const deleteTasks = async (taskIds) => {
-    try {
-      const response = await apiFetch('/tasks/delete', {
-        method: 'POST',
-        body: JSON.stringify({ taskIds })
-      })
-      console.log(response.status)
-
-    } catch (err) {
-      console.log('Error deleting tasks: ', err)
     }
   }
 
