@@ -119,7 +119,7 @@ export const taskStore = defineStore('tasks', () => {
   const fetchRevisions = async (taskId) => {
     try {
       const response = await apiFetch(`/tasks/fetch_revisions?taskId=${taskId}`, {
-        method: 'POST'
+        method: 'GET'
       })
       if (response.ok) return await response.json()
 
