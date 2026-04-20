@@ -56,7 +56,7 @@ export const useProjectStore = defineStore('ppa', () => {
     const updateProjects = async (project) => {
         try {
             loading.value = true
-            const response = await apiFetch('/ppa/insert', {
+            const response = await apiFetch('/ppa/update', {
                 method: 'POST',
                 body: JSON.stringify(project)
             })
@@ -73,14 +73,12 @@ export const useProjectStore = defineStore('ppa', () => {
     const deleteProjects = async (id) => {
         try {
             loading.value = true
-            const { error: projectErr, status: projectStatus } = await supabase
-                .from('ppa')
-                .delete()
-                .in('id', id)
+            const response = await apiFetch('/ppa/delete', {
+                method: 'POST',
+                body: JSON.stringify({id})
+            })
 
-            if (projectErr) throw projectErr
-
-            return projectStatus
+            return response.status
 
         } catch (e) {
             console.log('Error adding PPAs: ', e)

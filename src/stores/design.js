@@ -7,7 +7,7 @@ import { useAuthStore } from './useAuthStore'
 // Position IDs
 const POS_JUNIOR_DRAFTSMAN = 5
 const POS_SENIOR_DRAFTSMAN = 6
-const POS_ENGINEER = 7
+const POS_ENGINEER = new Set([13, 14, 15, 16, 18, 19])
 const POS_UNIT_HEAD = 4
 const POS_DIRECTOR = 1
 const PDU_UNIT_ID = 1
@@ -28,7 +28,7 @@ export const useDesignStore = defineStore('design', () => {
 
       const { data, error } = await supabase.rpc('get_design_plenary')
       if(error) throw error
-      plenary.value = data
+      plenary.value = data // IDs: (13, 14, 15, 16, 18, 19)
 
     } catch(e) {
       console.log('Failed to fetch plenary members: ', e)
@@ -118,7 +118,7 @@ export const useDesignStore = defineStore('design', () => {
   // ── Get engineers in PDU ─────────────────────────────────────────────────
   const getEngineers = computed(() => {
     return pduMembers.value
-      .filter(p => p.pos_id === POS_ENGINEER)
+      .filter(p => POS_ENGINEER.has(p.pos_id))
       .map(p => ({
         user_id: p.user_id,
         pos_id: p.pos_id,
@@ -204,13 +204,14 @@ export const useDesignStore = defineStore('design', () => {
   }
 
   // ── Engineer action (approve/revise) ─────────────────────────────────────
-  const engineerAction = async (subtaskId, action, comment = '') => {
+  const engineerAction = async (subtaskId, action, role, comment = '') => {
     try {
       const now = new Date().toISOString()
       const { error } = await supabase.rpc('design_engineer_action', {
         p_subtask_id: subtaskId,
         p_from_user: auth.userID,
         p_action: action, // 'approve' | 'revise'
+        p_role: role, // from among the ids within POS_ENGINEER
         p_comment: comment,
         p_timestamp: now
       })
