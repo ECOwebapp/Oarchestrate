@@ -1,38 +1,30 @@
 import { defineStore } from "pinia";
-import { supabase } from "@/lib/supabaseClient";
 import { ref } from 'vue'
-import { useAuthStore } from "./useAuthStore";
+import { apiFetch } from "@/lib/api";
 
 export const useAddressStore = defineStore('address', () => {
-    const auth = useAuthStore()
     const address = ref([])
     const userAddress = ref([])
 
     const fetchUserAddresses = async() => {
         try {
-            const { data, error } = await supabase 
-                .from('address')
-                .select('*')
-
-                if(error) throw error
-                address.value = (data || [])
+            const response = await apiFetch('/users_info/fetch_address', { method: 'GET' })
+            const result = await response.json()
+            if(response.ok) address.value = (result.data || [])
         } catch(e) {
             console.log('Failed to fetch address: ', e)
+            throw new Error(e)
         }
     }
 
     const fetchUserAddress = async(userId) => {
         try {
-            const { data, error } = await supabase 
-                .from('address')
-                .select('*')
-                .eq('user_id', userId)
-                .maybeSingle()
-
-                if(error) throw error
-                userAddress.value = (data || [])
+            const response = await apiFetch(`/users_info/fetch_address?userId=${userId}`, { method: 'GET' })
+            const result = await response.json()
+            if(response.ok) userAddress.value = (result.data || [])
         } catch(e) {
             console.log('Failed to fetch address: ', e)
+            throw new Error(e)
         }
     }
 

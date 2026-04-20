@@ -108,7 +108,6 @@ export const useAuthStore = defineStore("auth", () => {
   };
 
   // ── Fetch user data ──
-  // force=true bypasses the early-return guard (used after profile save)
   const fetchUserData = async () => {
     if (initialized.value && userID.value) {
       console.log("Already initialized. Skipping.");

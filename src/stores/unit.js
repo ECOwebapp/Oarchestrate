@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api'
 import { supabase } from '@/lib/supabaseClient'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
@@ -9,12 +10,10 @@ export const useUnitStore = defineStore('unit', () => {
 
     const fetchUnit = async() => {
         try {
-            const { data, error } = await supabase
-                .from('unit_name')
-                .select('*')
+            const response = await apiFetch('/office/fetch_unit', { method: 'GET' })
+            const result = await response.json()
 
-            if(error) throw error
-            unit.value = (data || [])
+            if(response.ok) unit.value = (result.data || [])
         } catch(e) {
             console.log('Failed to fetch unit: ', e)
         }
@@ -22,13 +21,10 @@ export const useUnitStore = defineStore('unit', () => {
 
     const fetchUnitPeers = async(unitId) => {
         try {
-            const { data, error } = await supabase.rpc('get_unit_position', { 
-                target_unit_id: unitId 
-              });
-    
-            if (error) throw error
+            const response = await apiFetch(`/office/fetch_unit_peers?unitId=${unitId}`, { method: 'GET' })
+            const result = await response.json()
 
-            posOnUnit.value = data || []
+            if(response.ok) posOnUnit.value = (result.data || [])
         } catch(e) {
             console.log('Error fetching peers: ', e)
         }

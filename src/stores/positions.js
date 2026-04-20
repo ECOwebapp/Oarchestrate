@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from "./useAuthStore";
+import { apiFetch } from "@/lib/api";
 
 export const usePosStore = defineStore('pos', () => {
     const position = ref([])
@@ -11,18 +11,10 @@ export const usePosStore = defineStore('pos', () => {
 
     const fetchPos = async () => {
         try {
-            const { data: posRows, error: posErr } = await supabase
-                .from('position_name')
-                .select('id, pos_name')
+            const response = await apiFetch('/office/fetch_pos', { method: 'GET' })
+            const result = await response.json()
 
-            if (posErr) throw posErr
-
-            position.value = (posRows || [])
-                .filter(p => p.name !== 'Admin')
-                .map(p => ({
-                    id: p.id,
-                    name: p.pos_name
-                }))
+            if (response.ok) position.value = result.data
 
         } catch (e) {
             console.log(`Error: ${e}`)
@@ -31,31 +23,20 @@ export const usePosStore = defineStore('pos', () => {
 
     const fetchRoles = async () => {
         try {
-            const { data, error } = await supabase.rpc('get_roles')
+            const response = await apiFetch('/office/fetch_pos', { method: 'GET' })
+            const result = await response.json()
 
-            if (error) throw error
-
-            roles.value = data
+            if (response.ok) roles.value = result.data
         } catch (e) {
             console.log('Failed to fetch roles: ', e)
         }
     }
-
-    // Queries the raw `position` table (not the view) so ALL rows per user
-    // are returned — users with multiple positions are fully represented.
+    
     const fetchMemberPos = async () => {
         try {
-            const { data: posRows, error: posErr } = await supabase
-                .from('position')
-                .select('user_id, pos_id, unit_id')
-
-            if (posErr) throw posErr
-
-            memberPos.value = (posRows || []).map(p => ({
-                user_id: p.user_id,
-                pos_id:  p.pos_id,
-                unit_id: p.unit_id,
-            }))
+            const response = await apiFetch('/office/fetch_member_pos', { method: 'GET' })
+            const result = await response.json()
+            if (response.ok) memberPos.value = result.data
 
         } catch (e) {
             console.log('Error: ', e)
@@ -64,17 +45,18 @@ export const usePosStore = defineStore('pos', () => {
 
     const changeMemberRoles = async ({ member }) => {
         try {
-            const { data: updateRow, error: updateErr, status } = await supabase.rpc('promotion', {
-                target_user_id: member.user_id,
-                target_pos_id:  member.pos_id,
-                target_unit_id: member.unit_id
+            const response = await apiFetch('/office/change_roles', {
+                method: 'POST',
+                body: JSON.stringify({
+                    userId: member.user_id,
+                    posId: member.pos_id,
+                    unitId: member.unit_id
+                })
             })
-
-            if (updateErr) throw updateErr
-            if (status === 200) {
-                await fetchMemberPos()
-                console.log(updateRow)
-                return status
+            const result = await response.json()
+            if (response.ok) {
+                memberPos.value = result.data
+                return response.status
             }
         } catch (e) {
             console.log('Error: ', e)
@@ -83,13 +65,14 @@ export const usePosStore = defineStore('pos', () => {
 
     const addUserPos = async (user) => {
         try {
-            const { data, error, status } = await supabase
-                .from('position')
-                .insert({ user_id: auth.userID, pos_id: user.position, unit_id: user.unit })
-
-            if (error) throw error
-            await auth.fetchUserData(auth.user, true)
-            return status
+            const response = await apiFetch('/office/add_user_pos', {
+                method: 'POST',
+                body: JSON.stringify({ posId: user.position, unitId: user.unit })
+            })
+            if (response.ok) {
+                await auth.fetchUserData()
+                return response.status
+            }
         } catch (e) {
             console.log('Error adding position: ', e)
         }
@@ -97,15 +80,14 @@ export const usePosStore = defineStore('pos', () => {
 
     const updateUserPos = async (user, old_pos) => {
         try {
-            const { data, error, status } = await supabase
-                .from('position')
-                .update({ pos_id: user.position, unit_id: user.unit })
-                .eq('user_id', auth.userID)
-                .eq('pos_id', old_pos)
-
-            if (error) throw error
-            await auth.fetchUserData(auth.user, true)
-            return status
+            const response = await apiFetch('/office/update_user_pos', {
+                method: 'POST',
+                body: JSON.stringify({ posId: user.position, unitId: user.unit, old_pos })
+            })
+            if (response.ok) {
+                await auth.fetchUserData()
+                return response.status
+            }
         } catch (e) {
             console.log('Error updating position: ', e)
         }
@@ -113,14 +95,14 @@ export const usePosStore = defineStore('pos', () => {
 
     const deleteUserPos = async (user) => {
         try {
-            const { data, error, status } = await supabase
-                .from('position')
-                .delete()
-                .eq('pos_id', user.position)
-
-            if (error) throw error
-            await auth.fetchUserData(auth.user, true)
-            return status
+            const response = await apiFetch('/office/delete_user_pos', {
+                method: 'POST',
+                body: JSON.stringify({ posId: user.position })
+            })
+            if (response.ok) {
+                await auth.fetchUserData()
+                return response.status
+            }
         } catch (e) {
             console.log('Error deleting position: ', e)
         }
