@@ -1,5 +1,5 @@
 import { apiFetch } from '@/lib/api'
-import { supabase } from '@/lib/supabaseClient'
+import { EventSource } from 'eventsource'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
@@ -35,12 +35,12 @@ export const useNotifStore = defineStore('notif', () => {
     }
 
     loading.value = true
-    const results = []
+    let results = []
 
     try {
       const response = await apiFetch('/notifications/fetch', { method: 'GET' })
-      const data = await response.json()
-      if (response.ok) results = data.results
+      const result = await response.json()
+      if (response.ok) results = result?.data
 
     } catch (e) {
       console.error('[notifStore] fetchNotifs error:', e)
@@ -79,7 +79,7 @@ export const useNotifStore = defineStore('notif', () => {
         body: JSON.stringify({ taskIds, pokeIds })
       })
 
-      if(response.ok) console.log('Success')
+      if (response.ok) console.log('Success')
 
     } catch (e) {
       console.error('[notifStore] markAllRead error:', e)
@@ -97,7 +97,7 @@ export const useNotifStore = defineStore('notif', () => {
         method: 'POST',
         body: JSON.stringify({ userId })
       })
-      if(response.ok) notifs.value = notifs.value.filter(n => n.id !== `reg-${userId}`)
+      if (response.ok) notifs.value = notifs.value.filter(n => n.id !== `reg-${userId}`)
     } catch (e) {
       console.error('[notifStore] approveUser error:', e)
       if (n) n.status = 'pending'
@@ -112,7 +112,7 @@ export const useNotifStore = defineStore('notif', () => {
         method: 'POST',
         body: JSON.stringify({ userId })
       })
-      if(response.ok)notifs.value = notifs.value.filter(n => n.id !== `reg-${userId}`)
+      if (response.ok) notifs.value = notifs.value.filter(n => n.id !== `reg-${userId}`)
     } catch (e) {
       console.error('[notifStore] denyUser error:', e)
       if (n) n.status = 'pending'
@@ -125,37 +125,28 @@ export const useNotifStore = defineStore('notif', () => {
   // ─────────────────────────────────────────
   let channel = null
   const setupRealtime = (onNew) => {
-    channel = supabase
-      .channel('notif-feed')
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'account_status' },
-        () => { fetchNotifs(); onNew?.() }
-      )
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'task' },
-        () => { fetchNotifs(); onNew?.() }
-      )
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'task_poke' },
-        () => { fetchNotifs(); onNew?.() }
-      )
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'task_revision' },
-        (payload) => {
-          const auth = useAuthStore()
-          // Only notify if current user is the recipient
-          if (payload.new?.to_user === auth.userID) {
-            fetchNotifs(); onNew?.()
-          }
-        }
-      )
-      .on('postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'task_approval' },
-        () => { fetchNotifs(); onNew?.() }
-      )
-      .subscribe()
+    const url = `${import.meta.env.VITE_API_BASE_URL}/notifications/events`
+
+    channel = new EventSource(url, {
+      fetch: (url, options) => {
+        // We pass our existing apiFetch configuration here
+        return apiFetch(url, {
+          ...options,
+          method: 'GET', // SSE requires GET
+        });
+      }
+    })
+    channel.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      // Handle notification
+      fetchNotifs();
+      onNew?.(data);
+    }
+    channel.onerror = (e) => {
+      console.error('SSE Connection failed: ', e.message);
+    }
   }
-  const teardownRealtime = () => { channel?.unsubscribe(); channel = null }
+  const teardownRealtime = () => { channel?.close(); channel = null }
 
   return {
     notifs, loading, shown, unread, visible, hasMore,

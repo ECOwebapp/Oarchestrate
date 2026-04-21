@@ -188,7 +188,6 @@ export const useDesignStore = defineStore('design', () => {
     designSubtasks,
     loading,
     pduMembers,
-    nameMap,
     plenary,
 
     // Computed

@@ -36,6 +36,9 @@ importers:
       cors:
         specifier: ^2.8.6
         version: 2.8.6
+      eventsource:
+        specifier: ^4.1.0
+        version: 4.1.0
       express:
         specifier: ^5.2.1
         version: 5.2.1
@@ -1329,6 +1332,14 @@ packages:
   etag@1.8.1:
     resolution: {integrity: sha512-aIL5Fx7mawVa300al2BnEE4iNvo1qETxLrPI/o05L7z6go7fCw1J6EQmbK4FmJ2AS7kgVF/KEZWufBfdClMcPg==}
     engines: {node: '>= 0.6'}
+
+  eventsource-parser@3.0.8:
+    resolution: {integrity: sha512-70QWGkr4snxr0OXLRWsFLeRBIRPuQOvt4s8QYjmUlmlkyTZkRqS7EDVRZtzU3TiyDbXSzaOeF0XUKy8PchzukQ==}
+    engines: {node: '>=18.0.0'}
+
+  eventsource@4.1.0:
+    resolution: {integrity: sha512-2GuF51iuHX6A9xdTccMTsNb7VO0lHZihApxhvQzJB5A03DvHDd2FQepodbMaztPBmBcE/ox7o2gqaxGhYB9LhQ==}
+    engines: {node: '>=20.0.0'}
 
   expect-type@1.3.0:
     resolution: {integrity: sha512-knvyeauYhqjOYvQ66MznSMs83wmHrCycNEN6Ao+2AeYEfxUIkuiVxdEa1qlGEPK+We3n0THiDciYSsCcgW/DoA==}
@@ -3579,6 +3590,12 @@ snapshots:
       '@types/estree': 1.0.8
 
   etag@1.8.1: {}
+
+  eventsource-parser@3.0.8: {}
+
+  eventsource@4.1.0:
+    dependencies:
+      eventsource-parser: 3.0.8
 
   expect-type@1.3.0: {}
 

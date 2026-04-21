@@ -27,7 +27,10 @@ export const apiFetch = async (endpoint, options = {}) => {
     ...authHeader,
   };
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const isAbsolute = String(endpoint)?.startsWith('http');
+  const finalUrl = isAbsolute ? endpoint : `${API_BASE_URL}${endpoint}`;
+
+  const response = await fetch(finalUrl, {
     ...options,
     headers: { ...defaultHeaders, ...options.headers },
   });
