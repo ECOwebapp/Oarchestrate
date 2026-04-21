@@ -1,5 +1,4 @@
 <script setup vapor>
-import { supabase } from '@/lib/supabaseClient';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { useGenderStore } from '@/stores/gender';
@@ -62,20 +61,6 @@ onMounted(async () => {
   loadingDropdowns.value = false
   loadingRegions.value = false
 })
-
-// // ── Positions filtered by selected unit ──
-// watch(() => form.unitId, async (newUnitId) => {
-//   if (!newUnitId) {
-//     filteredPositions.value = [];
-//     return;
-//   }
-
-//   // Call your store action
-//   await unit.fetchUnitPeers(newUnitId);
-
-//   // Assign the results to your local ref
-//   filteredPositions.value = unit.posOnUnit;
-// }, { immediate: true }); // 'immediate' runs it once on startup too
 
 // ── Reset positionId when unit changes ──
 watch(() => form.unitId, () => {
@@ -157,8 +142,6 @@ const validateStep1 = () => {
   else if (!/^[A-Za-z0-9\-]+$/.test(form.idNumber.trim())) e.idNumber = 'Letters, numbers and hyphens only'
   if (!form.genderId) e.genderId = 'Required'
   if (!form.birthdate) e.birthdate = 'Required'
-  // if (!form.unitId)           e.unitId     = 'Required'
-  // if (!form.positionId)       e.positionId = 'Required'
   Object.keys(errors).forEach(k => delete errors[k])
   Object.assign(errors, e)
   return Object.keys(e).length === 0
@@ -236,90 +219,13 @@ const handleRegister = async () => {
   errors.general = undefined
 
   try {
-    const internalEmail = `${form.idNumber.trim().toLowerCase().replace(/[^a-z0-9]/g, '-')}@carsu.edu.ph`
-
-    // 1. Create auth user
-    const { data: authData, error: authErr } = await supabase.auth.signUp({
-      email: internalEmail,
-      password: form.password,
+    const response = await fetch('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ form, fullAddress })
     })
-    if (authErr) throw authErr
-
-    const userId = authData.user?.id
-    if (!userId) throw new Error('No user ID returned.')
-
-    // 2. UPSERT user_profile first — must exist before member_type FK resolves
-    const { error: profErr } = await supabase
-      .from('user_profile')
-      .upsert({
-        user_id: userId,          // ✅ PK is user_id
-        fname: form.firstName.trim(),
-        lname: form.lastName.trim(),
-        middle_initial: form.middleInitial.trim() || null,
-        birthdate: form.birthdate || null,
-        gender_id: form.genderId ? parseInt(form.genderId) : null,
-        id_number: form.idNumber.trim(),
-      })
-    if (profErr) throw new Error(`Profile error: ${profErr.message}`)
-
-    // 3. Now insert everything else in parallel — user_profile row exists so FKs resolve
-    const [
-      contactRes,
-      addressRes,
-      statusRes,
-    ] = await Promise.all([
-      supabase.from('contact').upsert({
-        user_id: userId,
-        phone: form.phone.trim(),
-      }),
-
-      supabase.from('address').upsert({
-        user_id: userId,
-        address: fullAddress.value,
-        region_code: form.regionCode || null,
-        province_code: form.provinceCode || null,
-        city_code: form.cityCode || null,
-        barangay_code: form.barangayCode || null,
-      }),
-
-      // supabase.from('position').upsert({
-      //   user_id: userId,
-      //   pos_id:  parseInt(form.positionId),
-      //   unit_id: parseInt(form.unitId)
-      // }),
-
-      // supabase.from('member_type').upsert({
-      //   user_id: userId,
-      //   role_id: (() => {
-      //     const selectedPosition = allPositions.value.find(p => p.id === parseInt(form.positionId))
-      //     const posName = selectedPosition?.pos_name?.toLowerCase() || ''
-      //     if (posName.includes('unit head')) return 2
-      //     if (posName.includes('director')) return 1
-      //     return 3
-      //   })(),
-      // }),
-
-      supabase.from('account_status').upsert({
-        user_id: userId,
-        requested_at: new Date().toISOString(),
-      }),
-    ])
-
-    // Surface any errors so they're not silently swallowed
-    const errs = [
-      contactRes.error && `Contact: ${contactRes.error.message}`,
-      addressRes.error && `Address: ${addressRes.error.message}`,
-      // positionRes.error && `Position: ${positionRes.error.message}`,
-      statusRes.error && `Account status: ${statusRes.error.message}`,
-    ].filter(Boolean)
-
-    if (errs.length) {
-      // Log all but only throw the first so the user sees a message
-      errs.forEach(e => console.error('[Register]', e))
-      throw new Error(errs[0])
-    }
-
-    showModal.value = true
+    const result = await response.json()
+    if (response.ok) showModal.value = true
+    else throw new Error(result?.error)
 
   } catch (e) {
     if (e.message?.toLowerCase().includes('already registered')) {

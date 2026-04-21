@@ -1,5 +1,4 @@
 import { defineStore } from "pinia";
-import { supabase } from "@/lib/supabaseClient";
 import { ref } from 'vue'
 import { apiFetch } from "@/lib/api";
 

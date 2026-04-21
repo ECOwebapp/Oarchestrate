@@ -1,6 +1,5 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import { supabase } from '@/lib/supabaseClient'
 import { apiFetch } from "@/lib/api";
 
 export const useMemberStore = defineStore('member', () => {

@@ -3,7 +3,6 @@ import Loading from '@/components/Loading.vue'
 import TaskDetail from '@/components/TaskDetail.vue'
 import AddTask from '@/components/Tasks/AddTask.vue'
 import TaskCard from '@/components/Tasks/TaskCard.vue'
-import { supabase } from '@/lib/supabaseClient'
 import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
@@ -45,7 +44,6 @@ const onRefresh = async () => {
 }
 
 // Realtime
-let channel = null
 onMounted(() => {
   loading.value = true
   if (loaderVideo.value) {
@@ -56,15 +54,8 @@ onMounted(() => {
   }
   store.fetchTasks()
 
-  channel = supabase
-    .channel('dashboard-realtime')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'task_approval' }, onRefresh)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'task_output' }, onRefresh)
-    .subscribe()
-
   loading.value = false
 })
-onUnmounted(() => channel?.unsubscribe())
 
 // ── Helpers ──
 const fmt = (d) => d ? new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'

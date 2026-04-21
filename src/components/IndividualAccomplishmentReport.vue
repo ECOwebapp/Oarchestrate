@@ -1,22 +1,22 @@
 <script setup vapor>
 import { computed, ref, watch, nextTick } from 'vue'
-import { supabase } from '@/lib/supabaseClient.js'
 import { useAuthStore } from '@/stores/useAuthStore.js'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import autoTable from 'jspdf-autotable'
+import { apiFetch } from '@/lib/api'
 
 const props = defineProps({
   show: Boolean,
-  month:    { default: () => new Date().getMonth() + 1 },
-  year:     { default: () => new Date().getFullYear() },
+  month: { default: () => new Date().getMonth() + 1 },
+  year: { default: () => new Date().getFullYear() },
   dateFrom: { type: String, default: '' },
-  dateTo:   { type: String, default: '' },
+  dateTo: { type: String, default: '' },
   userName: { type: String, default: '' },
 })
 const emit = defineEmits(['close'])
 
-const auth  = useAuthStore()
+const auth = useAuthStore()
 const showRecommendingApproval = computed(() => !auth.isUnitHead)
 const positionLabel = computed(() => {
   const positions = auth.positions || []
@@ -33,57 +33,16 @@ const ownTasks = ref([])
 const loadOwnTasks = async () => {
   const uid = auth.userID
   if (!uid) return
-  const { data, error } = await supabase
-    .from('task')
-    .select(`
-      id, assignee,
-      task_profile ( title, description, task_type_ref:task_type(task_type) ),
-      task_approval ( unit_head, director, revision_comment ),
-      task_duration ( created, deadline ),
-      task_output   ( link )
-    `)
-    .is('parent_id', null)
-    .eq('assignee', uid)
+  try {
+    const response = await apiFetch('/report/load_own_tasks', { method: 'GET' })
+    const result = await response.json()
 
-  if (error) {
-    console.error('[IndividualAccomplishmentReport] task:', error.message)
+    if (response.ok) ownTasks.value = result.data
+    else throw new Error(result?.error)
+  } catch (err) {
+    console.log('Error fetching report: ', err.message)
     ownTasks.value = []
-    return
   }
-
-  const parentTaskIds = (data || []).map(t => t.id).filter(Boolean)
-  const subtaskMap = {}
-  if (parentTaskIds.length) {
-    const { data: subtasksData, error: subtasksError } = await supabase
-      .from('task')
-      .select('id, parent_id, task_profile ( title, description )')
-      .in('parent_id', parentTaskIds)
-      .order('id')
-
-    if (subtasksError) {
-      console.error('[IndividualAccomplishmentReport] subtasks:', subtasksError.message)
-    }
-
-    ;(subtasksData || []).forEach((s) => {
-      const pid = s.parent_id
-      if (!pid) return
-      if (!subtaskMap[pid]) subtaskMap[pid] = []
-      subtaskMap[pid].push(s)
-    })
-  }
-
-  ownTasks.value = (data || []).map(t => ({
-    assignee:   t.assignee,
-    name:       t.task_profile?.title       || '',
-    description:t.task_profile?.description || '',
-    type:       t.task_profile?.task_type_ref?.task_type || '',
-    unitHead:   !!t.task_approval?.unit_head,
-    director:   !!t.task_approval?.director,
-    startDate:  t.task_duration?.created    || null,
-    endDate:    t.task_duration?.deadline   || null,
-    outputLink: t.task_output?.link         || null,
-    subtaskNames: (subtaskMap[t.id] || []).map(s => s.task_profile?.title || '').filter(Boolean),
-  }))
 }
 
 watch(() => props.show, (val) => {
@@ -356,13 +315,13 @@ async function exportPdf() {
   }
 }
 
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
-const today  = new Date()
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const today = new Date()
 
 const periodLabel = computed(() => {
   if (props.dateFrom && props.dateTo) {
     const from = new Date(props.dateFrom)
-    const to   = new Date(props.dateTo)
+    const to = new Date(props.dateTo)
     if (isNaN(from) || isNaN(to)) return 'Invalid period'
 
     const sameMonthYear =
@@ -415,36 +374,20 @@ const loadUnitHead = async () => {
     return
   }
 
-  // Query position_of_members where unit_id matches and pos_id = 4 (Unit Head)
-  const { data: headRows, error } = await supabase
-    .from('position_of_members')
-    .select('user_id')
-    .eq('unit_id', unitId)
-    .eq('pos_id', 4)
-    .limit(1)
+  try {
+    const response = await apiFetch(`/report/load_unit_head?unitId=${unitId}`, { method: 'GET' })
+    const result = await response.json()
 
-  if (error || !headRows?.length) {
+    if (response.ok) {
+      unitHeadInfo.value = {
+        name: result.data,
+        title: userUnitName.value ? `Unit Head, ${userUnitName.value}` : 'Unit Head'
+      }
+    } else throw new Error(result?.error)
+
+  } catch (err) {
+    console.log('Error fetching Unit Head: ', err.message)
     unitHeadInfo.value = { name: '', title: '' }
-    return
-  }
-
-  const headUserId = headRows[0].user_id
-
-  // Fetch the head's profile
-  const { data: profile, error: profileError } = await supabase
-    .from('user_profile')
-    .select('fname, lname')
-    .eq('user_id', headUserId)
-    .single()
-
-  if (profileError || !profile) {
-    unitHeadInfo.value = { name: '', title: '' }
-    return
-  }
-
-  unitHeadInfo.value = {
-    name: `${profile.fname || ''} ${profile.lname || ''}`.trim().toUpperCase(),
-    title: userUnitName.value ? `Unit Head, ${userUnitName.value}` : 'Unit Head'
   }
 }
 
@@ -481,7 +424,7 @@ const reportRows = computed(() => {
     if (isNaN(d)) return false
     if (props.dateFrom && props.dateTo) {
       const from = new Date(props.dateFrom)
-      const to   = new Date(props.dateTo)
+      const to = new Date(props.dateTo)
       to.setHours(23, 59, 59, 999)
       return d >= from && d <= to
     }
@@ -504,13 +447,13 @@ const reportRows = computed(() => {
     const activities = (t.subtaskNames && t.subtaskNames.length) ? t.subtaskNames : ['']
     activities.forEach((subtaskName) => {
       rows.push({
-        date:        fmt(t.startDate || t.from),
-        ppa:         t.name || '',
-        activity:    subtaskName || '',
+        date: fmt(t.startDate || t.from),
+        ppa: t.name || '',
+        activity: subtaskName || '',
         description: t.description || '',
-        no:          '',
-        remarks:     remarkOf(t),
-        link:        t.outputLink || '',
+        no: '',
+        remarks: remarkOf(t),
+        link: t.outputLink || '',
       })
     })
   })
@@ -536,19 +479,23 @@ const normalizeOutputLink = (value) => {
   <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
     @click.self="emit('close')">
 
-    <div id="indiv-report-printable" class="relative flex max-h-[92vh] w-[calc(100vw-0.75rem)] max-w-[1100px] flex-col overflow-hidden rounded-xl bg-white shadow-2xl sm:w-[98vw]">
+    <div id="indiv-report-printable"
+      class="relative flex max-h-[92vh] w-[calc(100vw-0.75rem)] max-w-[1100px] flex-col overflow-hidden rounded-xl bg-white shadow-2xl sm:w-[98vw]">
 
       <!-- Close -->
-      <button
-        data-export-ignore="true"
+      <button data-export-ignore="true"
         class="absolute top-3 right-3 z-30 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-700 transition-all cursor-pointer text-base leading-none print:hidden"
         @click="emit('close')">×</button>
 
       <!-- Print -->
-      <button @click="exportPdf"
-        data-export-ignore="true"
+      <button @click="exportPdf" data-export-ignore="true"
         class="absolute right-12 top-3 z-30 hidden items-center gap-1.5 rounded-full bg-green-900 px-3 py-1.5 text-[11px] font-semibold text-white transition-colors cursor-pointer hover:bg-green-700 print:hidden sm:flex">
-        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="M8 10l4 4 4-4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v11" />
+          <path d="M8 10l4 4 4-4" />
+          <path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" />
+        </svg>
         Save as PDF
       </button>
 
@@ -561,7 +508,8 @@ const normalizeOutputLink = (value) => {
             onerror="this.style.display='none'" />
           <p class="text-[10px] font-bold tracking-[0.15em] text-green-700 uppercase">Caraga State University</p>
           <h1 class="text-center text-lg font-bold text-gray-900 sm:text-xl">ACCOMPLISHMENT REPORT</h1>
-          <p class="mt-0.5 text-center text-[12px] tracking-wide text-gray-500 sm:text-[13px]">Engineering and Construction Office</p>
+          <p class="mt-0.5 text-center text-[12px] tracking-wide text-gray-500 sm:text-[13px]">Engineering and
+            Construction Office</p>
           <p class="text-[11px] text-green-800 font-semibold mt-1">{{ periodLabel }}</p>
         </div>
       </div>
@@ -572,15 +520,22 @@ const normalizeOutputLink = (value) => {
           {{ emptyMessage }}
         </p>
         <table class="w-full border-collapse text-[10px] table-fixed">
-          <thead>   
+          <thead>
             <tr class="bg-green-800 text-white text-[9px] uppercase tracking-normal">
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:5%">No.</th>
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:10%">Date</th>
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:20%">PPAs</th>
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:14%">Activity</th>
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:22%">Description</th>
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:12%">Remarks</th>
-              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap" style="width:17%">Drive Link</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap"
+                style="width:5%">No.</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap"
+                style="width:10%">Date</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap"
+                style="width:20%">PPAs</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap"
+                style="width:14%">Activity</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap"
+                style="width:22%">Description</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap"
+                style="width:12%">Remarks</th>
+              <th class="border border-green-700 px-1 py-1.5 font-semibold text-center whitespace-nowrap"
+                style="width:17%">Drive Link</th>
             </tr>
           </thead>
           <tbody>
@@ -592,13 +547,8 @@ const normalizeOutputLink = (value) => {
               <td class="border border-gray-300 px-2 py-1 text-gray-600 break-words">{{ row.description }}</td>
               <td class="border border-gray-300 px-2 py-1 text-center text-gray-600">{{ row.remarks }}</td>
               <td class="border border-gray-300 px-2 py-1 text-center">
-                <a
-                  v-if="row.link"
-                  :href="normalizeOutputLink(row.link)"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="text-[9px] text-green-800 underline break-all hover:text-green-700"
-                >
+                <a v-if="row.link" :href="normalizeOutputLink(row.link)" target="_blank" rel="noopener noreferrer"
+                  class="text-[9px] text-green-800 underline break-all hover:text-green-700">
                   {{ row.link }}
                 </a>
                 <span v-else class="text-[9px] text-gray-300">—</span>
@@ -619,10 +569,7 @@ const normalizeOutputLink = (value) => {
           </div>
 
           <!-- Recommending Approval (hide when current user is Unit Head) -->
-          <div
-            v-if="showRecommendingApproval"
-            class="sm:max-w-[260px] sm:mx-auto sm:justify-self-center sm:text-left"
-          >
+          <div v-if="showRecommendingApproval" class="sm:max-w-[260px] sm:mx-auto sm:justify-self-center sm:text-left">
             <p class="mb-6 text-gray-400 font-semibold uppercase tracking-wide text-[10px]">Recommending Approval:</p>
             <div class="border-t border-gray-400 pt-1 w-full">
               <p class="font-bold text-gray-800 uppercase text-[11px]">{{ unitHeadInfo.name || '—' }}</p>
@@ -640,7 +587,8 @@ const normalizeOutputLink = (value) => {
             </div>
           </div>
         </div>
-        <p class="text-[9px] text-gray-300 italic mt-4 select-none pointer-events-none">System-generated on {{ today.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) }}. Do not alter.</p>
+        <p class="text-[9px] text-gray-300 italic mt-4 select-none pointer-events-none">System-generated on {{
+          today.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) }}. Do not alter.</p>
 
       </div>
     </div>
@@ -654,10 +602,14 @@ const normalizeOutputLink = (value) => {
     margin: 0;
   }
 
-  body { visibility: hidden; }
+  body {
+    visibility: hidden;
+  }
 
   #indiv-report-printable,
-  #indiv-report-printable * { visibility: visible; }
+  #indiv-report-printable * {
+    visibility: visible;
+  }
 
   #indiv-report-printable {
     position: absolute;
@@ -732,6 +684,9 @@ const normalizeOutputLink = (value) => {
     break-before: auto !important;
   }
 
-  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }
 </style>

@@ -1,9 +1,7 @@
 <script setup vapor>
-import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { onMounted, reactive, ref, computed, watch } from 'vue'
 import Icons from '@/components/Icons.vue'
-import { usePosStore } from '@/stores/positions'
 import { useUnitStore } from '@/stores/unit'
 import PersonalInformation from '@/components/Profile/PersonalInformation.vue'
 import ContactInformation from '@/components/Profile/ContactInformation.vue'
