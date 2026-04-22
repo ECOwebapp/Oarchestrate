@@ -1,8 +1,9 @@
 <script setup vapor>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch, toRaw } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { useGenderStore } from '@/stores/gender';
 import { storeToRefs } from 'pinia';
+import { apiFetch } from '@/lib/api';
 
 const router = useRouter()
 const gender = useGenderStore()
@@ -17,8 +18,6 @@ const form = reactive({
   provinceCode: '',
   cityCode: '',
   barangayCode: '',
-  // unitId:          '',
-  // positionId:      '',
   birthdate: '',
   genderId: '',
   password: '',
@@ -219,9 +218,9 @@ const handleRegister = async () => {
   errors.general = undefined
 
   try {
-    const response = await fetch('/auth/register', {
+    const response = await apiFetch('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ form, fullAddress })
+      body: JSON.stringify({ form, fullAddress: fullAddress.value })
     })
     const result = await response.json()
     if (response.ok) showModal.value = true
