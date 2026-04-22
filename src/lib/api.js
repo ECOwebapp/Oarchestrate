@@ -20,11 +20,11 @@ export const session = () => {
 export const apiFetch = async (endpoint, options = {}) => {
   const savedSession = session();
   const token = savedSession?.access_token;
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+  // const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
 
   const defaultHeaders = {
     "Content-Type": "application/json",
-    ...authHeader,
+    // ...authHeader,
   };
 
   const isAbsolute = String(endpoint)?.startsWith('http');
@@ -33,11 +33,12 @@ export const apiFetch = async (endpoint, options = {}) => {
   const response = await fetch(finalUrl, {
     ...options,
     headers: { ...defaultHeaders, ...options.headers },
+    credentials: 'include'
   });
 
   // Global 401 handling: If any request returns 401, boot the user to Login
   if (response.status === 401) {
-    localStorage.removeItem("eco_session");
+    // localStorage.removeItem("eco_session");
     if (!isHandlingUnauthorized) {
       isHandlingUnauthorized = true;
       if (typeof window !== "undefined") {

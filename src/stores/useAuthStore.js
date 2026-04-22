@@ -89,9 +89,9 @@ export const useAuthStore = defineStore("auth", () => {
       const result = await response.json();
 
       if (response.ok) {
-        const { userData, session } = result;
-        userID.value = session.user.id;
-        localStorage.setItem("eco_session", JSON.stringify(session));
+        const { userData, userId } = result;
+        userID.value = userId;
+        // localStorage.setItem("eco_session", JSON.stringify(session));
         $fill(userData);
         initialized.value = true;
       } else if (response.status === 401) {
@@ -114,15 +114,15 @@ export const useAuthStore = defineStore("auth", () => {
       return;
     }
 
-    const savedSession = session();
+    // const savedSession = session();
 
-    if (!savedSession && !userID.value) {
-      console.log("No session found. Aborting fetch.");
-      return;
-    } else if (!savedSession && userID.value) {
-      await logout();
-      return;
-    }
+    // if (!savedSession && !userID.value) {
+    //   console.log("No session found. Aborting fetch.");
+    //   return;
+    // } else if (!savedSession && userID.value) {
+    //   await logout();
+    //   return;
+    // }
 
     loading.value = true;
     console.log("Fetching ->", loading.value);

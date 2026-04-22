@@ -18,8 +18,6 @@
     "cors": "^2.8.6",
     "eventsource": "^4.1.0",
     "express": "^5.2.1",
-    "formidable": "^3.5.4",
-    "googleapis": "^171.4.0",
     "html2canvas": "^1.4.1",
     "jordium-gantt-vue3": "^1.9.2",
     "jspdf": "^4.2.1",
