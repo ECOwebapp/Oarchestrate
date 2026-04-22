@@ -344,14 +344,14 @@ const sz = {
 
 <template>
   <div
-    class="flex-1 w-full h-full overflow-hidden min-h-0 relative opacity-80 bg-[url('/images/csu-background.png')] bg-cover bg-center"
+    class="relative flex-1 h-full min-h-0 w-full overflow-hidden bg-[url('/images/csu-background.png')] bg-cover bg-center"
   >
     <div
       v-if="!showManagement"
       class="relative z-10 flex flex-col items-center w-full h-full"
     >
       <div
-        class="sticky top-0 z-40 w-full flex justify-between items-center px-4 py-2 bg-white/95 backdrop-blur-sm border-b border-black/10 shadow-sm"
+        class="sticky top-0 z-40 w-full flex justify-between items-center px-4 py-2 bg-white/80 border-b border-black/10 shadow-sm"
       >
         <div class="flex items-center gap-3">
           <img
@@ -666,21 +666,32 @@ const sz = {
       </div>
     </div>
 
-    <div v-else class="relative z-10 flex flex-col p-8">
+    <div
+      v-else
+      class="relative z-10 flex h-full min-h-0 flex-col overflow-hidden p-3 sm:p-5 lg:p-8"
+    >
       <div
-        class="sticky top-0 w-full flex justify-between border-b border-black/30 mb-5"
+        class="sticky top-0 z-20 mb-4 w-full border-b border-gray-200 bg-white py-2 sm:mb-5"
       >
-        <button
-          @click="showManagement = false"
-          class="hover:cursor-pointer mb-6 px-6 text-lg font-bold text-gray-700 hover:text-gray-900 flex items-center gap-3"
+        <div
+          class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
         >
-          <span class="text-xl">←</span> Go back
-        </button>
+          <button
+            @click="showManagement = false"
+            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold text-gray-700 transition-colors hover:cursor-pointer hover:bg-gray-50 hover:text-gray-900 sm:px-4 sm:text-base"
+          >
+            <span class="text-base">←</span>
+            <span>Go back</span>
+          </button>
 
-        <p class="text-green-950 font-black text-3xl">Manage Membership</p>
-        <div />
+          <p class="text-green-950 text-xl font-bold sm:text-2xl">
+            Manage Membership
+          </p>
+        </div>
       </div>
-      <ManageMembership class="mt-5" />
+      <div class="min-h-0 flex-1 overflow-auto pb-2">
+        <ManageMembership class="mt-2 sm:mt-5" />
+      </div>
     </div>
 
     <div
