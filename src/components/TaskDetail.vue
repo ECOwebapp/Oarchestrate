@@ -246,8 +246,6 @@ const canApproveAsDesignRole = computed(() => {
   return false
 })
 
-console.log(canApproveAsDesignRole.value)
-
 const canSubmitOutput = computed(() =>
   (auth.isMember || (auth.isUnitHead && props.task?.isOwnTask)) &&
   !props.task?.outputLink && !props.task?.director
