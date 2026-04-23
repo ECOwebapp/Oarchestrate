@@ -1,6 +1,7 @@
 <script setup vapor>
-import { ref, watch, nextTick } from "vue";
+import { ref } from "vue";
 import ProjectCard from "./ProjectCard.vue";
+import TaskDetail from "../TaskDetail.vue";
 import { useProjectStore } from "@/stores/projects";
 
 const projectStore = useProjectStore();
@@ -22,6 +23,21 @@ const handleOpen = (task) => {
   if (props.selectable) return;
   selected.value = task;
   emit("open");
+};
+
+const handleClose = () => {
+  loading.value = true;
+  selected.value = null;
+  setTimeout(() => {
+    loading.value = false;
+    if (success.value) emit("success");
+    else emit("close");
+  }, 10);
+};
+
+const handleAssign = (event) => {
+  emit("assignSubtask", event);
+  if (event) success.value = true;
 };
 </script>
 
@@ -67,11 +83,21 @@ const handleOpen = (task) => {
         :selectable="props.selectable"
         :selected="props.selectedIds.has(project.id)"
         :is-deletable="props.isDeletable(project)"
-        @open="handleOpen(project)"
+        @open="handleOpen"
         @toggle-select="emit('toggle-select', $event)"
         :style="{ animationDelay: `${index * 0.03}s` }"
       />
     </div>
+
+    <Transition name="modal">
+      <TaskDetail
+        v-if="selected"
+        :task="selected"
+        :loading="loading"
+        @close="handleClose"
+        @assignSubtask="handleAssign"
+      />
+    </Transition>
   </div>
 </template>
 

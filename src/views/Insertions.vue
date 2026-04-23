@@ -1,46 +1,26 @@
 <script setup vapor>
-import AddProject from "@/components/Projects/AddProject.vue";
-import AddTask from "@/components/Tasks/AddTask.vue";
-import GridProjects from "@/components/Projects/GridProjects.vue";
-import TableProjects from "@/components/Projects/TableProjects.vue";
 import Icons from "@/components/Icons.vue";
-import ChartProjects from "@/components/Projects/ChartProjects.vue";
 import Loading from "@/components/Loading.vue";
-import { useProjectStore } from "@/stores/projects";
+import AddTask from "@/components/Tasks/AddTask.vue";
+import ChartTasks from "@/components/Tasks/ChartTasks.vue";
+import GridTasks from "@/components/Tasks/GridTasks.vue";
+import TableTasks from "@/components/Tasks/TableTasks.vue";
 import { taskStore } from "@/stores/tasks";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { computed, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
+import { computed, onMounted, ref } from "vue";
 
-const projectStore = useProjectStore();
-const taskDataStore = taskStore();
+const store = taskStore();
 const auth = useAuthStore();
 const state = ref("Grid View");
-const activeTaskMode = ref("PPA");
-const taskModeTabs = ["PPA", "Insertions"];
 const addTask = ref(false);
 const search = ref("");
 const filter = ref("All");
 const sortBy = ref("Recently Assigned");
-const { loading: projectLoading } = storeToRefs(projectStore);
-const { loading: taskLoading, tasks: allTasks } = storeToRefs(taskDataStore);
+const loading = storeToRefs(store)?.loading;
 
-const isInsertionProject = (item) =>
-  item.type?.toLowerCase() === "insertion" ||
-  item.typeId === 2 ||
-  item.isInsertion === true ||
-  item.is_insertion === true;
-
-const isInsertionsMode = computed(() => activeTaskMode.value === "Insertions");
-
-const loading = computed(() =>
-  isInsertionsMode.value ? taskLoading.value : projectLoading.value,
-);
-
-// ── Only Directors and Unit Heads can select / delete (PPA mode only) ─────
-const canDelete = computed(
-  () => (auth.isDirector || auth.isUnitHead) && !isInsertionsMode.value,
-);
+// ── Only Directors and Unit Heads can select / delete ──────────────────────
+const canDelete = computed(() => auth.isDirector || auth.isUnitHead);
 
 // ── Selection state ─────────────────────────────────────────────────────────
 const selectedIds = ref(new Set());
@@ -50,41 +30,30 @@ const isDeleting = ref(false);
 const deleteError = ref("");
 const taskDetail = ref(false);
 
-const projects = computed(() =>
-  projectStore.projects.filter((p) => p.is_involved !== false),
-);
+const tasks = computed(() => {
+  if (auth.isDirector || auth.isUnitHead) {
+    // Show top-level tasks, including insertion tasks not under a PPA.
+    return store.tasks.filter((t) => !t.parentId);
+  }
 
-const insertionTasks = computed(() =>
-  (allTasks.value || [])
-    .filter(
-      (t) => !t.parentId && t.type?.toLowerCase() === "insertion" && !t.design,
-    )
-    .map((t) => ({
-      ...t,
-      title: t.name,
-      deadline: t.to || t.endDate || null,
-      created_at: t.from || t.startDate || null,
-      directorName: t.assignerName || "—",
-      standaloneInsertion: true,
-    })),
-);
+  // Members: show assigned subtasks + their own standalone insertion tasks.
+  return store.tasks.filter((t) => {
+    const isOwnSubtask = !!t.parentId && t.assignee === auth.userID;
+    const isOwnStandaloneInsertion =
+      !t.parentId &&
+      t.type?.toLowerCase() === "insertion" &&
+      t.assignee === auth.userID;
+
+    return isOwnSubtask || isOwnStandaloneInsertion;
+  });
+});
 
 const activeUnitId = computed(() => {
   const headRole = auth.positions?.find((p) => p.pos_id === 4);
   return headRole?.unit_id ?? null;
 });
 
-onMounted(async () => {
-  await Promise.all([projectStore.fetchProjects(), taskDataStore.fetchTasks()]);
-});
-
-watch(activeTaskMode, (mode) => {
-  if (mode === "Insertions") {
-    selectionMode.value = false;
-    selectedIds.value = new Set();
-    deleteError.value = "";
-  }
-});
+onMounted(() => store.fetchTasks());
 
 const filterOpts = computed(() => {
   const base = ["All", "Regular", "Insertion", "Urgent", "Revision", "Overdue"];
@@ -94,53 +63,23 @@ const filterOpts = computed(() => {
 
 const sortOpts = ["Recently Assigned", "Date Due", "Name A→Z", "Urgent First"];
 
-const modeCounts = computed(() => ({
-  PPA: projects.value.filter((item) => !isInsertionProject(item)).length,
-  Insertions: insertionTasks.value.length,
-}));
-
-const projectEmptyTitle = computed(() =>
-  activeTaskMode.value === "Insertions"
-    ? "No insertions found"
-    : "No PPAs found",
-);
-
-const projectEmptyHint = computed(() => {
-  if (search.value || filter.value !== "All") {
-    return "Try clearing search or adjusting the filters.";
-  }
-  return activeTaskMode.value === "Insertions"
-    ? "Add an insertion or switch back to PPA mode."
-    : "Add a PPA to populate this view.";
-});
-
-const addProjectLabel = computed(() =>
-  activeTaskMode.value === "Insertions" ? "Add Insertion" : "Add PPA",
-);
-
 const filtered = computed(() => {
-  let list =
-    activeTaskMode.value === "Insertions"
-      ? insertionTasks.value
-      : projects.value.filter((t) => !isInsertionProject(t));
-
+  let list = tasks.value;
   const q = search.value.toLowerCase();
   if (q)
     list = list.filter(
       (t) =>
-        (t.title || t.name || "").toLowerCase().includes(q) ||
-        (t.description || "").toLowerCase().includes(q) ||
-        String(t.directorName || t.director || "")
-          .toLowerCase()
-          .includes(q),
+        t.name.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q) ||
+        t.assigneeName?.toLowerCase().includes(q),
     );
   if (filter.value !== "All") {
     const f = filter.value.toLowerCase();
     list = list.filter((t) => {
       if (f === "urgent") return t.urgent;
       if (f === "revision") return t.revision;
-      if (f === "regular") return !isInsertionProject(t);
-      if (f === "insertion") return isInsertionProject(t);
+      if (f === "regular") return t.type?.toLowerCase() === "regular";
+      if (f === "insertion") return t.type?.toLowerCase() === "insertion";
       if (f === "overdue") return !!t.overdue;
       if (f === "pending") return !t.director;
       if (f === "approved") return t.director;
@@ -148,21 +87,12 @@ const filtered = computed(() => {
     });
   }
   if (sortBy.value === "Date Due")
-    list = [...list].sort(
-      (a, b) => new Date(a.deadline || a.to) - new Date(b.deadline || b.to),
-    );
+    list = [...list].sort((a, b) => new Date(a.to) - new Date(b.to));
   else if (sortBy.value === "Name A→Z")
-    list = [...list].sort((a, b) =>
-      (a.title || a.name || "").localeCompare(b.title || b.name || ""),
-    );
+    list = [...list].sort((a, b) => a.name.localeCompare(b.name));
   else if (sortBy.value === "Urgent First")
     list = [...list].sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0));
-  else
-    list = [...list].sort(
-      (a, b) =>
-        new Date(b.created_at || b.from || 0) -
-        new Date(a.created_at || a.from || 0),
-    );
+  else list = [...list].sort((a, b) => new Date(b.from) - new Date(a.from));
 
   // Always bubble overdue tasks to the top. Within overdue tasks, sort by days overdue (most overdue first).
   list = list.sort((a, b) => {
@@ -179,6 +109,7 @@ const filtered = computed(() => {
 // Director: any task | Unit Head: only tasks they assigned
 const isDeletable = (task) => {
   if (auth.isDirector) return true;
+  if (auth.isUnitHead) return task.assigner === auth.userID;
   return false;
 };
 
@@ -186,7 +117,7 @@ const isDeletable = (task) => {
 const deletableSelectedCount = computed(
   () =>
     [...selectedIds.value].filter((id) => {
-      const t = projectStore.projects.find((p) => p.id === id);
+      const t = store.tasks.find((t) => t.id === id);
       return t && isDeletable(t);
     }).length,
 );
@@ -215,11 +146,11 @@ const toggleSelectMode = () => {
   }
 };
 
-const toggleTaskSelect = (projects) => {
-  if (!isDeletable(projects)) return; // silently ignore non-deletable tasks
+const toggleTaskSelect = (task) => {
+  if (!isDeletable(task)) return; // silently ignore non-deletable tasks
   const next = new Set(selectedIds.value);
-  if (next.has(projects.id)) next.delete(projects.id);
-  else next.add(projects.id);
+  if (next.has(task.id)) next.delete(task.id);
+  else next.add(task.id);
   selectedIds.value = next;
 };
 
@@ -237,20 +168,18 @@ const toggleSelectAll = () => {
 
 // ── Delete via store action ──────────────────────────────────────────────────
 const deleteTasks = async () => {
-  if (isInsertionsMode.value) return;
-
   isDeleting.value = true;
   deleteError.value = "";
   try {
     const ids = [...selectedIds.value];
-    await projectStore.deleteProjects(ids); // store handles auth filtering internally too
+    await store.deleteTasks(ids); // store handles auth filtering internally too
     selectedIds.value = new Set();
     selectionMode.value = false;
     showDeleteConfirm.value = false;
   } catch (err) {
-    console.error("[Projects] delete error:", err);
+    console.error("[Tasks] delete error:", err);
     deleteError.value =
-      err.message || "Failed to delete projects. Please try again.";
+      err.message || "Failed to delete tasks. Please try again.";
   } finally {
     isDeleting.value = false;
   }
@@ -279,22 +208,19 @@ const onAssignSubtask = (data) => {
   addTask.value = true;
 };
 
-const onCloseAddProject = async (success) => {
+const onCloseAddTask = async (success) => {
   addTask.value = false;
+  preFillData.value = null;
 
-  if (success) {
-    if (isInsertionsMode.value) {
-      await taskDataStore.fetchTasks();
-    } else {
-      await projectStore.fetchProjects();
-    }
+  if (success && taskDetail.value === false) {
+    await store.fetchTasks();
   }
 };
 </script>
 
 <template>
   <div class="flex flex-col h-full min-h-0">
-    <Loading v-if="loading" :message="'Loading projects from the source...'" />
+    <Loading v-if="loading" :message="'Loading tasks from the source...'" />
 
     <div v-else class="flex flex-col h-full min-h-0">
       <!-- ── Toolbar ── -->
@@ -303,19 +229,22 @@ const onCloseAddProject = async (success) => {
       >
         <!-- Add Task -->
         <button
-          v-if="!selectionMode && auth.isDirector"
+          v-if="
+            !selectionMode &&
+            (auth.isDirector || auth.isUnitHead || auth.isMember)
+          "
           @click="addTask = true"
           class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl hover:bg-green-800 active:scale-95 transition-all text-sm flex-shrink-0 hover:cursor-pointer"
         >
           <Icons :icon="'add'" />
-          <span class="hidden sm:inline">{{ addProjectLabel }}</span>
+          <span class="hidden sm:inline">Add Task</span>
         </button>
 
         <!-- Select toggle — Director & Unit Head only -->
         <button
           v-if="canDelete"
           @click="toggleSelectMode"
-          class="flex items-center gap-2 font-bold h-11 px-5 rounded-2xl transition-all text-sm flex-shrink-0 hover:cursor-pointer"
+          class="flex items-center gap-2 font-bold h-11 px-5 rounded-2xl transition-all text-sm flex-shrink-0"
           :class="
             selectionMode
               ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -448,86 +377,51 @@ const onCloseAddProject = async (success) => {
 
         <!-- Count -->
         <span class="text-xs text-gray-500 flex-shrink-0 hidden sm:block">
-          {{ filtered.length }} projects{{ filtered.length !== 1 ? "s" : "" }}
+          {{ filtered.length }} task{{ filtered.length !== 1 ? "s" : "" }}
         </span>
       </div>
 
       <!-- ── View ── -->
       <div
-        class="flex-1 flex flex-col bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0 overflow-hidden"
+        class="flex-1 overflow-auto bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0"
       >
-        <div
-          class="px-5 py-3.5 border-b border-gray-200 bg-white flex items-center"
-        >
-          <div
-            class="inline-flex flex-wrap items-center gap-1 rounded-2xl bg-gray-100 p-1"
-          >
-            <button
-              v-for="tab in taskModeTabs"
-              :key="tab"
-              @click="activeTaskMode = tab"
-              class="group flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all cursor-pointer"
-              :class="
-                activeTaskMode === tab
-                  ? 'bg-white text-green-900 shadow-sm ring-1 ring-green-900/10'
-                  : 'text-gray-600 hover:text-green-900 hover:bg-white/80'
-              "
-            >
-              <Icons
-                v-if="tab === 'PPA'"
-                :icon="'projects'"
-                iconClass="w-4 h-4"
-              />
-              <Icons v-else :icon="'file'" iconClass="w-4 h-4" />
-              <span>{{ tab }}</span>
-              <span
-                class="min-w-6 px-1.5 py-0.5 rounded-full text-[11px] font-bold text-center"
-                :class="
-                  activeTaskMode === tab
-                    ? 'bg-green-900 text-white'
-                    : 'bg-white text-gray-500 group-hover:text-green-800'
-                "
-              >
-                {{ modeCounts[tab] }}
-              </span>
-            </button>
-          </div>
-        </div>
-
-        <div class="flex-1 overflow-auto min-h-0">
-          <GridProjects
-            v-if="state === 'Grid View'"
-            :projects="filtered"
-            :selectable="selectionMode"
-            :selected-ids="selectedIds"
-            :is-deletable="isDeletable"
-            @toggle-select="toggleTaskSelect"
-            :modal="loading"
-            @open="taskDetail = true"
-            :empty-title="projectEmptyTitle"
-            :empty-hint="projectEmptyHint"
-            @success="onCloseAddProject(true)"
-          />
-          <TableProjects
-            v-else-if="state === 'Table View'"
-            :tasks="filtered"
-            :selectable="selectionMode"
-            :selected-ids="selectedIds"
-            :is-deletable="isDeletable"
-            @toggle-select="toggleTaskSelect"
-            @assign-subtask="onAssignSubtask"
-            :modal="loading"
-            @open="taskDetail = true"
-            @close="taskDetail = false"
-            @success="
-              () => {
-                taskDetail = false;
-                onCloseAddProject(true);
-              }
-            "
-          />
-          <ChartProjects v-else-if="state === 'Chart View'" :tasks="filtered" />
-        </div>
+        <GridTasks
+          v-if="state === 'Grid View'"
+          :tasks="filtered"
+          :selectable="selectionMode"
+          :selected-ids="selectedIds"
+          :is-deletable="isDeletable"
+          @toggle-select="toggleTaskSelect"
+          @assign-subtask="onAssignSubtask"
+          :modal="loading"
+          @open="taskDetail = true"
+          @close="taskDetail = false"
+          @success="
+            () => {
+              taskDetail = false;
+              onCloseAddTask(true);
+            }
+          "
+        />
+        <TableTasks
+          v-else-if="state === 'Table View'"
+          :tasks="filtered"
+          :selectable="selectionMode"
+          :selected-ids="selectedIds"
+          :is-deletable="isDeletable"
+          @toggle-select="toggleTaskSelect"
+          @assign-subtask="onAssignSubtask"
+          :modal="loading"
+          @open="taskDetail = true"
+          @close="taskDetail = false"
+          @success="
+            () => {
+              taskDetail = false;
+              onCloseAddTask(true);
+            }
+          "
+        />
+        <ChartTasks v-else-if="state === 'Chart View'" :tasks="filtered" />
       </div>
 
       <!-- ── View toggle ── -->
@@ -554,20 +448,13 @@ const onCloseAddProject = async (success) => {
         <div
           v-if="addTask"
           class="fixed inset-0 z-150 flex items-center justify-center bg-black/50 px-4"
-          @click.self="onCloseAddProject"
+          @click.self="onCloseAddTask"
         >
           <AddTask
-            v-if="isInsertionsMode"
+            @close="onCloseAddTask"
+            @success="onCloseAddTask(true)"
             :design="false"
-            :default-type="2"
-            :lock-type="true"
-            @close="onCloseAddProject"
-            @success="onCloseAddProject(true)"
-          />
-          <AddProject
-            v-else
-            @close="onCloseAddProject"
-            @success="onCloseAddProject(true)"
+            :pre-fill="preFillData"
           />
         </div>
       </Transition>
@@ -743,9 +630,3 @@ const onCloseAddProject = async (success) => {
   }
 }
 </style>
-<route lang="yaml">
-name: "Projects"
-meta:
-  requiresAuth: true
-  layout: "projects"
-</route>

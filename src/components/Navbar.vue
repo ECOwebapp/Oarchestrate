@@ -29,6 +29,7 @@ const formattedUnits = computed(() => {
 const navNames = [
   'Dashboard',
   'Projects',
+  'Insertions',
   'Design',
   'Organization',
   'Analytics',
