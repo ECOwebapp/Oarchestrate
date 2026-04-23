@@ -1,16 +1,19 @@
 <script setup vapor>
 import AddProject from "@/components/Projects/AddProject.vue";
+import AddTask from "@/components/Tasks/AddTask.vue";
 import GridProjects from "@/components/Projects/GridProjects.vue";
 import TableProjects from "@/components/Projects/TableProjects.vue";
 import Icons from "@/components/Icons.vue";
 import ChartProjects from "@/components/Projects/ChartProjects.vue";
 import Loading from "@/components/Loading.vue";
 import { useProjectStore } from "@/stores/projects";
+import { taskStore } from "@/stores/tasks";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 
 const projectStore = useProjectStore();
+const taskDataStore = taskStore();
 const auth = useAuthStore();
 const state = ref("Grid View");
 const activeTaskMode = ref("PPA");
@@ -19,7 +22,8 @@ const addTask = ref(false);
 const search = ref("");
 const filter = ref("All");
 const sortBy = ref("Recently Assigned");
-const loading = storeToRefs(projectStore)?.loading;
+const { loading: projectLoading } = storeToRefs(projectStore);
+const { loading: taskLoading, tasks: allTasks } = storeToRefs(taskDataStore);
 
 const isInsertionProject = (item) =>
   item.type?.toLowerCase() === "insertion" ||
@@ -27,8 +31,16 @@ const isInsertionProject = (item) =>
   item.isInsertion === true ||
   item.is_insertion === true;
 
-// ── Only Directors and Unit Heads can select / delete ──────────────────────
-const canDelete = computed(() => auth.isDirector || auth.isUnitHead);
+const isInsertionsMode = computed(() => activeTaskMode.value === "Insertions");
+
+const loading = computed(() =>
+  isInsertionsMode.value ? taskLoading.value : projectLoading.value,
+);
+
+// ── Only Directors and Unit Heads can select / delete (PPA mode only) ─────
+const canDelete = computed(
+  () => (auth.isDirector || auth.isUnitHead) && !isInsertionsMode.value,
+);
 
 // ── Selection state ─────────────────────────────────────────────────────────
 const selectedIds = ref(new Set());
@@ -42,12 +54,40 @@ const projects = computed(() =>
   projectStore.projects.filter((p) => p.is_involved !== false),
 );
 
+const insertionTasks = computed(() =>
+  (allTasks.value || [])
+    .filter(
+      (t) =>
+        !t.parentId &&
+        t.type?.toLowerCase() === "insertion" &&
+        !t.design,
+    )
+    .map((t) => ({
+      ...t,
+      title: t.name,
+      deadline: t.to || t.endDate || null,
+      created_at: t.from || t.startDate || null,
+      directorName: t.assignerName || "—",
+      standaloneInsertion: true,
+    })),
+);
+
 const activeUnitId = computed(() => {
   const headRole = auth.positions?.find((p) => p.pos_id === 4);
   return headRole?.unit_id ?? null;
 });
 
-onMounted(() => projectStore.fetchProjects());
+onMounted(async () => {
+  await Promise.all([projectStore.fetchProjects(), taskDataStore.fetchTasks()]);
+});
+
+watch(activeTaskMode, (mode) => {
+  if (mode === "Insertions") {
+    selectionMode.value = false;
+    selectedIds.value = new Set();
+    deleteError.value = "";
+  }
+});
 
 const filterOpts = computed(() => {
   const base = ["All", "Regular", "Insertion", "Urgent", "Revision", "Overdue"];
@@ -59,7 +99,7 @@ const sortOpts = ["Recently Assigned", "Date Due", "Name A→Z", "Urgent First"]
 
 const modeCounts = computed(() => ({
   PPA: projects.value.filter((item) => !isInsertionProject(item)).length,
-  Insertions: projects.value.filter((item) => isInsertionProject(item)).length,
+  Insertions: insertionTasks.value.length,
 }));
 
 const projectEmptyTitle = computed(() =>
@@ -77,14 +117,15 @@ const projectEmptyHint = computed(() => {
     : "Add a PPA to populate this view.";
 });
 
-const filtered = computed(() => {
-  let list = projects.value;
+const addProjectLabel = computed(() =>
+  activeTaskMode.value === "Insertions" ? "Add Insertion" : "Add PPA",
+);
 
-  if (activeTaskMode.value === "PPA") {
-    list = list.filter((t) => !isInsertionProject(t));
-  } else if (activeTaskMode.value === "Insertions") {
-    list = list.filter((t) => isInsertionProject(t));
-  }
+const filtered = computed(() => {
+  let list =
+    activeTaskMode.value === "Insertions"
+      ? insertionTasks.value
+      : projects.value.filter((t) => !isInsertionProject(t));
 
   const q = search.value.toLowerCase();
   if (q)
@@ -92,7 +133,9 @@ const filtered = computed(() => {
       (t) =>
         (t.title || t.name || "").toLowerCase().includes(q) ||
         (t.description || "").toLowerCase().includes(q) ||
-        (t.director || "").toLowerCase().includes(q),
+        String(t.directorName || t.director || "")
+          .toLowerCase()
+          .includes(q),
     );
   if (filter.value !== "All") {
     const f = filter.value.toLowerCase();
@@ -197,6 +240,8 @@ const toggleSelectAll = () => {
 
 // ── Delete via store action ──────────────────────────────────────────────────
 const deleteTasks = async () => {
+  if (isInsertionsMode.value) return;
+
   isDeleting.value = true;
   deleteError.value = "";
   try {
@@ -241,7 +286,11 @@ const onCloseAddProject = async (success) => {
   addTask.value = false;
 
   if (success) {
-    await projectStore.fetchProjects();
+    if (isInsertionsMode.value) {
+      await taskDataStore.fetchTasks();
+    } else {
+      await projectStore.fetchProjects();
+    }
   }
 };
 </script>
@@ -262,7 +311,7 @@ const onCloseAddProject = async (success) => {
           class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl hover:bg-green-800 active:scale-95 transition-all text-sm flex-shrink-0 hover:cursor-pointer"
         >
           <Icons :icon="'add'" />
-          <span class="hidden sm:inline">Add PPA</span>
+          <span class="hidden sm:inline">{{ addProjectLabel }}</span>
         </button>
 
         <!-- Select toggle — Director & Unit Head only -->
@@ -510,7 +559,16 @@ const onCloseAddProject = async (success) => {
           class="fixed inset-0 z-150 flex items-center justify-center bg-black/50 px-4"
           @click.self="onCloseAddProject"
         >
+          <AddTask
+            v-if="isInsertionsMode"
+            :design="false"
+            :default-type="2"
+            :lock-type="true"
+            @close="onCloseAddProject"
+            @success="onCloseAddProject(true)"
+          />
           <AddProject
+            v-else
             @close="onCloseAddProject"
             @success="onCloseAddProject(true)"
           />

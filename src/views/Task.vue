@@ -32,12 +32,21 @@ const taskDetail = ref(false)
 
 const tasks = computed(() => {
   if (auth.isDirector || auth.isUnitHead) {
-    // Show only parent tasks (PPA > Task level)
-    return store.tasks.filter(t => !t.parentId);
+    // Show top-level tasks, including insertion tasks not under a PPA.
+    return store.tasks.filter(t => !t.parentId)
   }
-  // Members: show only their own subtasks (Task > Subtask level, assigned to them)
-  return store.tasks.filter(t => t.parentId && t.assignee === auth.userID);
-});
+
+  // Members: show assigned subtasks + their own standalone insertion tasks.
+  return store.tasks.filter(t => {
+    const isOwnSubtask = !!t.parentId && t.assignee === auth.userID
+    const isOwnStandaloneInsertion =
+      !t.parentId &&
+      t.type?.toLowerCase() === 'insertion' &&
+      t.assignee === auth.userID
+
+    return isOwnSubtask || isOwnStandaloneInsertion
+  })
+})
 
 const activeUnitId = computed(() => {
   const headRole = auth.positions?.find(p => p.pos_id === 4)

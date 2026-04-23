@@ -11,7 +11,9 @@ const emit = defineEmits(['close', 'success'])
 const props = defineProps({
   design: { type: Boolean, default: false },
   preFill: { type: Object, default: null },
-  parentId: { type: Number }
+  parentId: { type: Number },
+  defaultType: { type: Number, default: null },
+  lockType: { type: Boolean, default: false }
 })
 
 const memberStore = useMemberStore()
@@ -38,14 +40,14 @@ const fileInputRef = ref(null)
 
 const newTask = ref({
   id: null,
-  parentId: props.parentId,
+  parentId: props.parentId ?? null,
   name: '',
   description: '',
   endDate: null,
   assignee: null,
   subtaskId: null,
   parentTask: null,
-  type: '',
+  type: props.defaultType ?? '',
   urgent: false,
   design: false,
   outputLink: '',
@@ -70,6 +72,16 @@ const applyPreFill = (fill) => {
 watch(() => props.preFill, (fill) => {
   if (fill && memberStore.members.length > 0) applyPreFill(fill)
 })
+
+watch(
+  () => props.defaultType,
+  (type) => {
+    if (type !== null && type !== undefined) {
+      newTask.value.type = Number(type)
+    }
+  },
+  { immediate: true }
+)
 
 // ── Position ID constants ─────────────────────────────────────────────────────
 const POS_UNIT_HEAD = 4
@@ -355,7 +367,8 @@ const isLocked = computed(() => {
     <!-- Header -->
     <div class="flex items-center justify-between px-7 py-5 border-b border-gray-100">
       <h2 class="text-xl font-bold text-gray-900">
-        <template v-if="auth.isDirector">Assign a Task</template>
+        <template v-if="lockType && Number(newTask.type) === 2">Add Insertion Task</template>
+        <template v-else-if="auth.isDirector">Assign a Task</template>
         <template v-else-if="auth.isUnitHead">Assign to Unit</template>
         <template v-else>Submit Insertion Task</template>
       </h2>
@@ -411,7 +424,7 @@ const isLocked = computed(() => {
             Type <span class="text-red-500">*</span>
           </label>
           <select v-model="newTask.type"
-            :disabled="isLocked && preFill?.type" class="hover:cursor-pointer w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
+            :disabled="(isLocked && preFill?.type) || lockType" class="hover:cursor-pointer w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm
                    focus:outline-none focus:border-green-800 bg-white">
             <option value="" disabled hidden>Select task type</option>
             <option v-for="t in typeOptions" :key="t.id" :value="t.id">{{ t.label }}</option>

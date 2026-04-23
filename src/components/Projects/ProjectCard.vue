@@ -9,7 +9,7 @@ const props = defineProps({
   selectable: { type: Boolean, default: false },
   selected: { type: Boolean, default: false },
 });
-const emit = defineEmits(["toggle-select"]);
+const emit = defineEmits(["toggle-select", "open"]);
 const auth = useAuthStore();
 
 const daysLeft = computed(() => {
@@ -39,6 +39,8 @@ const projectStatusChip = computed(() => {
 const handleClick = () => {
   if (props.selectable) {
     emit("toggle-select", props.project);
+  } else if (props.project?.standaloneInsertion) {
+    emit("open", props.project);
   } else {
     router.push(`/projects/${props.project.id}/tasks/`);
   }
@@ -112,7 +114,7 @@ const handleCheckboxClick = (e) => {
         >
           <path :d="mdiAccount" />
         </svg>
-        <span class="truncate">{{ project?.director }}</span>
+        <span class="truncate">{{ project?.directorName || project?.director }}</span>
       </p>
 
       <!-- <span class="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" :class="statusLabel.cls">

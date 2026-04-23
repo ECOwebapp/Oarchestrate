@@ -1,7 +1,10 @@
 <script setup vapor>
 import { useProjectStore } from '@/stores/projects'
-import { computed, onMounted, ref, watch } from 'vue'
-import { storeToRefs } from 'pinia'
+import { computed, ref, watch } from 'vue'
+
+const props = defineProps({
+  defaultType: { type: Number, default: 1 }
+})
 
 const emit = defineEmits(['close', 'success'])
 const projectStore = useProjectStore()
@@ -12,8 +15,19 @@ const errorMsg = ref('')
 const newProject = ref({
   title: '',
   description: '',
+  type: props.defaultType,
   deadline: null,
 })
+
+const isInsertion = computed(() => Number(newProject.value.type) === 2)
+
+watch(
+  () => props.defaultType,
+  (nextType) => {
+    newProject.value.type = Number(nextType) === 2 ? 2 : 1
+  },
+  { immediate: true }
+)
 
 // ── Submit ────────────────────────────────────────────────────────────────────
 const submitForm = async () => {
@@ -41,7 +55,7 @@ const submitForm = async () => {
 
     <!-- Header -->
     <div class="flex items-center justify-between px-7 py-5 border-b border-gray-100">
-      <h2 class="text-xl font-bold text-gray-900">Add new Project</h2>
+      <h2 class="text-xl font-bold text-gray-900">{{ isInsertion ? 'Add New Insertion' : 'Add New PPA' }}</h2>
 
       <div class="flex items-center gap-2">
         <button @click="emit('close')"
@@ -108,7 +122,7 @@ const submitForm = async () => {
           <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
           <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
         </svg>
-        {{ loading ? 'Inserting...' : 'Insert' }}
+        {{ loading ? 'Inserting...' : isInsertion ? 'Insert Insertion' : 'Insert PPA' }}
       </button>
     </div>
 
