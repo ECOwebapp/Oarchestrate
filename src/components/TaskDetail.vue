@@ -1,5 +1,6 @@
 <script setup vapor>
 import { uploadOutputFile } from '@/lib/uploadOutput'
+import { useDesignStore } from '@/stores/design'
 import { useMemberStore } from '@/stores/member'
 import { usePosStore } from '@/stores/positions'
 import { useSubtaskStore } from '@/stores/subtasks'
@@ -7,8 +8,6 @@ import { taskStore } from '@/stores/tasks'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import Icons from './Icons.vue'
-import { useDesignStore } from '@/stores/design'
 
 // MDI icon paths
 const mdiLink = 'M3.9,12C3.9,10.29 5.29,8.9 7,8.9H11V7H7A5,5 0 0,0 2,12A5,5 0 0,0 7,17H11V15.1H7C5.29,15.1 3.9,13.71 3.9,12M8,13H16V11H8V13M17,7H13V8.9H17C18.71,8.9 20.1,10.29 20.1,12C20.1,13.71 18.71,15.1 17,15.1H13V17H17A5,5 0 0,0 22,12A5,5 0 0,0 17,7Z'
@@ -212,6 +211,8 @@ const canApproveAsDirector = computed(() => {
 })
 
 // Design-specific approval logic based on user position
+// New workflow: Unit Head → Director (no senior draftsman/engineers approval)
+// All involved (engineers, unit head, director) can see and comment
 const canApproveAsDesignRole = computed(() => {
   if (props.task?.director) return false
   if (!props.task?.outputLink) return false
@@ -220,30 +221,29 @@ const canApproveAsDesignRole = computed(() => {
   const designApp = props.task?.designApproval || {}
   const userPosIds = (auth.positions || []).map(p => p.pos_id);
 
-  // 1. Senior Draftsman (pos_id = 6)
-  if (userPosIds.includes(6)) {
-    return !designApp.senior_draftsman
-  }
-
-  // 2. Plenary Roles (Engineers - pos_ids in plenary.value)
-  // We check if ANY of the user's IDs match ANY ID in the plenary array
-  const isPlenaryUser = userPosIds.some(id => plenary.value.map(p => p.pos_id).includes(id));
-
-  if (isPlenaryUser) {
-    return designApp.senior_draftsman === true && !designApp.engineers
-  }
-
-  // 3. Unit Head (pos_id = 4)
+  // 1. Unit Head (pos_id = 4) - FIRST in approval chain
   if (userPosIds.includes(4)) {
-    return designApp.engineers === true && !designApp.unit_head
+    return !designApp.unit_head
   }
 
-  // 4. Director (pos_id = 1)
+  // 2. Director (pos_id = 1) - FINAL approval (only after unit head approves)
   if (userPosIds.includes(1)) {
     return designApp.unit_head === true && !designApp.director
   }
 
   return false
+})
+
+// All engineers, unit heads, and director can see and comment on design output
+const canCommentOnDesign = computed(() => {
+  if (!props.task?.outputLink) return false
+  if (!props.task?.design) return false
+  if (props.task?.director) return false
+
+  const userPosIds = (auth.positions || []).map(p => p.pos_id);
+  const isPlenaryUser = userPosIds.some(id => plenary.value.map(p => p.pos_id).includes(id));
+  
+  return isPlenaryUser || userPosIds.includes(4) || userPosIds.includes(1)
 })
 
 const canSubmitOutput = computed(() =>
@@ -270,7 +270,15 @@ const canManageSubmission = computed(() => {
 
 const canRequestRevision = computed(() => {
   const hasComment = revisionComment.value.trim().length > 0
-  return hasComment && !!props.task?.outputLink && !props.task?.director
+  if (!hasComment || !props.task?.outputLink || props.task?.director) return false
+  
+  // Design task: only unit head and director can request revision (no engineers)
+  if (props.task?.design) {
+    return canApproveAsDesignRole.value // Unit head or director
+  }
+  
+  // Regular task: unit head and director can request revision
+  return true
 })
 const isOverdue = computed(() =>
   props.task?.to && new Date(props.task.to) < new Date() && !props.task?.director
@@ -278,6 +286,16 @@ const isOverdue = computed(() =>
 
 const statusLabel = computed(() => {
   if (props.task?.director) return { label: 'Approved by Director', cls: 'bg-green-100 text-green-800', icon: mdiCheckCircle }
+  
+  // Design task specific status
+  if (props.task?.design) {
+    if (props.task?.designApproval?.unit_head) {
+      return { label: 'Pending Director Final Review', cls: 'bg-blue-100 text-blue-800', icon: mdiClockOutline }
+    } else if (props.task?.outputLink) {
+      return { label: 'Pending Unit Head Review', cls: 'bg-amber-100 text-amber-800', icon: mdiClockOutline }
+    }
+  }
+  
   if (props.task?.unitHead) return { label: 'Pending Director Review', cls: 'bg-amber-100 text-amber-800', icon: mdiClockOutline }
   if (props.task?.revision) return { label: 'Revision Requested', cls: 'bg-orange-100 text-orange-700', icon: mdiRefresh }
   if (props.task?.assigneeIsOffice && props.task?.outputLink)
@@ -302,22 +320,13 @@ const fmt = (d) => d
 const approve = async () => {
   acting.value = 'approve'
   try {
-    let role = 4  // default
-    const engineers = new Set([13, 14, 15, 16, 18, 19])
+    let role = 4  // default to unit head
 
     if (props.task?.design) {
-      // Design task: determine role based on user position
+      // Design task: only unit head (4) or director (1) can approve
       const userPosId = auth.positions?.map(p => p.pos_id) || []
-      const engineersId = userPosId.find(id => engineers.has(id))
-
-      // 'senior_draftsman'
-      if (userPosId.includes(6)) role = 6
-      // 'engineers'
-      else if (engineersId) role = engineersId
-      // 'director'
-      else if (userPosId.includes(1)) role = 1
-      // 'unit_head'
-      else role = 4
+      if (userPosId.includes(1)) role = 1 // Director
+      else if (userPosId.includes(4)) role = 4 // Unit Head
     } else {
       // Regular task: use director or unit_head
       role = auth.isDirector ? 1 : 4
@@ -333,22 +342,13 @@ const requestRevision = async () => {
   if (!revisionComment.value.trim()) return
   acting.value = 'revise'
   try {
-    let role = 4  // default
-    const engineers = new Set([13, 14, 15, 16, 18, 19])
+    let role = 4  // default to unit head
 
     if (props.task?.design) {
-      // Design task: determine role based on user position
+      // Design task: only unit head (4) or director (1) can request revision
       const userPosId = auth.positions?.map(p => p.pos_id) || []
-      const engineersId = userPosId.find(id => engineers.has(id))
-
-      // 'senior_draftsman'
-      if (userPosId.includes(6)) role = 6
-      // 'engineers'
-      else if (engineersId) role = engineersId
-      // 'director'
-      else if (userPosId.includes(1)) role = 1
-      // 'unit_head'
-      else role = 4
+      if (userPosId.includes(1)) role = 1 // Director
+      else if (userPosId.includes(4)) role = 4 // Unit Head
     } else {
       // Regular task: use director or unit_head
       role = auth.isDirector ? 1 : 4
@@ -880,16 +880,19 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
           </div>
 
           <!-- REVISION NOTES -->
-          <div v-if="canApproveAsUnitHead || canApproveAsDirector || canApproveAsDesignRole">
+          <div v-if="(props.task?.design && canApproveAsDesignRole) || (!props.task?.design && (canApproveAsUnitHead || canApproveAsDirector))">
             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
-              Revision Notes
+              Approval Comments
               <span class="ml-1.5 text-gray-400 font-normal normal-case"
                 :class="revisionComment.trim() ? 'text-green-700' : ''">
-                {{ revisionComment.trim() ? '— ready to send' : '— required to request revision' }}
+                {{ revisionComment.trim() ? '— ready to send' : '— required for revision or approval' }}
               </span>
             </p>
             <textarea v-model="revisionComment" rows="3" maxlength="500"
-              placeholder="Describe what needs to be revised before you can approve…" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none
+              :placeholder="props.task?.design && canApproveAsDesignRole 
+                ? 'Add your approval feedback or revision notes…'
+                : 'Describe what needs to be revised before you can approve…'"
+              class="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none
                      focus:outline-none focus:border-amber-400 transition-colors leading-relaxed"
               :class="revisionComment.trim() ? 'border-amber-300 bg-amber-50' : ''" />
             <p class="text-right text-[10px] text-gray-400 mt-1">{{ revisionComment.length }}/500</p>
@@ -1003,7 +1006,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 
       <!-- FOOTER -->
       <div class="flex gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 flex-shrink-0 bg-white">
-        <!-- Design Task Approvals -->
+        <!-- Design Task Approvals - New simplified workflow -->
         <template v-if="props.task?.design && canApproveAsDesignRole">
           <button @click="requestRevision" :disabled="acting !== '' || !canRequestRevision"
             :title="!revisionComment.trim() ? 'Write revision notes above first' : ''"
@@ -1011,14 +1014,14 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
                    hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 hover:cursor-pointer">
             {{ acting === 'revise' ? 'Sending…' : 'Request Revision' }}
           </button>
-          <button @click="approve" :disabled="acting !== ''" class="flex-1 h-11 rounded-xl bg-blue-600 text-white font-bold text-sm
-                   hover:bg-blue-500 disabled:opacity-40 transition-all active:scale-95
+          <button @click="approve" :disabled="acting !== ''" class="flex-1 h-11 rounded-xl bg-green-950 text-white font-bold text-sm
+                   hover:bg-green-800 disabled:opacity-40 transition-all active:scale-95
                    flex items-center justify-center gap-2 hover:cursor-pointer">
             <svg v-if="acting === 'approve'" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
               <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round" />
             </svg>
-            {{ acting === 'approve' ? 'Approving…' : 'Approve Design' }}
+            {{ acting === 'approve' ? 'Approving…' : (props.task?.designApproval?.unit_head ? 'Final Approve' : 'Approve Design') }}
           </button>
         </template>
         <!-- Regular Task - Unit Head Approval -->

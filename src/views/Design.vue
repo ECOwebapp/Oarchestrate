@@ -54,7 +54,8 @@ onMounted(async () => {
 
 const filterOpts = computed(() => {
   const base = ['All', 'Regular', 'Insertion', 'Urgent', 'Revision']
-  if (auth.isDirector || auth.isUnitHead) base.push('Pending', 'Approved')
+  // For design tasks: show "Pending Unit Head", "Pending Director", and "Approved" filters
+  if (auth.isDirector || auth.isUnitHead) base.push('Pending Unit Head', 'Pending Director', 'Approved')
   return base
 })
 
@@ -75,8 +76,12 @@ const filtered = computed(() => {
       if (f === 'revision') return t.revision
       if (f === 'regular') return t.type?.toLowerCase() === 'regular'
       if (f === 'insertion') return t.type?.toLowerCase() === 'insertion'
-      if (f === 'pending') return !t.director
+      // New design-specific filters
+      if (f === 'pending unit head') return t.design && t.outputLink && !t.designApproval?.unit_head
+      if (f === 'pending director') return t.design && t.designApproval?.unit_head && !t.director
       if (f === 'approved') return t.director
+      // Fallback for old filter values
+      if (f === 'pending') return !t.director
       return true
     })
   }
