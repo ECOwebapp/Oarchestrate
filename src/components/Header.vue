@@ -11,6 +11,7 @@ const header = {
     tasks: "Manage all tasks, including creating, approving, assigning, and deleting",
     subtasks: "Manage or view all children of a Task called subtasks",
     design: "Review all designs, including submitting, commenting, and approving",
+    insertions: 'Insertions are tasks that are not part of any planned tasks',
     organization: "View all members and their hierarchy within the organisation",
     analytics: "View detailed analysis of the tasks with different types of charts",
     profile: "View personal details, edit profile images, or add something about you"

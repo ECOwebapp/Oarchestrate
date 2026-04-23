@@ -28,6 +28,7 @@ import {
     mdiBriefcase,
     mdiDeleteOutline,
     mdiPencil,
+    mdiFormatListBulletedType
 } from '@mdi/js';
 import { computed } from 'vue';
 
@@ -36,6 +37,7 @@ const icons = {
     dashboard: mdiMonitorDashboard,
     projects: mdiFormatListBulleted,
     design: mdiDraw,
+    insertions: mdiFormatListBulletedType,
     organization: mdiAccountGroup,
     analytics: mdiPoll,
     profile: mdiAccountCircleOutline,

@@ -6,7 +6,7 @@ import Login from '@/views/Login.vue'
 import Organization from '@/views/Organization.vue'
 import Profile from '@/views/Profile.vue'
 import Register from '@/views/Register.vue'
-import Projects from '@/views/Task.vue'
+import Insertions from '@/views/Insertions.vue'
 import Main from '@/views/Main.vue'
 
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -51,12 +51,12 @@ const routes = [
         component: Dashboard,
         meta: { requiresTasks: true, requiresAuth: true },
       },
-      // {
-      //   path: 'projects',
-      //   name: 'Projects',
-      //   component: Projects,
-      //   meta: { requireMembers: true, requiresTasks: true, requiresAuth: true },
-      // },
+      {
+        path: 'insertions',
+        name: 'Insertions',
+        component: Insertions,
+        meta: { requireMembers: true, requiresTasks: true, requiresAuth: true },
+      },
       {
         path: 'design',
         name: 'Design',
