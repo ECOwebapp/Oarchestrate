@@ -77,7 +77,7 @@ export const useSubtaskStore = defineStore('subtasks', () => {
       })
 
       const result = await response.json()
-      if (response.ok) tasks.value = result
+      if (response.ok) subtasks.value = result
       else throw new Error(result.error)
     } catch (err) {
       console.log('Failed to approve subtasks: ', err.message)
