@@ -6,10 +6,10 @@ Welcome to **Oarchestrate**, a task management system developed by the Student I
 
 The whole system was developed using [Vue](https://github.com/vuejs), [Express](https://github.com/expressjs/express), and the following modules:
 
-1. Tailwind
-2. Jordium Gantt Vue
-3. SheetJS
-
+1. [Tailwind]()
+2. [Jordium Gantt Vue]()
+3. [SheetJS]()
+4. [JSPDF]()
 ## Recommended Browser Setup
 
 - Chromium-based browsers (Chrome, Edge, Brave, etc.):
