@@ -114,7 +114,9 @@ const handleCheckboxClick = (e) => {
         >
           <path :d="mdiAccount" />
         </svg>
-        <span class="truncate">{{ project?.directorName || project?.director }}</span>
+        <span class="truncate">{{
+          project?.directorName || project?.director
+        }}</span>
       </p>
 
       <!-- <span class="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" :class="statusLabel.cls">

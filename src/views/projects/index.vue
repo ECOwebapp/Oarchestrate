@@ -57,10 +57,7 @@ const projects = computed(() =>
 const insertionTasks = computed(() =>
   (allTasks.value || [])
     .filter(
-      (t) =>
-        !t.parentId &&
-        t.type?.toLowerCase() === "insertion" &&
-        !t.design,
+      (t) => !t.parentId && t.type?.toLowerCase() === "insertion" && !t.design,
     )
     .map((t) => ({
       ...t,
