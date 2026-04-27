@@ -1,6 +1,7 @@
 <script setup vapor>
 import {
     mdiAccount,
+    mdiAccountMultiplePlus,
     mdiAccountCircleOutline,
     mdiAccountGroup,
     mdiAlertCircle,
@@ -28,11 +29,11 @@ import {
     mdiBriefcase,
     mdiDeleteOutline,
     mdiPencil,
-    mdiFormatListBulletedType
-} from '@mdi/js';
-import { computed } from 'vue';
+    mdiFormatListBulletedType,
+} from "@mdi/js";
+import { computed } from "vue";
 
-const props = defineProps(['icon', 'iconClass'])
+const props = defineProps(["icon", "iconClass"]);
 const icons = {
     dashboard: mdiMonitorDashboard,
     projects: mdiFormatListBulleted,
@@ -65,14 +66,20 @@ const icons = {
     work: mdiBriefcase,
     deleteOutline: mdiDeleteOutline,
     edit: mdiPencil,
-}
+    manage_membership: mdiAccountMultiplePlus,
+};
 
 // Computed property that maps the nav array based on icon prop input
 const path = computed(() => icons[props.icon] || null);
 </script>
 
 <template>
-    <svg v-if="path" viewBox="0 0 24 24" :class="iconClass || 'w-6 h-6 fill-current'" fill="currentColor">
+    <svg
+        v-if="path"
+        viewBox="0 0 24 24"
+        :class="iconClass || 'w-6 h-6 fill-current'"
+        fill="currentColor"
+    >
         <path :d="path" />
     </svg>
 </template>
