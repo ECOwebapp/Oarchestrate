@@ -1,11 +1,15 @@
-# oarchestrate
+# Oarchestrate
 
-This template should help get you started developing with Vue 3 in Vite.
+Welcome to **Oarchestrate**, a task management system developed by the Student Interns of Caraga State University for the Engineering and Construction Office (ECO).
 
-## Recommended IDE Setup
+## Framework and Modules
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+The whole system was developed using [Vue](https://github.com/vuejs), [Express](https://github.com/expressjs/express), and the following modules:
 
+1. [Tailwind]()
+2. [Jordium Gantt Vue]()
+3. [SheetJS]()
+4. [JSPDF]()
 ## Recommended Browser Setup
 
 - Chromium-based browsers (Chrome, Edge, Brave, etc.):

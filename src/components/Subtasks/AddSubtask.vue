@@ -49,6 +49,8 @@ const newTask = ref({
   outputLink: '',
 })
 
+console.log(props.parentId)
+
 onMounted(async () => {
   await Promise.all([
     memberStore.fetchMembers(),
@@ -62,8 +64,6 @@ const applyPreFill = (fill) => {
   if (!fill) return
   oldAssignee.value = fill?.assignee
   newTask.value = (fill || {})
-
-  console.log(fill.assignee)
 }
 
 watch(() => props.preFill, (fill) => {
@@ -294,7 +294,7 @@ const submitForm = async () => {
       await subtaskStore.addSubTasks({
         subTask: {
           id: newTask.value.id || null,
-          parentId: newTask.value.parentId,
+          parentId: props.parentId,
           name: newTask.value.name,
           description: newTask.value.description,
           type: newTask.value.type,
