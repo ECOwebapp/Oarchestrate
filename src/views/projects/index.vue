@@ -428,7 +428,10 @@ const onCloseAddProject = async (success) => {
           class="fixed inset-0 z-150 flex items-center justify-center bg-black/50 px-4"
           @click.self="onCloseAddProject"
         >
-          <AddProject @close="onCloseAddProject" @success="onCloseAddProject(true)" />
+          <AddProject
+            @close="onCloseAddProject"
+            @success="onCloseAddProject(true)"
+          />
         </div>
       </Transition>
     </Teleport>

@@ -263,8 +263,7 @@ const typeOptions = computed(() => {
 
 const showOutput = computed(() => auth.isMember && newTask.value.type === 2);
 const isSelfInsertion = computed(
-  () =>
-    props.lockType && Number(newTask.value.type) === 2 && !newTask.value.id,
+  () => props.lockType && Number(newTask.value.type) === 2 && !newTask.value.id,
 );
 
 watch(
