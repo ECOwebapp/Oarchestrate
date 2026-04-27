@@ -66,6 +66,15 @@ const applyPreFill = (fill) => {
   if (!fill) return;
   newTask.value = fill || {};
 
+  if (
+    props.lockType &&
+    props.defaultType !== null &&
+    props.defaultType !== undefined
+  ) {
+    newTask.value.type = Number(props.defaultType);
+    newTask.value.assignee = auth.userID;
+  }
+
   console.log(fill);
 };
 
@@ -252,6 +261,19 @@ const typeOptions = computed(() => {
 });
 
 const showOutput = computed(() => auth.isMember && newTask.value.type === 2);
+const isSelfInsertion = computed(
+  () => props.lockType && Number(newTask.value.type) === 2,
+);
+
+watch(
+  isSelfInsertion,
+  (selfInsertion) => {
+    if (selfInsertion) {
+      newTask.value.assignee = auth.userID;
+    }
+  },
+  { immediate: true },
+);
 
 const memberLabel = (u) => {
   const name = [
@@ -349,7 +371,10 @@ const submitForm = async () => {
     if (!newTask.value.type) throw new Error("Task type is required.");
     if (!newTask.value.endDate) throw new Error("Deadline is required.");
 
-    const assigneeId = auth.isMember ? auth.userID : newTask.value.assignee;
+    const assigneeId =
+      auth.isMember || isSelfInsertion.value
+        ? auth.userID
+        : newTask.value.assignee;
 
     if (props.design && newTask.value.id) {
       if (!assigneeId)
@@ -521,7 +546,12 @@ const isLocked = computed(() => {
       </div>
 
       <!-- Assignee -->
-      <div v-if="!auth.isMember || (auth.isSeniorDraftsman && props.design)">
+      <div
+        v-if="
+          (!auth.isMember || (auth.isSeniorDraftsman && props.design)) &&
+          !isSelfInsertion
+        "
+      >
         <label class="block text-sm font-semibold text-gray-700 mb-1">
           Assign To <span class="text-red-500">*</span>
         </label>
@@ -557,6 +587,13 @@ const isLocked = computed(() => {
             {{ selectedAssigneeUnit }}
           </p>
         </template>
+      </div>
+
+      <div
+        v-else-if="isSelfInsertion"
+        class="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm font-medium text-green-900"
+      >
+        This insertion will be assigned to you.
       </div>
 
       <!-- ── Output / Upload (members + insertion task only) ────────────────── -->

@@ -54,20 +54,26 @@ const projects = computed(() =>
   projectStore.projects.filter((p) => p.is_involved !== false),
 );
 
-const insertionTasks = computed(() =>
-  (allTasks.value || [])
-    .filter(
-      (t) => !t.parentId && t.type?.toLowerCase() === "insertion" && !t.design,
-    )
-    .map((t) => ({
-      ...t,
-      title: t.name,
-      deadline: t.to || t.endDate || null,
-      created_at: t.from || t.startDate || null,
-      directorName: t.assignerName || "—",
-      standaloneInsertion: true,
-    })),
-);
+const insertionTasks = computed(() => {
+  const standaloneInsertions = (allTasks.value || []).filter(
+    (t) => !t.parentId && t.type?.toLowerCase() === "insertion" && !t.design,
+  );
+
+  const visibleInsertions = auth.isDirector
+    ? standaloneInsertions
+    : standaloneInsertions.filter(
+        (t) => String(t.assignee) === String(auth.userID),
+      );
+
+  return visibleInsertions.map((t) => ({
+    ...t,
+    title: t.name,
+    deadline: t.to || t.endDate || null,
+    created_at: t.from || t.startDate || null,
+    directorName: t.assignerName || "—",
+    standaloneInsertion: true,
+  }));
+});
 
 const activeUnitId = computed(() => {
   const headRole = auth.positions?.find((p) => p.pos_id === 4);
@@ -303,7 +309,7 @@ const onCloseAddProject = async (success) => {
       >
         <!-- Add Task -->
         <button
-          v-if="!selectionMode && auth.isDirector"
+          v-if="!selectionMode && (auth.isDirector || isInsertionsMode)"
           @click="addTask = true"
           class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl hover:bg-green-800 active:scale-95 transition-all text-sm flex-shrink-0 hover:cursor-pointer"
         >
@@ -531,20 +537,24 @@ const onCloseAddProject = async (success) => {
       </div>
 
       <!-- ── View toggle ── -->
-      <div class="flex justify-center gap-3 py-3 flex-shrink-0">
-        <button
-          v-for="btn in ['Grid View', 'Table View', 'Chart View']"
-          :key="btn"
-          @click="state = btn"
-          class="text-sm font-bold h-10 px-5 rounded-xl cursor-pointer transition-all"
-          :class="
-            state === btn
-              ? 'bg-green-950 text-white'
-              : 'outline outline-2 outline-green-950 text-green-950 bg-white hover:bg-green-950 hover:text-white'
-          "
+      <div class="flex justify-center py-3 flex-shrink-0">
+        <div
+          class="inline-flex flex-wrap items-center gap-1 rounded-2xl bg-gray-100 p-1"
         >
-          {{ btn }}
-        </button>
+          <button
+            v-for="btn in ['Grid View', 'Table View', 'Chart View']"
+            :key="btn"
+            @click="state = btn"
+            class="group flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all cursor-pointer"
+            :class="
+              state === btn
+                ? 'bg-white text-green-900 shadow-sm ring-1 ring-green-900/10'
+                : 'text-gray-600 hover:text-green-900 hover:bg-white/80'
+            "
+          >
+            <span>{{ btn }}</span>
+          </button>
+        </div>
       </div>
     </div>
 

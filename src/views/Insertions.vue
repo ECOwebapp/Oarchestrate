@@ -30,27 +30,20 @@ const isDeleting = ref(false);
 const deleteError = ref("");
 const taskDetail = ref(false);
 
+const insertionTasks = computed(() =>
+  store.tasks.filter(
+    (t) => !t.parentId && t.type?.toLowerCase() === "insertion" && !t.design,
+  ),
+);
+
 const tasks = computed(() => {
-  if (auth.isDirector || auth.isUnitHead) {
-    // Show top-level tasks, including insertion tasks not under a PPA.
-    return store.tasks.filter((t) => !t.parentId);
+  if (auth.isDirector) {
+    return insertionTasks.value;
   }
 
-  // Members: show assigned subtasks + their own standalone insertion tasks.
-  return store.tasks.filter((t) => {
-    const isOwnSubtask = !!t.parentId && t.assignee === auth.userID;
-    const isOwnStandaloneInsertion =
-      !t.parentId &&
-      t.type?.toLowerCase() === "insertion" &&
-      t.assignee === auth.userID;
-
-    return isOwnSubtask || isOwnStandaloneInsertion;
-  });
-});
-
-const activeUnitId = computed(() => {
-  const headRole = auth.positions?.find((p) => p.pos_id === 4);
-  return headRole?.unit_id ?? null;
+  return insertionTasks.value.filter(
+    (t) => String(t.assignee) === String(auth.userID),
+  );
 });
 
 onMounted(() => store.fetchTasks());
@@ -229,15 +222,12 @@ const onCloseAddTask = async (success) => {
       >
         <!-- Add Task -->
         <button
-          v-if="
-            !selectionMode &&
-            (auth.isDirector || auth.isUnitHead || auth.isMember)
-          "
+          v-if="!selectionMode"
           @click="addTask = true"
           class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl hover:bg-green-800 active:scale-95 transition-all text-sm flex-shrink-0 hover:cursor-pointer"
         >
           <Icons :icon="'add'" />
-          <span class="hidden sm:inline">Add Task</span>
+          <span class="hidden sm:inline">Add Insertion</span>
         </button>
 
         <!-- Select toggle — Director & Unit Head only -->
@@ -425,20 +415,24 @@ const onCloseAddTask = async (success) => {
       </div>
 
       <!-- ── View toggle ── -->
-      <div class="flex justify-center gap-3 py-3 flex-shrink-0">
-        <button
-          v-for="btn in ['Grid View', 'Table View', 'Chart View']"
-          :key="btn"
-          @click="state = btn"
-          class="text-sm font-bold h-10 px-5 rounded-xl cursor-pointer transition-all"
-          :class="
-            state === btn
-              ? 'bg-green-950 text-white'
-              : 'outline outline-2 outline-green-950 text-green-950 bg-white hover:bg-green-950 hover:text-white'
-          "
+      <div class="flex justify-center py-3 flex-shrink-0">
+        <div
+          class="inline-flex flex-wrap items-center gap-1 rounded-2xl bg-gray-100 p-1"
         >
-          {{ btn }}
-        </button>
+          <button
+            v-for="btn in ['Grid View', 'Table View', 'Chart View']"
+            :key="btn"
+            @click="state = btn"
+            class="group flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all cursor-pointer"
+            :class="
+              state === btn
+                ? 'bg-white text-green-900 shadow-sm ring-1 ring-green-900/10'
+                : 'text-gray-600 hover:text-green-900 hover:bg-white/80'
+            "
+          >
+            <span>{{ btn }}</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -454,6 +448,8 @@ const onCloseAddTask = async (success) => {
             @close="onCloseAddTask"
             @success="onCloseAddTask(true)"
             :design="false"
+            :default-type="2"
+            :lock-type="true"
             :pre-fill="preFillData"
           />
         </div>
