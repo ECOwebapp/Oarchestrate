@@ -352,6 +352,7 @@ const onCloseAddTask = () => {
                 v-for="task in activeRegular" :key="task.id"
                 :task="task"
                 @open="openTask"
+                @edit="openTask"
               />
             </div>
           </section>
@@ -379,6 +380,7 @@ const onCloseAddTask = () => {
                 v-for="task in activeInsertion" :key="task.id"
                 :task="task"
                 @open="openTask"
+                @edit="openTask"
               />
             </div>
           </section>
@@ -396,6 +398,7 @@ const onCloseAddTask = () => {
                 v-for="task in uhOwn.slice().sort((a,b)=>(b.urgent?1:0)-(a.urgent?1:0))" :key="task.id"
                 :task="task"
                 @open="openTask"
+                @edit="openTask"
               />
             </div>
           </section>

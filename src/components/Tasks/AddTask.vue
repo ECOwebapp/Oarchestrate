@@ -69,7 +69,8 @@ const applyPreFill = (fill) => {
   if (
     props.lockType &&
     props.defaultType !== null &&
-    props.defaultType !== undefined
+    props.defaultType !== undefined &&
+    !newTask.value.id
   ) {
     newTask.value.type = Number(props.defaultType);
     newTask.value.assignee = auth.userID;
@@ -262,7 +263,8 @@ const typeOptions = computed(() => {
 
 const showOutput = computed(() => auth.isMember && newTask.value.type === 2);
 const isSelfInsertion = computed(
-  () => props.lockType && Number(newTask.value.type) === 2,
+  () =>
+    props.lockType && Number(newTask.value.type) === 2 && !newTask.value.id,
 );
 
 watch(

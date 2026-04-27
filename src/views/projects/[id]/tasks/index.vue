@@ -257,6 +257,27 @@ const onAssignSubtask = (data) => {
   addTask.value = true;
 };
 
+const onEditTask = (task) => {
+  const inferredTypeId =
+    Number(task?.typeId) ||
+    (String(task?.type || "").toLowerCase() === "insertion" ? 2 : 1);
+
+  preFillData.value = {
+    id: task?.id ?? null,
+    parentId: task?.parentId ?? parentId.value,
+    name: task?.name || "",
+    description: task?.description || "",
+    endDate: task?.to || task?.endDate || null,
+    assignee: task?.assignee ?? null,
+    type: inferredTypeId,
+    urgent: !!task?.urgent,
+    design: !!task?.design,
+    outputLink: task?.outputLink || "",
+  };
+
+  addTask.value = true;
+};
+
 const onCloseAddTask = async (success) => {
   addTask.value = false;
   preFillData.value = null;
@@ -526,6 +547,7 @@ const onCloseAddTask = async (success) => {
             :is-deletable="isDeletable"
             @toggle-select="toggleTaskSelect"
             @assign-subtask="onAssignSubtask"
+            @edit-task="onEditTask"
             :modal="loading"
             :empty-title="emptyTitle"
             :empty-hint="emptyHint"

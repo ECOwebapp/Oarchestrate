@@ -9,7 +9,7 @@ const props = defineProps({
   selectable: { type: Boolean, default: false },
   selected: { type: Boolean, default: false },
 })
-const emit = defineEmits(['open', 'toggle-select', 'assignSubtask'])
+const emit = defineEmits(['open', 'edit', 'toggle-select', 'assignSubtask'])
 const auth = useAuthStore()
 
 const daysLeft = computed(() => {
@@ -54,11 +54,19 @@ const isResubmitted = computed(() =>
   props.task?.outputLink && !props.task?.revision && !props.task?.director && props.task?.revisedAt
 )
 
+const isStandaloneInsertion = computed(
+  () => !props.task?.parentId && props.task?.type?.toLowerCase() === 'insertion'
+)
+
 const handleClick = () => {
   if (props.selectable) {
-    emit('toggle-select', props.project)
-  } else {
+    emit('toggle-select', props.task)
+  } else if (isStandaloneInsertion.value) {
+    emit('open', props.task)
+  } else if (props.task?.parentId) {
     router.push(`/projects/${props.task.parentId}/tasks/${props.task.id}/subtasks/`)
+  } else {
+    emit('open', props.task)
   }
 }
 const handleCheckboxClick = (e) => {
@@ -67,7 +75,7 @@ const handleCheckboxClick = (e) => {
 }
 
 const handleEditClick = () => {
-  emit('open')
+  emit('edit', props.task)
 }
 </script>
 

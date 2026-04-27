@@ -1,8 +1,7 @@
 <script setup vapor>
-import { ref, watch, nextTick } from "vue";
+import { ref } from "vue";
 import TaskCard from "./TaskCard.vue";
 import TaskDetail from "../TaskDetail.vue";
-import { taskStore } from "@/stores/tasks";
 
 const props = defineProps({
   tasks: Array,
@@ -15,6 +14,7 @@ const props = defineProps({
 });
 const emit = defineEmits([
   "assignSubtask",
+  "edit-task",
   "toggle-select",
   "open",
   "close",
@@ -26,17 +26,18 @@ const success = ref(false);
 
 const handleOpen = (task) => {
   if (props.selectable) return;
-  emit("assignSubtask", {
-    id: task.id,
-    name: task.name,
-    description: task.description,
-    endDate: task.endDate,
-    assignee: task.assignee,
-    type: task.typeId,
-    urgent: task.urgent,
-    design: task.design,
-    outputLink: task.outputLink,
-  });
+  selected.value = task;
+  emit("open");
+};
+
+const handleAssign = (event) => {
+  emit("assignSubtask", event);
+  if (event) success.value = true;
+};
+
+const handleEdit = (task) => {
+  if (props.selectable) return;
+  emit("edit-task", task);
 };
 
 const handleClose = () => {
@@ -92,11 +93,22 @@ const handleClose = () => {
         :selectable="props.selectable"
         :selected="props.selectedIds.has(task.id)"
         :is-deletable="props.isDeletable(task)"
-        @open="handleOpen(task)"
+        @open="handleOpen"
+        @edit="handleEdit"
         @toggle-select="emit('toggle-select', $event)"
         :style="{ animationDelay: `${index * 0.03}s` }"
       />
     </div>
+
+    <Transition name="modal">
+      <TaskDetail
+        v-if="selected"
+        :task="selected"
+        :loading="loading"
+        @close="handleClose"
+        @assignSubtask="handleAssign"
+      />
+    </Transition>
   </div>
 </template>
 

@@ -31,9 +31,17 @@ const statusLabel = (task) => {
   return 'Pending Unit Head'
 }
 
+const isStandaloneInsertion = (task) =>
+  !task?.parentId && task?.type?.toLowerCase() === 'insertion'
+
 const handleRowClick = (task) => {
   if (props.selectable && props.isDeletable(task)) {
     emit('toggle-select', task)
+    return
+  }
+
+  if (!props.selectable && isStandaloneInsertion(task)) {
+    handleOpen(task)
   }
 }
 
@@ -80,7 +88,9 @@ const handleAssign = (event) => {
           <tr v-for="(task, index) in tasks" :key="task.id"
             class="border-b border-gray-100 transition-colors animate-slide-up" :class="[
               selectedIds.has(task.id) ? 'bg-green-50' : 'hover:bg-gray-50',
-              selectable && isDeletable(task) ? 'cursor-pointer' : '',
+              (selectable && isDeletable(task)) || (!selectable && isStandaloneInsertion(task))
+                ? 'cursor-pointer'
+                : '',
             ]" :style="{ animationDelay: `${index * 0.04}s` }" @click="handleRowClick(task)">
 
             <!-- Checkbox cell -->
