@@ -62,7 +62,6 @@ watch(
             changePosMembers.value.pos_id = isExecutive?.pos_id;
             changePosMembers.value.unit_id = isExecutive?.unit_id;
         }
-        console.log(changePosMembers.value);
     },
 );
 
