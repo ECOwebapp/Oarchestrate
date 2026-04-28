@@ -20,8 +20,6 @@ const projectStore = useProjectStore();
 const auth = useAuthStore();
 const route = useRoute();
 const state = ref("Grid View");
-const activeTaskMode = ref("Subtasks");
-const taskModeTabs = ["Subtasks", "Insertions"];
 const addTask = ref(false);
 const search = ref("");
 const filter = ref("All");
@@ -98,34 +96,19 @@ const sortOpts = ["Recently Assigned", "Date Due", "Name A→Z", "Urgent First"]
 
 const isInsertionTask = (item) => item.type?.toLowerCase() === "insertion";
 
-const modeCounts = computed(() => ({
-  Subtasks: subtasks.value.filter((item) => !isInsertionTask(item)).length,
-  Insertions: subtasks.value.filter((item) => isInsertionTask(item)).length,
-}));
-
-const emptyTitle = computed(() =>
-  activeTaskMode.value === "Insertions"
-    ? "No insertion subtasks found"
-    : "No subtasks found",
-);
+const emptyTitle = computed(() => "No subtasks found");
 
 const emptyHint = computed(() => {
   if (search.value || filter.value !== "All") {
     return "Try clearing search or adjusting the filters.";
   }
-  return activeTaskMode.value === "Insertions"
-    ? "No insertion subtasks available for this task yet."
-    : "Add a subtask to break this task into actionable work.";
+  return "Add a subtask to break this task into actionable work.";
 });
 
 const filtered = computed(() => {
   let list = subtasks.value;
 
-  if (activeTaskMode.value === "Subtasks") {
-    list = list.filter((t) => !isInsertionTask(t));
-  } else if (activeTaskMode.value === "Insertions") {
-    list = list.filter((t) => isInsertionTask(t));
-  }
+  // No Subtasks/Insertions toggle: show all subtasks (non-design) for this parent task
 
   const q = search.value.toLowerCase();
   if (q)
@@ -482,40 +465,6 @@ const onCloseAddTask = async (success) => {
               </li>
             </template>
           </ol>
-
-          <div
-            class="inline-flex flex-wrap items-center gap-1 rounded-2xl bg-gray-100 p-1"
-          >
-            <button
-              v-for="tab in taskModeTabs"
-              :key="tab"
-              @click="activeTaskMode = tab"
-              class="group flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer"
-              :class="
-                activeTaskMode === tab
-                  ? 'bg-white text-green-900 shadow-sm ring-1 ring-green-900/10'
-                  : 'text-gray-600 hover:text-green-900 hover:bg-white/80'
-              "
-            >
-              <Icons
-                v-if="tab === 'Subtasks'"
-                :icon="'projects'"
-                iconClass="w-3.5 h-3.5"
-              />
-              <Icons v-else :icon="'file'" iconClass="w-3.5 h-3.5" />
-              <span>{{ tab }}</span>
-              <span
-                class="min-w-5 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-center"
-                :class="
-                  activeTaskMode === tab
-                    ? 'bg-green-900 text-white'
-                    : 'bg-white text-gray-500 group-hover:text-green-800'
-                "
-              >
-                {{ modeCounts[tab] }}
-              </span>
-            </button>
-          </div>
         </nav>
 
         <div class="flex-1 overflow-auto min-h-0">
