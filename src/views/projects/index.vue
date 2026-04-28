@@ -414,6 +414,16 @@ const onCloseAddProject = async (success) => {
                 : 'text-gray-600 hover:text-green-900 hover:bg-white/80'
             "
           >
+            <Icons
+              :icon="
+                btn === 'Grid View'
+                  ? 'grid'
+                  : btn === 'Table View'
+                    ? 'table'
+                    : 'chart'
+              "
+              iconClass="w-3.5 h-3.5"
+            />
             <span>{{ btn }}</span>
           </button>
         </div>

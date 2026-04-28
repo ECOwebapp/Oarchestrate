@@ -532,20 +532,34 @@ const onCloseAddTask = async (success) => {
       </div>
 
       <!-- ── View toggle ── -->
-      <div class="flex justify-center gap-3 py-3 flex-shrink-0">
-        <button
-          v-for="btn in ['Grid View', 'Table View', 'Chart View']"
-          :key="btn"
-          @click="state = btn"
-          class="text-sm font-bold h-10 px-5 rounded-xl cursor-pointer transition-all"
-          :class="
-            state === btn
-              ? 'bg-green-950 text-white'
-              : 'outline outline-2 outline-green-950 text-green-950 bg-white hover:bg-green-950 hover:text-white'
-          "
+      <div class="flex justify-center py-3 flex-shrink-0">
+        <div
+          class="inline-flex flex-wrap items-center gap-1 rounded-2xl bg-gray-100 p-1"
         >
-          {{ btn }}
-        </button>
+          <button
+            v-for="btn in ['Grid View', 'Table View', 'Chart View']"
+            :key="btn"
+            @click="state = btn"
+            class="group flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all cursor-pointer"
+            :class="
+              state === btn
+                ? 'bg-white text-green-900 shadow-sm ring-1 ring-green-900/10'
+                : 'text-gray-600 hover:text-green-900 hover:bg-white/80'
+            "
+          >
+            <Icons
+              :icon="
+                btn === 'Grid View'
+                  ? 'grid'
+                  : btn === 'Table View'
+                    ? 'table'
+                    : 'chart'
+              "
+              iconClass="w-3.5 h-3.5"
+            />
+            <span>{{ btn }}</span>
+          </button>
+        </div>
       </div>
     </div>
 
