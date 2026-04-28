@@ -22,6 +22,7 @@ const form = reactive({
   genderId: '',
   password: '',
   confirmPassword: '',
+  agreedToTerms: false,
 })
 
 // ── Dropdown data ──
@@ -46,6 +47,7 @@ const showPassword = ref(false)
 const showConfirm = ref(false)
 const step = ref(1)
 const showModal = ref(false)
+const showTermsModal = ref(false)
 
 const PSGC = 'https://psgc.gitlab.io/api'
 
@@ -172,6 +174,8 @@ const validateStep3 = () => {
     e.password = 'Must include a number'
   if (form.password !== form.confirmPassword)
     e.confirmPassword = 'Passwords do not match'
+  if (!form.agreedToTerms)
+    e.agreedToTerms = 'You must agree to the Terms and Conditions'
   Object.keys(errors).forEach(k => delete errors[k])
   Object.assign(errors, e)
   return Object.keys(e).length === 0
@@ -551,6 +555,21 @@ const goToLogin = () => router.push('/login')
           <p v-if="errors.confirmPassword" class="text-red-500 text-xs mt-1">{{ errors.confirmPassword }}</p>
         </div>
 
+        <!-- Terms and Conditions -->
+        <div class="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+          <input type="checkbox" v-model="form.agreedToTerms" @change="clearError('agreedToTerms')"
+            class="hover:cursor-pointer mt-0.5 w-4 h-4 rounded border-gray-300 text-green-800 focus:ring-2 focus:ring-green-700"
+            :class="errors.agreedToTerms ? 'border-red-400' : ''" />
+          <div class="flex-1">
+            <label class="text-xs text-gray-600">
+              I agree to the
+              <button type="button" @click="showTermsModal = true"
+                class="text-green-800 font-semibold hover:underline">Terms and Conditions</button>
+            </label>
+            <p v-if="errors.agreedToTerms" class="text-red-500 text-xs mt-1">{{ errors.agreedToTerms }}</p>
+          </div>
+        </div>
+
         <!-- Buttons -->
         <div class="flex gap-2">
           <button type="button" @click="prevStep"
@@ -634,6 +653,56 @@ const goToLogin = () => router.push('/login')
             Back to Sign In
           </button>
 
+        </div>
+      </div>
+    </Transition>
+
+    <!-- ── Terms and Conditions Modal ── -->
+    <Transition name="modal">
+      <div v-if="showTermsModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+
+          <!-- Header -->
+          <div class="flex items-center justify-between bg-green-50 border-b border-green-200 px-6 py-4">
+            <h2 class="text-lg font-bold text-gray-800">Terms and Conditions</h2>
+            <button @click="showTermsModal = false"
+              class="hover:cursor-pointer text-gray-400 hover:text-gray-600 transition">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Content -->
+          <div class="flex-1 overflow-y-auto px-6 py-4">
+            <iframe
+              src="https://www.privacy.gov.ph/wp-content/uploads/2016/07/updated-draft-July-12-2016.pdf"
+              class="w-full h-full border-0 rounded-lg"
+              style="min-height: 500px;">
+            </iframe>
+            <p class="text-xs text-gray-500 text-center mt-4">
+              If the document does not load, you can
+              <a href="https://www.privacy.gov.ph/wp-content/uploads/2016/07/updated-draft-July-12-2016.pdf"
+                target="_blank" rel="noopener noreferrer"
+                class="text-green-800 font-semibold hover:underline">
+                view it here
+              </a>
+            </p>
+          </div>
+
+          <!-- Footer -->
+          <div class="border-t border-gray-200 px-6 py-4 bg-gray-50 flex gap-2">
+            <button @click="form.agreedToTerms = false; showTermsModal = false"
+              class="flex-1 hover:cursor-pointer px-4 py-2 rounded-lg border-2 border-gray-300 text-gray-600 font-semibold text-sm hover:border-red-300 hover:text-red-700 transition-all duration-150">
+              Decline
+            </button>
+            <button @click="form.agreedToTerms = true; showTermsModal = false"
+              class="flex-1 hover:cursor-pointer px-4 py-2 rounded-lg bg-green-800 hover:bg-green-900 active:scale-95 text-white font-semibold text-sm transition-all duration-150">
+              I Agree
+            </button>
+          </div>
         </div>
       </div>
     </Transition>
