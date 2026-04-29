@@ -11,6 +11,7 @@ export const useNotifStore = defineStore("notif", () => {
   const shown = ref(PAGE);
 
   const unread = computed(() => notifs.value.filter((n) => !n.read).length);
+  console.log(unread.value);
   const visible = computed(() => notifs.value.slice(0, shown.value));
   const hasMore = computed(() => shown.value < notifs.value.length);
 
@@ -60,7 +61,6 @@ export const useNotifStore = defineStore("notif", () => {
 
     results.sort((a, b) => new Date(b.time) - new Date(a.time));
     notifs.value = results;
-    console.log(notifs.value);
   };
 
   // ─────────────────────────────────────────

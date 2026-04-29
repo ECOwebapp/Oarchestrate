@@ -61,6 +61,7 @@ const toggle = async () => {
     if (open.value) {
         notifStore.resetShown();
         await nextTick();
+        // Change this toggle to a button trigger
         if (notifStore.unread > 0) await notifStore.markAllRead();
     }
 };
