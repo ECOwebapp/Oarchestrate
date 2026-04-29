@@ -209,7 +209,7 @@ const onCloseAddTask = async (success) => {
                     :subtasks="filtered"
                     :selectable="selectionMode"
                     :selected-ids="selectedIds"
-                    :is-deletable="isDeletable"
+                    :is-deletable="false"
                     @toggle-select="toggleTaskSelect"
                     @assign-subtask="onAssignSubtask"
                 />
