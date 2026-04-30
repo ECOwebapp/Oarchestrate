@@ -5,12 +5,15 @@ import TableProjects from "@/components/Projects/TableProjects.vue";
 import Icons from "@/components/Icons.vue";
 import ChartProjects from "@/components/Projects/ChartProjects.vue";
 import Loading from "@/components/Loading.vue";
+import SettingsButton from "@/components/SettingsButton.vue";
+import SearchBar from "@/components/SearchBar.vue";
 import { useProjectStore } from "@/stores/projects";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { storeToRefs } from "pinia";
 
 const projectStore = useProjectStore();
+const fetchItems = async () => await projectStore.fetchProjects();
 const auth = useAuthStore();
 const state = ref("Grid View");
 const addTask = ref(false);
@@ -19,6 +22,8 @@ const filter = ref("All");
 const sortBy = ref("Recently Assigned");
 const { loading: projectLoading } = storeToRefs(projectStore);
 const loading = projectLoading;
+const isMobile = ref(window.innerWidth < 640);
+const checkViewport = () => (isMobile.value = window.innerWidth < 640);
 
 const isInsertionProject = (item) =>
     item.type?.toLowerCase() === "insertion" ||
@@ -42,8 +47,9 @@ const projects = computed(() =>
     ),
 );
 
-onMounted(async () => {
-    await projectStore.fetchProjects();
+onMounted(() => {
+    fetchItems();
+    window.addEventListener("resize", checkViewport);
 });
 
 const filterOpts = computed(() => {
@@ -208,25 +214,29 @@ const onCloseAddProject = async (success) => {
         await projectStore.fetchProjects();
     }
 };
+
+onUnmounted(() => window.removeEventListener("resize", checkViewport));
 </script>
 
 <template>
     <div class="flex flex-col h-full min-h-0">
-        <Loading
-            v-if="loading"
-            :message="'Loading projects from the source...'"
-        />
-
-        <div v-else class="flex flex-col h-full min-h-0">
+        <div class="flex flex-col h-full min-h-0">
             <!-- ── Toolbar ── -->
             <div
-                class="flex flex-wrap items-center gap-3 px-4 sm:px-6 lg:px-10 py-4 flex-shrink-0"
+                v-if="isMobile"
+                class="flex flex-wrap items-center gap-3 px-6 pt-4 shrink-0"
+            >
+                <SearchBar v-model="search" :placeholder="'Search PPAs...'" />
+            </div>
+
+            <div
+                class="flex flex-wrap sm:justify-start justify-end items-center gap-3 px-4 sm:px-6 lg:px-10 py-4 shrink-0"
             >
                 <!-- Add Task -->
                 <button
                     v-if="!selectionMode && auth.isDirector"
                     @click="addTask = true"
-                    class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl hover:bg-green-800 active:scale-95 transition-all text-sm flex-shrink-0 hover:cursor-pointer"
+                    class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl hover:bg-green-800 active:scale-95 transition-all text-sm shrink-0 hover:cursor-pointer"
                 >
                     <Icons :icon="'add'" />
                     <span class="hidden sm:inline">Add PPA</span>
@@ -236,11 +246,11 @@ const onCloseAddProject = async (success) => {
                 <button
                     v-if="canDelete"
                     @click="toggleSelectMode"
-                    class="flex items-center gap-2 font-bold h-11 px-5 rounded-2xl transition-all text-sm flex-shrink-0 hover:cursor-pointer"
+                    class="flex items-center gap-2 font-bold h-11 px-5 rounded-2xl transition-all text-sm shrink-0 hover:cursor-pointer"
                     :class="
                         selectionMode
                             ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            : 'outline outline-2 outline-green-950 text-green-950 bg-white hover:bg-green-50'
+                            : 'outline-2 outline-green-950 text-green-950 bg-white hover:bg-green-50'
                     "
                 >
                     <svg
@@ -273,7 +283,7 @@ const onCloseAddProject = async (success) => {
                     v-if="selectionMode"
                     @click="toggleSelectAll"
                     :disabled="selectableTasks.length === 0"
-                    class="flex items-center gap-2 font-bold h-11 px-4 rounded-2xl transition-all text-sm outline outline-2 outline-green-950 bg-white text-green-950 hover:bg-green-50 flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                    class="flex items-center gap-2 font-bold h-11 px-4 rounded-2xl transition-all text-sm outline-2 outline-green-950 bg-white text-green-950 hover:bg-green-50 hover:cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                     <div
                         class="w-4 h-4 rounded border-2 flex items-center justify-center transition-all"
@@ -304,37 +314,22 @@ const onCloseAddProject = async (success) => {
                             <path d="M19 13H5v-2h14v2z" />
                         </svg>
                     </div>
-                    <span class="hidden sm:inline">All</span>
-                </button>
-
-                <!-- Selected count badge -->
-                <Transition name="fade-slide">
-                    <div
-                        v-if="selectionMode && selectedCount > 0"
-                        class="flex items-center gap-1.5 h-11 px-4 rounded-2xl bg-green-950 text-white text-sm font-bold flex-shrink-0"
+                    <span v-if="selectedCount < 1" class="hidden sm:inline"
+                        >Select All</span
                     >
+
+                    <div v-else class="flex items-center gap-1.5">
                         <span>{{ selectedCount }}</span>
                         <span class="hidden sm:inline">selected</span>
-                        <!-- Warn Unit Head if some selections aren't deletable by them -->
-                        <span
-                            v-if="
-                                auth.isUnitHead &&
-                                !auth.isDirector &&
-                                deletableSelectedCount < selectedCount
-                            "
-                            class="text-amber-300 text-[10px] ml-1 hidden sm:inline"
-                        >
-                            ({{ deletableSelectedCount }} deletable)
-                        </span>
                     </div>
-                </Transition>
+                </button>
 
                 <!-- Delete button — visible only when ≥1 deletable task is selected -->
                 <Transition name="fade-slide">
                     <button
                         v-if="selectionMode && deletableSelectedCount > 0"
                         @click="showDeleteConfirm = true"
-                        class="flex items-center gap-2 h-11 px-5 rounded-2xl font-bold text-sm transition-all bg-red-700 text-white hover:bg-red-800 active:scale-95 flex-shrink-0"
+                        class="flex items-center gap-2 h-11 px-5 rounded-2xl font-bold text-sm transition-all bg-red-700 text-white hover:bg-red-800 hover:cursor-pointer active:scale-95 shrink-0"
                     >
                         <svg
                             class="w-4 h-4"
@@ -350,49 +345,51 @@ const onCloseAddProject = async (success) => {
                 </Transition>
 
                 <!-- Search -->
-                <div
-                    class="flex items-center rounded-2xl bg-white border border-gray-300 px-3 focus-within:border-green-800 focus-within:ring-2 focus-within:ring-green-800/20 transition-all flex-1 min-w-0 h-11"
-                >
-                    <Icons
-                        :icon="'search'"
-                        class="text-gray-400 flex-shrink-0"
-                    />
-                    <input
-                        v-model="search"
-                        type="text"
-                        placeholder="Search PPAs…"
-                        class="ml-2 flex-1 min-w-0 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
-                    />
-                </div>
+                <SearchBar
+                    v-if="!isMobile"
+                    v-model="search"
+                    :placeholder="'Search PPAs...'"
+                />
 
-                <!-- Filter -->
-                <select
-                    v-model="filter"
-                    class="h-11 px-3 rounded-2xl border border-gray-300 text-sm text-gray-700 focus:outline-none focus:border-green-800 bg-white flex-shrink-0"
-                >
-                    <option v-for="o in filterOpts" :key="o" :value="o">
-                        {{ o }}
-                    </option>
-                </select>
+                <SettingsButton>
+                    <template v-slot:filter>
+                        <select
+                            v-model="filter"
+                            class="h-11 px-4 rounded-xl border border-gray-300 font-bold text-sm text-gray-700 focus:outline-none focus:border-green-800 bg-white shrink-0"
+                        >
+                            <option v-for="o in filterOpts" :key="o" :value="o">
+                                {{ o }}
+                            </option>
+                        </select>
+                    </template>
 
-                <!-- Sort -->
-                <select
-                    v-model="sortBy"
-                    class="h-11 px-3 rounded-2xl border border-gray-300 text-sm text-gray-700 focus:outline-none focus:border-green-800 bg-white flex-shrink-0"
+                    <template v-slot:sort>
+                        <!-- Sort -->
+                        <select
+                            v-model="sortBy"
+                            class="h-11 px-4 rounded-xl border border-gray-300 font-bold text-sm text-gray-700 focus:outline-none focus:border-green-800 bg-white shrink-0"
+                        >
+                            <option v-for="o in sortOpts" :key="o" :value="o">
+                                {{ o }}
+                            </option>
+                        </select>
+                    </template>
+                </SettingsButton>
+
+                <button
+                    @click="fetchItems"
+                    class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl hover:bg-green-800 active:scale-95 transition-all text-sm shrink-0 hover:cursor-pointer"
                 >
-                    <option v-for="o in sortOpts" :key="o" :value="o">
-                        {{ o }}
-                    </option>
-                </select>
+                    <Icons :icon="'resubmit'" />
+                    <span class="hidden sm:inline">Refresh</span>
+                </button>
 
                 <!-- Count -->
-                <span
-                    class="text-xs text-gray-500 flex-shrink-0 hidden sm:block"
-                >
+                <!-- <span class="text-xs text-gray-500 shrink-0 hidden sm:block">
                     {{ filtered.length }} PPA{{
                         filtered.length !== 1 ? "s" : ""
                     }}
-                </span>
+                </span> -->
             </div>
 
             <!-- ── View ── -->
@@ -402,24 +399,24 @@ const onCloseAddProject = async (success) => {
                 <div class="flex-1 overflow-auto min-h-0">
                     <GridProjects
                         v-if="state === 'Grid View'"
-                        :projects="filtered"
+                        :items="filtered"
                         :selectable="selectionMode"
                         :selected-ids="selectedIds"
                         :is-deletable="isDeletable"
                         @toggle-select="toggleTaskSelect"
-                        :modal="loading"
+                        :item-loading="loading"
                         :empty-title="projectEmptyTitle"
                         :empty-hint="projectEmptyHint"
                         @success="onCloseAddProject(true)"
                     />
                     <TableProjects
                         v-else-if="state === 'Table View'"
-                        :tasks="filtered"
+                        :items="filtered"
                         :selectable="selectionMode"
                         :selected-ids="selectedIds"
                         :is-deletable="isDeletable"
                         @toggle-select="toggleTaskSelect"
-                        :modal="loading"
+                        :item-loading="loading"
                         @success="onCloseAddProject(true)"
                     />
                     <ChartProjects
@@ -430,7 +427,7 @@ const onCloseAddProject = async (success) => {
             </div>
 
             <!-- ── View toggle ── -->
-            <div class="flex justify-center py-3 flex-shrink-0">
+            <div class="flex justify-center py-3 shrink-0">
                 <div
                     class="inline-flex flex-wrap items-center gap-1 rounded-2xl bg-gray-100 p-1"
                 >
@@ -482,7 +479,7 @@ const onCloseAddProject = async (success) => {
             <Transition name="modal">
                 <div
                     v-if="showDeleteConfirm"
-                    class="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 px-4"
+                    class="fixed inset-0 z-200 flex items-center justify-center bg-black/50 px-4"
                     @click.self="cancelDelete"
                 >
                     <div
@@ -548,14 +545,14 @@ const onCloseAddProject = async (success) => {
                             <button
                                 @click="cancelDelete"
                                 :disabled="isDeleting"
-                                class="flex-1 h-11 rounded-xl font-bold text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all disabled:opacity-50"
+                                class="flex-1 h-11 rounded-xl font-bold text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 hover:cursor-pointer transition-all disabled:opacity-50"
                             >
                                 Cancel
                             </button>
                             <button
                                 @click="deleteTasks"
                                 :disabled="isDeleting"
-                                class="flex-1 h-11 rounded-xl font-bold text-sm text-white bg-red-700 hover:bg-red-800 active:scale-95 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                                class="flex-1 h-11 rounded-xl font-bold text-sm text-white bg-red-700 hover:bg-red-800 hover:cursor-pointer active:scale-95 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
                             >
                                 <svg
                                     v-if="isDeleting"
