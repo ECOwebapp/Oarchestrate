@@ -11,6 +11,7 @@ export const useAuthStore = defineStore("auth", () => {
   const accountStatus = ref(null);
   const loading = ref(false);
   const initialized = ref(false);
+  const isLoggingOut = ref(false);
   const avatarUrl = ref(null); // ── NEW ──
 
   // ── Derived ──
@@ -201,6 +202,7 @@ export const useAuthStore = defineStore("auth", () => {
   // }
 
   const logout = async () => {
+    isLoggingOut.value = true;
     if (userID.value) {
       try {
         const response = await apiFetch("/auth/logout", { method: "POST" });
@@ -212,9 +214,12 @@ export const useAuthStore = defineStore("auth", () => {
     }
 
     localStorage.removeItem("eco_session");
-    $reset();
-    initialized.value = false;
-    router.replace({ name: "Login" });
+    $reset({ preserveLoggingOut: true });
+    try {
+      await router.replace({ name: "Login" });
+    } finally {
+      isLoggingOut.value = false;
+    }
   };
 
   function $fill(userData) {
@@ -229,13 +234,15 @@ export const useAuthStore = defineStore("auth", () => {
       : null;
   }
 
-  function $reset() {
+  function $reset(options = {}) {
+    const { preserveLoggingOut = false } = options;
     userID.value = null;
     positions.value = [];
     profile.value = null;
     accountStatus.value = null;
     avatarUrl.value = null; // ── NEW ──
     initialized.value = false;
+    if (!preserveLoggingOut) isLoggingOut.value = false;
   }
 
   return {
@@ -245,6 +252,7 @@ export const useAuthStore = defineStore("auth", () => {
     accountStatus,
     loading,
     initialized,
+    isLoggingOut,
     isLoggedIn,
     fullName,
     initials,
