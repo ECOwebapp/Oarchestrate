@@ -520,7 +520,7 @@ onUnmounted(() => {
                 <Transition name="badge">
                     <span
                         v-if="notifStore.unread > 0"
-                        class="absolute -top-1.5 -right-1.5 min-w-[18px] sm:min-w-[20px] h-[18px] sm:h-5 px-1 rounded-full bg-red-500 text-white text-[10px] sm:text-xs font-bold flex items-center justify-center border-2 border-white"
+                        class="absolute -top-1.5 -right-1.5 min-w-4.5 sm:min-w-5 h-4.5 sm:h-5 px-1 rounded-full bg-red-500 text-white text-[10px] sm:text-xs font-bold flex items-center justify-center border-2 border-white"
                     >
                         {{ notifStore.unread > 99 ? "99+" : notifStore.unread }}
                     </span>

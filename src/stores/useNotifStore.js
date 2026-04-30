@@ -68,9 +68,7 @@ export const useNotifStore = defineStore("notif", () => {
   // ─────────────────────────────────────────
   const markAllRead = async () => {
     // Mark non-registration notifs as read locally
-    notifs.value.forEach((n) => {
-      if (n.type !== "registration") n.read = true;
-    });
+    if (notifs.value.every((n) => n.read === true)) return;
     const auth = useAuthStore();
     if (!auth.userID) return;
 
@@ -81,7 +79,7 @@ export const useNotifStore = defineStore("notif", () => {
         /* intentionally skip account_status mass-read */
       }
       const taskIds = notifs.value
-        .filter((n) => n.type === "task_submitted")
+        .filter((n) => n.type.includes("task") || n.type.includes("subtask"))
         .map((n) => parseInt(n.id.replace(/^(task-|subtask-)/, "")));
       const pokeIds = notifs.value
         .filter((n) => n.type === "poke")
@@ -92,7 +90,11 @@ export const useNotifStore = defineStore("notif", () => {
         body: JSON.stringify({ taskIds, pokeIds }),
       });
 
-      if (response.ok) console.log("Success");
+      if (response.ok) {
+        notifs.value.forEach((n) => {
+          if (n.type !== "registration") n.read = true;
+        });
+      }
     } catch (e) {
       console.error("[notifStore] markAllRead error:", e);
     }
