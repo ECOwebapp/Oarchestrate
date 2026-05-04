@@ -163,7 +163,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                 v-model:sort="sortBy"
                 :is-mobile="isMobile"
                 :option-list="{ filterOpts, sortOpts }"
-                :placeholder-text="'Insertion'"
+                :placeholder-text="'Design'"
                 @reload="reload"
             />
 
