@@ -2,7 +2,7 @@
 import { useDesignStore } from "@/stores/design";
 import { useMemberStore } from "@/stores/member";
 import { usePosStore } from "@/stores/positions";
-import { taskStore } from "@/stores/tasks";
+import { useTaskStore } from "@/stores/tasks";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { computed, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
@@ -18,11 +18,11 @@ const props = defineProps({
 
 const memberStore = useMemberStore();
 const posStore = usePosStore();
-const store = taskStore();
+const taskStore = useTaskStore();
 const designStore = useDesignStore();
 const auth = useAuthStore();
 
-const { tasks } = storeToRefs(store);
+const { tasks } = storeToRefs(taskStore);
 
 const loading = ref(false);
 const subTasks = ref([{ text: "" }]);
@@ -365,7 +365,7 @@ const submitForm = async () => {
                 ? auth.userID
                 : newTask.value.assignee;
 
-        await store.addTasks({
+        await taskStore.addTasks({
             mainTask: {
                 id: newTask.value.id,
                 parentId: newTask.value.parentId,

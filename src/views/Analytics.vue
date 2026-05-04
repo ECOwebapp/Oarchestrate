@@ -7,12 +7,12 @@ import AccomplishmentReport from "@/components/Analytics/AccomplishmentReport.vu
 import IndividualAccomplishmentReport from "@/components/Analytics/IndividualAccomplishmentReport.vue";
 import ReportGeneratorElement from "@/components/Analytics/ReportGeneratorElement.vue";
 import ReportPicker from "@/components/Analytics/ReportPicker.vue";
-import { taskStore as useTaskStore } from "@/stores/tasks.js";
+import { useTaskStore } from "@/stores/tasks.js";
 import { useAuthStore } from "@/stores/useAuthStore.js";
 
-const store = useTaskStore();
+const taskStore = useTaskStore();
 const auth = useAuthStore();
-const { loading } = storeToRefs(store);
+const { loading } = storeToRefs(taskStore);
 const MIN_SKELETON_MS = 450;
 const initialLoading = ref(true);
 
@@ -20,7 +20,7 @@ const showSkeleton = computed(() => initialLoading.value || loading.value);
 
 onMounted(async () => {
     const start = Date.now();
-    await store.fetchTasks();
+    await taskStore.fetchTasks();
     const elapsed = Date.now() - start;
     const wait = Math.max(0, MIN_SKELETON_MS - elapsed);
     if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
@@ -87,16 +87,16 @@ const activeUnitHeadId = computed(() => {
 });
 
 const analyticsTasks = computed(() => {
-    if (auth.isDirector) return store.tasks;
+    if (auth.isDirector) return taskStore.tasks;
 
     // Unit Head analytics should only show staff/tasks from their own unit.
     if (auth.isUnitHead && activeUnitHeadId.value) {
-        return store.tasks.filter(
+        return taskStore.tasks.filter(
             (t) => Number(t.assigneeUnitId) === Number(activeUnitHeadId.value),
         );
     }
 
-    return store.tasks.filter((t) => t.assignee === auth.userID);
+    return taskStore.tasks.filter((t) => t.assignee === auth.userID);
 });
 
 // ── Helpers ────────────────────────────────────────────────

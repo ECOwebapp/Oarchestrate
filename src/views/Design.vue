@@ -1,15 +1,16 @@
 <script setup vapor>
 import Icons from "@/components/Icons.vue";
-import Loading from "@/components/Loading.vue";
+import ProjectNavBar from "@/components/Projects/ProjectNavBar.vue";
+import AnimateLoadingLine from "@/components/AnimateLoadingLine.vue";
 import ChartSubtasks from "@/components/Subtasks/ChartSubtasks.vue";
 import GridSubtasks from "@/components/Subtasks/GridSubtasks.vue";
 import TableSubtasks from "@/components/Subtasks/TableSubtasks.vue";
 import { useSubtaskStore } from "@/stores/subtasks";
-import { taskStore } from "@/stores/tasks";
+import { useTaskStore } from "@/stores/tasks";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, nextTick } from "vue";
 
-const store = taskStore();
+const taskStore = useTaskStore();
 const subtaskStore = useSubtaskStore();
 const auth = useAuthStore();
 const state = ref("Grid View");
@@ -18,6 +19,7 @@ const search = ref("");
 const filter = ref("All");
 const sortBy = ref("Recently Assigned");
 const loading = ref(false);
+const isAlive = ref(true);
 
 const taskDetail = ref(false);
 
@@ -27,15 +29,38 @@ const selectionMode = ref(false);
 
 const tasks = computed(() => {
     return [
-        ...store.tasks.filter((t) => t.design),
+        ...taskStore.tasks.filter((t) => t.design),
         ...subtaskStore.subtasks.filter((st) => st.design),
     ];
 });
 
+const fetchItems = () => [taskStore.fetchTasks(), subtaskStore.fetchSubTasks()];
+const reload = async () => {
+    loading.value = true;
+    isAlive.value = false;
+
+    try {
+        await Promise.all([...fetchItems(), nextTick()]);
+    } finally {
+        isAlive.value = true;
+        loading.value = false;
+    }
+};
+
+const isMobile = ref(window.innerWidth < 640);
+const checkViewport = () => (isMobile.value = window.innerWidth < 640);
+
 onMounted(async () => {
     loading.value = true;
-    await Promise.all([store.fetchTasks(), subtaskStore.fetchSubTasks()]);
-    loading.value = false;
+    isAlive.value = false;
+
+    try {
+        await Promise.all(fetchItems());
+        window.addEventListener("resize", checkViewport);
+    } finally {
+        isAlive.value = true;
+        loading.value = false;
+    }
 });
 
 const filterOpts = computed(() => {
@@ -123,102 +148,75 @@ const onCloseAddTask = async (success) => {
     preFillData.value = null;
 
     if (success && taskDetail.value === false) {
-        await Promise.all([store.fetchTasks(), subtaskStore.fetchSubTasks()]);
+        await Promise.all([
+            taskStore.fetchTasks(),
+            subtaskStore.fetchSubTasks(),
+        ]);
     }
 };
+onUnmounted(() => window.removeEventListener("resize", checkViewport));
 </script>
 
 <template>
     <div class="flex flex-col h-full min-h-0">
-        <Loading v-if="loading" :message="'Loading best designs...'" />
-        <div v-else class="flex flex-col h-full min-h-0">
-            <!-- ── Toolbar ── -->
-            <div
-                class="flex flex-wrap items-center gap-3 px-4 sm:px-6 lg:px-10 py-4 shrink-0"
-            >
-                <!-- Search -->
-                <div
-                    class="flex items-center rounded-2xl bg-white border border-gray-300 px-3 focus-within:border-green-800 focus-within:ring-2 focus-within:ring-green-800/20 transition-all flex-1 min-w-0 h-11"
-                >
-                    <Icons
-                        :icon="'search'"
-                        class="text-gray-400 flex-shrink-0"
-                    />
-                    <input
-                        v-model="search"
-                        type="text"
-                        placeholder="Search tasks…"
-                        class="ml-2 flex-1 min-w-0 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
-                    />
-                </div>
-
-                <!-- Filter -->
-                <select
-                    v-model="filter"
-                    class="h-11 px-3 rounded-2xl border border-gray-300 text-sm text-gray-700 focus:outline-none focus:border-green-800 bg-white flex-shrink-0"
-                >
-                    <option v-for="o in filterOpts" :key="o" :value="o">
-                        {{ o }}
-                    </option>
-                </select>
-
-                <!-- Sort -->
-                <select
-                    v-model="sortBy"
-                    class="h-11 px-3 rounded-2xl border border-gray-300 text-sm text-gray-700 focus:outline-none focus:border-green-800 bg-white flex-shrink-0"
-                >
-                    <option v-for="o in sortOpts" :key="o" :value="o">
-                        {{ o }}
-                    </option>
-                </select>
-
-                <!-- Count -->
-                <span
-                    class="text-xs text-gray-500 flex-shrink-0 hidden sm:block"
-                >
-                    {{ filtered.length }} task{{
-                        filtered.length !== 1 ? "s" : ""
-                    }}
-                </span>
-            </div>
+        <div class="flex flex-col h-full min-h-0">
+            <ProjectNavBar
+                v-model:search="search"
+                v-model:filter="filter"
+                v-model:sort="sortBy"
+                :is-mobile="isMobile"
+                :option-list="{ filterOpts, sortOpts }"
+                :placeholder-text="'Insertion'"
+                @reload="reload"
+            />
 
             <!-- ── View ── -->
             <div
                 class="flex-1 overflow-auto bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0"
             >
-                <GridSubtasks
-                    v-if="state === 'Grid View'"
-                    :subtasks="filtered"
-                    :selectable="selectionMode"
-                    :selected-ids="selectedIds"
-                    @toggle-select="toggleTaskSelect"
-                    @assign-subtask="onAssignSubtask"
-                    :modal="loading"
-                    @open="taskDetail = true"
-                    @close="taskDetail = false"
-                    @success="
-                        () => {
-                            taskDetail = false;
-                            onCloseAddTask(true);
-                        }
-                    "
-                />
-                <TableSubtasks
-                    v-else-if="state === 'Table View'"
-                    :subtasks="filtered"
-                    :selectable="selectionMode"
-                    :selected-ids="selectedIds"
-                    @toggle-select="toggleTaskSelect"
-                    @assign-subtask="onAssignSubtask"
-                />
-                <ChartSubtasks
-                    v-else-if="state === 'Chart View'"
-                    :subtasks="filtered"
-                />
+                <div
+                    v-for="isLoading in [{ load: !isAlive || loading }]"
+                    :key="isLoading.load"
+                    class="flex-1 overflow-auto min-h-0"
+                >
+                    <AnimateLoadingLine :loading="isLoading.load" />
+
+                    <div
+                        :class="
+                            isLoading.load
+                                ? 'opacity-60 pointer-events-none'
+                                : ''
+                        "
+                    >
+                        <GridSubtasks
+                            v-if="state === 'Grid View'"
+                            :subtasks="filtered"
+                            @assign-subtask="onAssignSubtask"
+                            :modal="loading"
+                            @open="taskDetail = true"
+                            @close="taskDetail = false"
+                            @success="
+                                () => {
+                                    taskDetail = false;
+                                    onCloseAddTask(true);
+                                }
+                            "
+                        />
+                        <TableSubtasks
+                            v-else-if="state === 'Table View'"
+                            :subtasks="filtered"
+                            @assign-subtask="onAssignSubtask"
+                        />
+                        <ChartSubtasks
+                            v-else-if="state === 'Chart View'"
+                            :subtasks="filtered"
+                        />
+                    </div>
+                </div>
             </div>
 
             <!-- ── View toggle ── -->
-            <div class="flex justify-center py-3 flex-shrink-0">
+            <div class="flex justify-center py-3 shrink-0">
                 <div
                     class="inline-flex flex-wrap items-center gap-1 rounded-2xl bg-gray-100 p-1"
                 >
