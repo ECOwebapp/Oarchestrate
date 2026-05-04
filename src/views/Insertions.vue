@@ -1,14 +1,15 @@
 <script setup vapor>
 import Icons from "@/components/Icons.vue";
-import Loading from "@/components/Loading.vue";
 import AddTask from "@/components/Tasks/AddTask.vue";
 import ChartTasks from "@/components/Tasks/ChartTasks.vue";
 import GridTasks from "@/components/Tasks/GridTasks.vue";
 import TableTasks from "@/components/Tasks/TableTasks.vue";
+import ProjectNavBar from "@/components/Projects/ProjectNavBar.vue";
+import AnimateLoadingLine from "@/components/AnimateLoadingLine.vue";
 import { useTaskStore } from "@/stores/tasks";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { storeToRefs } from "pinia";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, nextTick } from "vue";
 
 const taskStore = useTaskStore();
 const auth = useAuthStore();
@@ -29,6 +30,7 @@ const showDeleteConfirm = ref(false);
 const isDeleting = ref(false);
 const deleteError = ref("");
 const taskDetail = ref(false);
+const isAlive = ref(true);
 
 const insertionTasks = computed(() =>
     taskStore.tasks.filter(
@@ -47,7 +49,20 @@ const tasks = computed(() => {
     );
 });
 
-onMounted(() => taskStore.fetchTasks());
+const fetchItems = async () => await taskStore.fetchTasks();
+const reload = async () => {
+    isAlive.value = false; // Disconnect
+    await Promise.all([fetchItems(), nextTick()]); // Wait for DOM to update
+    isAlive.value = true; // Reconnect
+};
+
+const isMobile = ref(window.innerWidth < 640);
+const checkViewport = () => (isMobile.value = window.innerWidth < 640);
+
+onMounted(async () => {
+    await fetchItems();
+    window.addEventListener("resize", checkViewport);
+});
 
 const filterOpts = computed(() => {
     const base = [
@@ -240,239 +255,98 @@ const onCloseAddTask = async (success) => {
         await taskStore.fetchTasks();
     }
 };
+onUnmounted(() => window.removeEventListener("resize", checkViewport));
 </script>
 
 <template>
     <div class="flex flex-col h-full min-h-0">
-        <Loading v-if="loading" :message="'Loading tasks from the source...'" />
-
-        <div v-else class="flex flex-col h-full min-h-0">
-            <!-- ── Toolbar ── -->
-            <div
-                class="flex flex-wrap items-center gap-3 px-4 sm:px-6 lg:px-10 py-4 flex-shrink-0"
-            >
-                <!-- Add Task -->
-                <button
-                    v-if="!selectionMode"
-                    @click="addTask = true"
-                    class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl hover:bg-green-800 active:scale-95 transition-all text-sm flex-shrink-0 hover:cursor-pointer"
-                >
-                    <Icons :icon="'add'" />
-                    <span class="hidden sm:inline">Add Insertion</span>
-                </button>
-
-                <!-- Select toggle — Director & Unit Head only -->
-                <button
-                    v-if="canDelete"
-                    @click="toggleSelectMode"
-                    class="flex items-center gap-2 font-bold h-11 px-5 rounded-2xl transition-all text-sm flex-shrink-0"
-                    :class="
-                        selectionMode
-                            ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            : 'outline outline-2 outline-green-950 text-green-950 bg-white hover:bg-green-50'
-                    "
-                >
-                    <svg
-                        v-if="!selectionMode"
-                        class="w-4 h-4"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                    >
-                        <path
-                            d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
-                        />
-                    </svg>
-                    <svg
-                        v-else
-                        class="w-4 h-4"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                    >
-                        <path
-                            d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
-                        />
-                    </svg>
-                    <span class="hidden sm:inline">{{
-                        selectionMode ? "Cancel" : "Select"
-                    }}</span>
-                </button>
-
-                <!-- Select All — only in selection mode -->
-                <button
-                    v-if="selectionMode"
-                    @click="toggleSelectAll"
-                    :disabled="selectableTasks.length === 0"
-                    class="flex items-center gap-2 font-bold h-11 px-4 rounded-2xl transition-all text-sm outline outline-2 outline-green-950 bg-white text-green-950 hover:bg-green-50 flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                    <div
-                        class="w-4 h-4 rounded border-2 flex items-center justify-center transition-all"
-                        :class="
-                            allVisibleSelected
-                                ? 'bg-green-700 border-green-700'
-                                : someSelected
-                                  ? 'bg-green-200 border-green-700'
-                                  : 'border-gray-400'
-                        "
-                    >
-                        <svg
-                            v-if="allVisibleSelected"
-                            class="w-2.5 h-2.5 text-white"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                        >
-                            <path
-                                d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"
-                            />
-                        </svg>
-                        <svg
-                            v-else-if="someSelected"
-                            class="w-2.5 h-2.5 text-green-800"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                        >
-                            <path d="M19 13H5v-2h14v2z" />
-                        </svg>
-                    </div>
-                    <span class="hidden sm:inline">All</span>
-                </button>
-
-                <!-- Selected count badge -->
-                <Transition name="fade-slide">
-                    <div
-                        v-if="selectionMode && selectedCount > 0"
-                        class="flex items-center gap-1.5 h-11 px-4 rounded-2xl bg-green-950 text-white text-sm font-bold flex-shrink-0"
-                    >
-                        <span>{{ selectedCount }}</span>
-                        <span class="hidden sm:inline">selected</span>
-                        <!-- Warn Unit Head if some selections aren't deletable by them -->
-                        <span
-                            v-if="
-                                auth.isUnitHead &&
-                                !auth.isDirector &&
-                                deletableSelectedCount < selectedCount
-                            "
-                            class="text-amber-300 text-[10px] ml-1 hidden sm:inline"
-                        >
-                            ({{ deletableSelectedCount }} deletable)
-                        </span>
-                    </div>
-                </Transition>
-
-                <!-- Delete button — visible only when ≥1 deletable task is selected -->
-                <Transition name="fade-slide">
-                    <button
-                        v-if="selectionMode && deletableSelectedCount > 0"
-                        @click="showDeleteConfirm = true"
-                        class="flex items-center gap-2 h-11 px-5 rounded-2xl font-bold text-sm transition-all bg-red-700 text-white hover:bg-red-800 active:scale-95 flex-shrink-0"
-                    >
-                        <svg
-                            class="w-4 h-4"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                        >
-                            <path
-                                d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
-                            />
-                        </svg>
-                        <span class="hidden sm:inline">Delete</span>
-                    </button>
-                </Transition>
-
-                <!-- Search -->
-                <div
-                    class="flex items-center rounded-2xl bg-white border border-gray-300 px-3 focus-within:border-green-800 focus-within:ring-2 focus-within:ring-green-800/20 transition-all flex-1 min-w-0 h-11"
-                >
-                    <Icons
-                        :icon="'search'"
-                        class="text-gray-400 flex-shrink-0"
-                    />
-                    <input
-                        v-model="search"
-                        type="text"
-                        placeholder="Search tasks…"
-                        class="ml-2 flex-1 min-w-0 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
-                    />
-                </div>
-
-                <!-- Filter -->
-                <select
-                    v-model="filter"
-                    class="h-11 px-3 rounded-2xl border border-gray-300 text-sm text-gray-700 focus:outline-none focus:border-green-800 bg-white flex-shrink-0"
-                >
-                    <option v-for="o in filterOpts" :key="o" :value="o">
-                        {{ o }}
-                    </option>
-                </select>
-
-                <!-- Sort -->
-                <select
-                    v-model="sortBy"
-                    class="h-11 px-3 rounded-2xl border border-gray-300 text-sm text-gray-700 focus:outline-none focus:border-green-800 bg-white flex-shrink-0"
-                >
-                    <option v-for="o in sortOpts" :key="o" :value="o">
-                        {{ o }}
-                    </option>
-                </select>
-
-                <!-- Count -->
-                <span
-                    class="text-xs text-gray-500 flex-shrink-0 hidden sm:block"
-                >
-                    {{ filtered.length }} task{{
-                        filtered.length !== 1 ? "s" : ""
-                    }}
-                </span>
-            </div>
+        <div class="flex flex-col h-full min-h-0">
+            <ProjectNavBar
+                v-model:search="search"
+                v-model:filter="filter"
+                v-model:sort="sortBy"
+                :is-mobile="isMobile"
+                :selection-mode="selectionMode"
+                :can-delete="canDelete"
+                :is-director="auth.isDirector"
+                :is-disabled="selectableTasks.length < 1"
+                :is-deletable="selectionMode && deletableSelectedCount > 0"
+                :selected-count="selectedCount"
+                :selected="{ allVisibleSelected, someSelected }"
+                :option-list="{ filterOpts, sortOpts }"
+                :placeholder-text="'Insertion'"
+                @add="addTask = true"
+                @toggle-single="toggleSelectMode"
+                @toggle-all="toggleSelectAll"
+                @toggle-select="toggleSelectMode"
+                @delete-modal="showDeleteConfirm = true"
+                @reload="reload"
+            />
 
             <!-- ── View ── -->
             <div
                 class="flex-1 overflow-auto bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0"
             >
-                <GridTasks
-                    v-if="state === 'Grid View'"
-                    :tasks="filtered"
-                    :selectable="selectionMode"
-                    :selected-ids="selectedIds"
-                    :is-deletable="isDeletable"
-                    @toggle-select="toggleTaskSelect"
-                    @assign-subtask="onAssignSubtask"
-                    @edit-task="onEditTask"
-                    :modal="loading"
-                    @open="taskDetail = true"
-                    @close="taskDetail = false"
-                    @success="
-                        () => {
-                            taskDetail = false;
-                            onCloseAddTask(true);
-                        }
-                    "
-                />
-                <TableTasks
-                    v-else-if="state === 'Table View'"
-                    :tasks="filtered"
-                    :selectable="selectionMode"
-                    :selected-ids="selectedIds"
-                    :is-deletable="isDeletable"
-                    @toggle-select="toggleTaskSelect"
-                    @assign-subtask="onAssignSubtask"
-                    :modal="loading"
-                    @open="taskDetail = true"
-                    @close="taskDetail = false"
-                    @success="
-                        () => {
-                            taskDetail = false;
-                            onCloseAddTask(true);
-                        }
-                    "
-                />
-                <ChartTasks
-                    v-else-if="state === 'Chart View'"
-                    :tasks="filtered"
-                />
+                <div
+                    v-for="isLoading in [{ load: !isAlive || loading }]"
+                    :key="isLoading.load"
+                    class="flex-1 overflow-auto min-h-0"
+                >
+                    <AnimateLoadingLine :loading="isLoading.load" />
+
+                    <div
+                        :class="
+                            isLoading.load
+                                ? 'opacity-60 pointer-events-none'
+                                : ''
+                        "
+                    >
+                        <GridTasks
+                            v-if="state === 'Grid View'"
+                            :tasks="filtered"
+                            :selectable="selectionMode"
+                            :selected-ids="selectedIds"
+                            :is-deletable="isDeletable"
+                            @toggle-select="toggleTaskSelect"
+                            @assign-subtask="onAssignSubtask"
+                            @edit-task="onEditTask"
+                            :item-loading="isLoading.load"
+                            @open="taskDetail = true"
+                            @close="taskDetail = false"
+                            @success="
+                                () => {
+                                    taskDetail = false;
+                                    onCloseAddTask(true);
+                                }
+                            "
+                        />
+                        <TableTasks
+                            v-else-if="state === 'Table View'"
+                            :tasks="filtered"
+                            :selectable="selectionMode"
+                            :selected-ids="selectedIds"
+                            :is-deletable="isDeletable"
+                            @toggle-select="toggleTaskSelect"
+                            @assign-subtask="onAssignSubtask"
+                            @open="taskDetail = true"
+                            @close="taskDetail = false"
+                            @success="
+                                () => {
+                                    taskDetail = false;
+                                    onCloseAddTask(true);
+                                }
+                            "
+                        />
+                        <ChartTasks
+                            v-else-if="state === 'Chart View'"
+                            :tasks="filtered"
+                        />
+                    </div>
+                </div>
             </div>
 
             <!-- ── View toggle ── -->
-            <div class="flex justify-center py-3 flex-shrink-0">
+            <div class="flex justify-center py-3 shrink-0">
                 <div
                     class="inline-flex flex-wrap items-center gap-1 rounded-2xl bg-gray-100 p-1"
                 >

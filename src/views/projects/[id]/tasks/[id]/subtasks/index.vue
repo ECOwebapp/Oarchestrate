@@ -8,7 +8,8 @@ import { useRoute } from "vue-router";
 import { storeToRefs } from "pinia";
 import ProjectNavBar from "@/components/Projects/ProjectNavBar.vue";
 import Icons from "@/components/Icons.vue";
-import Loading from "@/components/Loading.vue";
+import AnimateLoadingLine from "@/components/AnimateLoadingLine.vue";
+import Breadcrumb from "@/components/Breadcrumb.vue";
 import GridSubtasks from "@/components/Subtasks/GridSubtasks.vue";
 import TableSubtasks from "@/components/Subtasks/TableSubtasks.vue";
 import ChartSubtasks from "@/components/Subtasks/ChartSubtasks.vue";
@@ -284,7 +285,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                 :selected-count="selectedCount"
                 :selected="{ allVisibleSelected, someSelected }"
                 :option-list="{ filterOpts, sortOpts }"
-                :placeholder-text="'Search Subtasks...'"
+                :placeholder-text="'Subtask'"
                 @add="addTask = true"
                 @toggle-single="toggleSelectMode"
                 @toggle-all="toggleSelectAll"
@@ -297,73 +298,33 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
             <div
                 class="flex-1 flex flex-col bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0 overflow-hidden"
             >
-                <nav
-                    class="px-5 py-3 flex items-center justify-between gap-3 flex-wrap border-b border-gray-200 bg-white"
-                    aria-label="Hierarchy"
+                <Breadcrumb :hierarchy-items="hierarchyItems" />
+
+                <div
+                    v-for="isLoading in [{ load: !isAlive || loading }]"
+                    :key="isLoading.load"
+                    class="flex-1 overflow-auto min-h-0"
                 >
-                    <ol class="flex items-center flex-wrap gap-1.5">
-                        <template
-                            v-for="(item, index) in hierarchyItems"
-                            :key="`${item.label}-${index}`"
-                        >
-                            <li class="flex items-center gap-1.5 min-w-0">
-                                <router-link
-                                    v-if="item.to && !item.current"
-                                    :to="item.to"
-                                    :title="item.title || item.label"
-                                    class="text-sm font-semibold text-gray-900 hover:text-gray-700 hover:bg-gray-100 px-2.5 py-1 rounded-md transition-colors truncate max-w-[180px] sm:max-w-[360px]"
-                                >
-                                    {{ item.label }}
-                                </router-link>
-                                <span
-                                    v-else
-                                    :title="item.title || item.label"
-                                    class="text-sm px-2.5 py-1 truncate max-w-[180px] sm:max-w-[360px]"
-                                    :class="
-                                        item.current
-                                            ? 'font-medium text-gray-600'
-                                            : 'font-medium text-gray-700'
-                                    "
-                                >
-                                    {{ item.label }}
-                                </span>
+                    <AnimateLoadingLine :loading="isLoading.load" />
 
-                                <svg
-                                    v-if="index < hierarchyItems.length - 1"
-                                    class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                    aria-hidden="true"
-                                >
-                                    <path
-                                        d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"
-                                    />
-                                </svg>
-                            </li>
-                        </template>
-                    </ol>
-                </nav>
-
-                <div class="flex-1 overflow-auto min-h-0">
-                    <!--- Trying to emulate Svelte's {@const} -->
-                    <template
-                        v-for="preload in [{ preload: !isAlive || loading }]"
-                        :key="preload"
+                    <div
+                        :class="
+                            isLoading.load
+                                ? 'opacity-60 pointer-events-none'
+                                : ''
+                        "
                     >
-                        <Loading
-                            v-if="preload.preload"
-                            :message="'Loading subtasks from the source...'"
-                        />
                         <GridSubtasks
-                            v-else-if="state === 'Grid View' && isAlive"
+                            v-if="state === 'Grid View'"
                             :subtasks="filtered"
                             :selectable="selectionMode"
                             :selected-ids="selectedIds"
                             :is-deletable="isDeletable"
-                            @toggle-select="toggleTaskSelect"
-                            @assign-subtask="onAssignSubtask"
+                            :item-loading="isLoading.loading"
                             :empty-title="emptyTitle"
                             :empty-hint="emptyHint"
+                            @toggle-select="toggleTaskSelect"
+                            @assign-subtask="onAssignSubtask"
                             @open="taskDetail = true"
                             @close="taskDetail = false"
                             @success="
@@ -374,7 +335,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                             "
                         />
                         <TableSubtasks
-                            v-else-if="state === 'Table View' && isAlive"
+                            v-else-if="state === 'Table View'"
                             :subtasks="filtered"
                             :selectable="selectionMode"
                             :selected-ids="selectedIds"
@@ -391,10 +352,10 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                             "
                         />
                         <ChartSubtasks
-                            v-else-if="state === 'Chart View' && isAlive"
+                            v-else-if="state === 'Chart View'"
                             :subtasks="filtered"
                         />
-                    </template>
+                    </div>
                 </div>
             </div>
 

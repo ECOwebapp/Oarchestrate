@@ -8,6 +8,7 @@ const props = defineProps({
     tasks: Array,
     selectable: { type: Boolean, default: false },
     selectedIds: { type: Object, default: () => new Set() }, // Set of selected task ids
+    itemLoading: { type: Boolean, default: false },
     isDeletable: { type: Function, default: () => false },
     emptyTitle: { type: String, default: "No tasks found" },
     emptyHint: { type: String, default: "" },
@@ -93,6 +94,7 @@ const handleClose = () => {
                 :selectable="props.selectable"
                 :selected="props.selectedIds.has(task.id)"
                 :is-deletable="props.isDeletable(task)"
+                :item-loading="props.itemLoading"
                 @open="handleOpen"
                 @edit="handleEdit"
                 @toggle-select="emit('toggle-select', $event)"

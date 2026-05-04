@@ -1,11 +1,13 @@
 <script setup vapor>
 import AddProject from "@/components/Projects/AddProject.vue";
 import GridProjects from "@/components/Projects/GridProjects.vue";
+import GridTasks from "@/components/Tasks/GridTasks.vue";
 import TableProjects from "@/components/Projects/TableProjects.vue";
 import Icons from "@/components/Icons.vue";
 import ChartProjects from "@/components/Projects/ChartProjects.vue";
 import ProjectNavBar from "@/components/Projects/ProjectNavBar.vue";
-import Loading from "@/components/Loading.vue";
+import AnimateLoadingLine from "@/components/AnimateLoadingLine.vue";
+import Breadcrumb from "@/components/Breadcrumb.vue";
 import { useProjectStore } from "@/stores/projects";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { computed, onMounted, onUnmounted, ref, nextTick } from "vue";
@@ -30,6 +32,8 @@ const reload = async () => {
     await Promise.all([fetchItems(), nextTick()]); // Wait for DOM to update
     isAlive.value = true; // Reconnect
 };
+
+const hierarchyItems = computed(() => [{ label: "PPAs", current: true }]);
 
 const isInsertionProject = (item) =>
     item.type?.toLowerCase() === "insertion" ||
@@ -241,7 +245,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                 :selected-count="selectedCount"
                 :selected="{ allVisibleSelected, someSelected }"
                 :option-list="{ filterOpts, sortOpts }"
-                :placeholder-text="'Search PPAs...'"
+                :placeholder-text="'PPA'"
                 @add="addTask = true"
                 @toggle-single="toggleSelectMode"
                 @toggle-all="toggleSelectAll"
@@ -253,36 +257,47 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
             <div
                 class="flex-1 flex flex-col bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0 overflow-hidden"
             >
-                <Loading
-                    v-if="!isAlive || loading"
-                    :message="'Loading projects from the source...'"
-                />
-                <div v-else>
-                    <GridProjects
-                        v-if="state === 'Grid View'"
-                        :items="filtered"
-                        :selectable="selectionMode"
-                        :selected-ids="selectedIds"
-                        :is-deletable="isDeletable"
-                        @toggle-select="toggleTaskSelect"
-                        :empty-title="projectEmptyTitle"
-                        :empty-hint="projectEmptyHint"
-                        @success="onCloseAddProject(true)"
-                    />
-                    <TableProjects
-                        v-else-if="state === 'Table View'"
-                        :items="filtered"
-                        :selectable="selectionMode"
-                        :selected-ids="selectedIds"
-                        :is-deletable="isDeletable"
-                        @toggle-select="toggleTaskSelect"
-                        :item-loading="loading"
-                        @success="onCloseAddProject(true)"
-                    />
-                    <ChartProjects
-                        v-else-if="state === 'Chart View'"
-                        :tasks="filtered"
-                    />
+                <Breadcrumb :hierarchy-items="hierarchyItems" />
+                <div
+                    v-for="isLoading in [{ load: !isAlive || loading }]"
+                    :key="isLoading.load"
+                    class="flex-1 overflow-auto min-h-0"
+                >
+                    <AnimateLoadingLine :loading="isLoading.load" />
+
+                    <div
+                        :class="
+                            isLoading.load
+                                ? 'opacity-60 pointer-events-none'
+                                : ''
+                        "
+                    >
+                        <GridProjects
+                            v-if="state === 'Grid View'"
+                            :items="filtered"
+                            :selectable="selectionMode"
+                            :selected-ids="selectedIds"
+                            :is-deletable="isDeletable"
+                            @toggle-select="toggleTaskSelect"
+                            :empty-title="projectEmptyTitle"
+                            :empty-hint="projectEmptyHint"
+                            @success="onCloseAddProject(true)"
+                        />
+                        <TableProjects
+                            v-else-if="state === 'Table View'"
+                            :items="filtered"
+                            :selectable="selectionMode"
+                            :selected-ids="selectedIds"
+                            :is-deletable="isDeletable"
+                            @toggle-select="toggleTaskSelect"
+                            :item-loading="loading"
+                            @success="onCloseAddProject(true)"
+                        />
+                        <ChartProjects
+                            v-else-if="state === 'Chart View'"
+                            :tasks="filtered"
+                        />
+                    </div>
                 </div>
             </div>
 

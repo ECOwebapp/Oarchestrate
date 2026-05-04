@@ -40,7 +40,10 @@ const sortOpts = computed(() => props.optionList.sortOpts);
             v-if="props.isMobile"
             class="flex flex-wrap items-center gap-3 px-6 pt-4 shrink-0"
         >
-            <SearchBar v-model="search" :placeholder="props.placeholderText" />
+            <SearchBar
+                v-model="search"
+                :placeholder="`Search ${props.placeholderText}s...`"
+            />
         </div>
 
         <div
@@ -53,7 +56,9 @@ const sortOpts = computed(() => props.optionList.sortOpts);
                 class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl hover:bg-green-800 active:scale-95 transition-all text-sm shrink-0 hover:cursor-pointer"
             >
                 <Icons :icon="'add'" />
-                <span class="hidden sm:inline">Add PPA</span>
+                <span class="hidden sm:inline"
+                    >Add {{ props.placeholderText }}</span
+                >
             </button>
 
             <!-- Select toggle — Director & Unit Head only -->
@@ -162,7 +167,7 @@ const sortOpts = computed(() => props.optionList.sortOpts);
             <SearchBar
                 v-if="!props.isMobile"
                 v-model="search"
-                :placeholder="props.placeholderText"
+                :placeholder="`Search ${props.placeholderText}s...`"
             />
 
             <SettingsButton>

@@ -2,10 +2,12 @@
 import AddTask from "@/components/Tasks/AddTask.vue";
 import ChartTasks from "@/components/Tasks/ChartTasks.vue";
 import GridTasks from "@/components/Tasks/GridTasks.vue";
+import GridProjects from "@/components/Projects/GridProjects.vue";
 import Icons from "@/components/Icons.vue";
 import TableTasks from "@/components/Tasks/TableTasks.vue";
 import ProjectNavBar from "@/components/Projects/ProjectNavBar.vue";
-import Loading from "@/components/Loading.vue";
+import AnimateLoadingLine from "@/components/AnimateLoadingLine.vue";
+import Breadcrumb from "@/components/Breadcrumb.vue";
 import { useTaskStore } from "@/stores/tasks";
 import { useProjectStore } from "@/stores/projects";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -80,13 +82,8 @@ const filterOpts = computed(() => {
     if (auth.isDirector || auth.isUnitHead) base.push("Pending", "Approved");
     return base;
 });
-
 const sortOpts = ["Recently Assigned", "Date Due", "Name A→Z", "Urgent First"];
-
-const isInsertionTask = (item) => item.type?.toLowerCase() === "insertion";
-
 const emptyTitle = computed(() => "No tasks found");
-
 const emptyHint = computed(() => {
     if (search.value || filter.value !== "All") {
         return "Try clearing search or adjusting the filters.";
@@ -284,7 +281,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                 :selected-count="selectedCount"
                 :selected="{ allVisibleSelected, someSelected }"
                 :option-list="{ filterOpts, sortOpts }"
-                :placeholder-text="'Search Tasks...'"
+                :placeholder-text="'Task'"
                 @add="addTask = true"
                 @toggle-single="toggleSelectMode"
                 @toggle-all="toggleSelectAll"
@@ -297,59 +294,22 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
             <div
                 class="flex-1 flex flex-col bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0 overflow-hidden"
             >
-                <nav
-                    class="px-5 py-3 flex items-center justify-between gap-3 flex-wrap border-b border-gray-200 bg-white"
-                    aria-label="Hierarchy"
+                <Breadcrumb :hierarchy-items="hierarchyItems" />
+
+                <div
+                    v-for="isLoading in [{ load: !isAlive || loading }]"
+                    :key="isLoading.load"
+                    class="flex-1 overflow-auto min-h-0"
                 >
-                    <ol class="flex items-center flex-wrap gap-1.5">
-                        <template
-                            v-for="(item, index) in hierarchyItems"
-                            :key="`${item.label}-${index}`"
-                        >
-                            <li class="flex items-center gap-1.5 min-w-0">
-                                <router-link
-                                    v-if="item.to && !item.current"
-                                    :to="item.to"
-                                    :title="item.title || item.label"
-                                    class="text-sm font-semibold text-gray-900 hover:text-gray-700 hover:bg-gray-100 px-2.5 py-1 rounded-md transition-colors truncate max-w-[180px] sm:max-w-[360px]"
-                                >
-                                    {{ item.label }}
-                                </router-link>
-                                <span
-                                    v-else
-                                    :title="item.title || item.label"
-                                    class="text-sm px-2.5 py-1 truncate max-w-45 sm:max-w-90"
-                                    :class="
-                                        item.current
-                                            ? 'font-medium text-gray-600'
-                                            : 'font-medium text-gray-700'
-                                    "
-                                >
-                                    {{ item.label }}
-                                </span>
+                    <AnimateLoadingLine :loading="isLoading.load" />
 
-                                <svg
-                                    v-if="index < hierarchyItems.length - 1"
-                                    class="w-3.5 h-3.5 text-gray-400 shrink-0"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                    aria-hidden="true"
-                                >
-                                    <path
-                                        d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"
-                                    />
-                                </svg>
-                            </li>
-                        </template>
-                    </ol>
-                </nav>
-
-                <div class="flex-1 overflow-auto min-h-0">
-                    <Loading
-                        v-if="!isAlive || loading"
-                        :message="'Loading tasks from the source...'"
-                    />
-                    <div v-else>
+                    <div
+                        :class="
+                            isLoading.load
+                                ? 'opacity-60 pointer-events-none'
+                                : ''
+                        "
+                    >
                         <GridTasks
                             v-if="state === 'Grid View'"
                             :tasks="filtered"
@@ -359,7 +319,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                             @toggle-select="toggleTaskSelect"
                             @assign-subtask="onAssignSubtask"
                             @edit-task="onEditTask"
-                            :item-loading="loading"
+                            :item-loading="isLoading.load"
                             :empty-title="emptyTitle"
                             :empty-hint="emptyHint"
                             @open="taskDetail = true"
@@ -453,7 +413,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
             <Transition name="modal">
                 <div
                     v-if="showDeleteConfirm"
-                    class="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 px-4"
+                    class="fixed inset-0 z-200 flex items-center justify-center bg-black/50 px-4"
                     @click.self="cancelDelete"
                 >
                     <div
