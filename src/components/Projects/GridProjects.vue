@@ -9,7 +9,6 @@ const props = defineProps({
     selectable: { type: Boolean, default: false },
     selectedIds: { type: Object, default: () => new Set() }, // Set of selected task ids
     isDeletable: { type: Function, default: () => false },
-    itemLoading: { type: Boolean, default: false },
     emptyTitle: { type: String, default: "No projects found" },
     emptyHint: { type: String, default: "" },
 });
@@ -42,70 +41,61 @@ const handleAssign = (event) => {
 
 <template>
     <div class="h-full min-h-0">
-        <Loading
-            v-if="props.itemLoading"
-            :message="'Loading projects from the source...'"
-        />
-        <div v-else>
+        <div
+            v-if="props.items.length < 1"
+            class="h-full flex items-center justify-center px-4 py-8"
+        >
             <div
-                v-if="props.items.length < 1"
-                class="h-full flex items-center justify-center px-4 py-8"
+                class="w-full max-w-md rounded-2xl border border-dashed border-green-300/70 bg-green-50/50 p-8 text-center"
             >
-                <div
-                    class="w-full max-w-md rounded-2xl border border-dashed border-green-300/70 bg-green-50/50 p-8 text-center"
+                <svg
+                    class="w-12 h-12 mb-3 mx-auto text-green-700/60"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
                 >
-                    <svg
-                        class="w-12 h-12 mb-3 mx-auto text-green-700/60"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="1.5"
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                        />
-                    </svg>
-                    <p class="text-sm font-semibold text-green-950">
-                        {{ props.emptyTitle }}
-                    </p>
-                    <p
-                        v-if="props.emptyHint"
-                        class="mt-1 text-xs text-gray-600"
-                    >
-                        {{ props.emptyHint }}
-                    </p>
-                </div>
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="1.5"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                    />
+                </svg>
+                <p class="text-sm font-semibold text-green-950">
+                    {{ props.emptyTitle }}
+                </p>
+                <p v-if="props.emptyHint" class="mt-1 text-xs text-gray-600">
+                    {{ props.emptyHint }}
+                </p>
             </div>
-
-            <div
-                v-else
-                class="mask-y-from-95% mask-y-to-97% h-full overflow-y-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 justify-items-stretch px-4 sm:px-6 lg:px-10 py-6 gap-4"
-            >
-                <ProjectCard
-                    v-for="(item, index) in props.items"
-                    :key="item.id"
-                    :project="item"
-                    :selectable="props.selectable"
-                    :selected="props.selectedIds.has(item.id)"
-                    :is-deletable="props.isDeletable(item)"
-                    @open="handleOpen"
-                    @toggle-select="emit('toggle-select', $event)"
-                    :style="{ animationDelay: `${index * 0.03}s` }"
-                />
-            </div>
-
-            <Transition name="modal">
-                <TaskDetail
-                    v-if="selected"
-                    :task="selected"
-                    :loading="loading"
-                    @close="handleClose"
-                    @assignSubtask="handleAssign"
-                />
-            </Transition>
         </div>
+
+        <div
+            v-else
+            class="mask-y-from-95% mask-y-to-97% h-full overflow-y-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 justify-items-stretch px-4 sm:px-6 lg:px-10 py-6 gap-4"
+        >
+            <ProjectCard
+                v-for="(item, index) in props.items"
+                :key="item.id"
+                :project="item"
+                :selectable="props.selectable"
+                :selected="props.selectedIds.has(item.id)"
+                :is-deletable="props.isDeletable(item)"
+                @open="handleOpen"
+                @toggle-select="emit('toggle-select', $event)"
+                :style="{ animationDelay: `${index * 0.03}s` }"
+            />
+        </div>
+
+        <Transition name="modal">
+            <TaskDetail
+                v-if="selected"
+                :task="selected"
+                :loading="loading"
+                @close="handleClose"
+                @assignSubtask="handleAssign"
+            />
+        </Transition>
     </div>
 </template>
 

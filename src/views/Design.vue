@@ -5,11 +5,11 @@ import ChartSubtasks from "@/components/Subtasks/ChartSubtasks.vue";
 import GridSubtasks from "@/components/Subtasks/GridSubtasks.vue";
 import TableSubtasks from "@/components/Subtasks/TableSubtasks.vue";
 import { useSubtaskStore } from "@/stores/subtasks";
-import { taskStore } from "@/stores/tasks";
+import { useTaskStore } from "@/stores/tasks";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { computed, onMounted, ref } from "vue";
 
-const store = taskStore();
+const taskStore = useTaskStore();
 const subtaskStore = useSubtaskStore();
 const auth = useAuthStore();
 const state = ref("Grid View");
@@ -27,14 +27,14 @@ const selectionMode = ref(false);
 
 const tasks = computed(() => {
     return [
-        ...store.tasks.filter((t) => t.design),
+        ...taskStore.tasks.filter((t) => t.design),
         ...subtaskStore.subtasks.filter((st) => st.design),
     ];
 });
 
 onMounted(async () => {
     loading.value = true;
-    await Promise.all([store.fetchTasks(), subtaskStore.fetchSubTasks()]);
+    await Promise.all([taskStore.fetchTasks(), subtaskStore.fetchSubTasks()]);
     loading.value = false;
 });
 
@@ -123,7 +123,10 @@ const onCloseAddTask = async (success) => {
     preFillData.value = null;
 
     if (success && taskDetail.value === false) {
-        await Promise.all([store.fetchTasks(), subtaskStore.fetchSubTasks()]);
+        await Promise.all([
+            taskStore.fetchTasks(),
+            subtaskStore.fetchSubTasks(),
+        ]);
     }
 };
 </script>

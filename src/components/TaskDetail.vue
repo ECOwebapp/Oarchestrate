@@ -4,7 +4,7 @@ import { useDesignStore } from "@/stores/design";
 import { useMemberStore } from "@/stores/member";
 import { usePosStore } from "@/stores/positions";
 import { useSubtaskStore } from "@/stores/subtasks";
-import { taskStore } from "@/stores/tasks";
+import { useTaskStore } from "@/stores/tasks";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { storeToRefs } from "pinia";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
@@ -42,7 +42,7 @@ const mdiTrashCan =
 const props = defineProps(["task", "loading"]);
 const emit = defineEmits(["close", "refresh", "assignSubtask"]);
 const auth = useAuthStore();
-const store = taskStore();
+const taskStore = useTaskStore();
 const subtaskStore = useSubtaskStore();
 const memberStore = useMemberStore();
 const posStore = usePosStore();
@@ -151,7 +151,7 @@ const onFilePickEdit = (e) => {
 
 const loadRevisions = async () => {
     loadingRevs.value = true;
-    revisions.value = (await store.fetchRevisions(props.task?.id)) || [];
+    revisions.value = (await taskStore.fetchRevisions(props.task?.id)) || [];
     loadingRevs.value = false;
     await nextTick();
     chatBottom.value?.scrollIntoView({ behavior: "smooth" });
@@ -429,7 +429,12 @@ const approve = async () => {
                 role,
                 props.task.parentId,
             );
-        else await store.approveTask(props.task.id, role, props.task.parentId);
+        else
+            await taskStore.approveTask(
+                props.task.id,
+                role,
+                props.task.parentId,
+            );
         emit("refresh");
         emit("close");
     } finally {
@@ -462,7 +467,7 @@ const requestRevision = async () => {
                 props.task.parentId,
             );
         } else
-            await store.requestRevision(
+            await taskStore.requestRevision(
                 props.task.id,
                 revisionComment.value.trim(),
                 role,
@@ -491,7 +496,7 @@ const submitOutput = async () => {
         });
         if (Object.hasOwn(props.task, "designApproval"))
             await subtaskStore.submitOutput(props.task.id, result.fileUrl);
-        else await store.submitOutput(props.task.id, result.fileUrl);
+        else await taskStore.submitOutput(props.task.id, result.fileUrl);
         emit("refresh");
         emit("close");
     } catch (err) {
@@ -521,7 +526,7 @@ const resubmit = async () => {
                 props.task.parentId,
             );
         else
-            await store.resubmitTask(
+            await taskStore.resubmitTask(
                 props.task.id,
                 result.fileUrl,
                 props.task.parentId,
@@ -554,7 +559,7 @@ const saveEditedOutput = async () => {
         });
         if (Object.hasOwn(props.task, "designApproval"))
             await subtaskStore.editOutput(props.task.id, result.fileUrl);
-        else await store.editOutput(props.task.id, result.fileUrl);
+        else await taskStore.editOutput(props.task.id, result.fileUrl);
         editFile.value = null;
         editingSubmission.value = false;
         uploadProgress.value = 0;
@@ -574,7 +579,7 @@ const confirmDeleteOutput = async () => {
     try {
         if (Object.hasOwn(props.task, "designApproval"))
             await subtaskStore.deleteOutput(props.task.id);
-        else await store.deleteOutput(props.task.id);
+        else await taskStore.deleteOutput(props.task.id);
         confirmingDelete.value = false;
         emit("refresh");
         // Stay open; task now shows the upload UI again
