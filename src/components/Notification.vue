@@ -1,6 +1,6 @@
 <script setup vapor>
 import TaskDetail from "@/components/TaskDetail.vue";
-import { taskStore } from "@/stores/tasks";
+import { useTaskStore } from "@/stores/tasks";
 import { useSubtaskStore } from "@/stores/subtasks";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useNotifStore } from "@/stores/useNotifStore";
@@ -8,7 +8,7 @@ import { nextTick, onMounted, onUnmounted, ref } from "vue";
 
 const notifStore = useNotifStore();
 const auth = useAuthStore();
-const store = taskStore();
+const taskStore = useTaskStore();
 const subtaskStore = useSubtaskStore();
 
 const open = ref(false);
@@ -94,7 +94,7 @@ const openTask = async (n) => {
 
         const query = n.type?.toLowerCase().includes("subtask")
             ? subtaskStore.fetchSubtaskById(id)
-            : store.fetchTaskById(id);
+            : taskStore.fetchTaskById(id);
 
         activeTask.value = await query;
     } catch {

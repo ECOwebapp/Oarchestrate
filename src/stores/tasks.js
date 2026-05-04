@@ -3,7 +3,7 @@ import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { apiFetch } from "@/lib/api";
 
-export const taskStore = defineStore("tasks", () => {
+export const useTaskStore = defineStore("tasks", () => {
   const tasks = ref([]);
   const loading = ref(false);
 
