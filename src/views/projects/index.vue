@@ -4,7 +4,6 @@ import GridProjects from "@/components/Projects/GridProjects.vue";
 import TableProjects from "@/components/Projects/TableProjects.vue";
 import Icons from "@/components/Icons.vue";
 import ChartProjects from "@/components/Projects/ChartProjects.vue";
-import Loading from "@/components/Loading.vue";
 import SettingsButton from "@/components/SettingsButton.vue";
 import SearchBar from "@/components/SearchBar.vue";
 import { useProjectStore } from "@/stores/projects";

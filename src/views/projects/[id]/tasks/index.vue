@@ -4,11 +4,12 @@ import ChartTasks from "@/components/Tasks/ChartTasks.vue";
 import GridTasks from "@/components/Tasks/GridTasks.vue";
 import Icons from "@/components/Icons.vue";
 import TableTasks from "@/components/Tasks/TableTasks.vue";
-import Loading from "@/components/Loading.vue";
+import SettingsButton from "@/components/SettingsButton.vue";
+import SearchBar from "@/components/SearchBar.vue";
 import { taskStore } from "@/stores/tasks";
 import { useProjectStore } from "@/stores/projects";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { storeToRefs } from "pinia";
 import { useRoute } from "vue-router";
 
@@ -35,38 +36,15 @@ const isDeleting = ref(false);
 const deleteError = ref("");
 const taskDetail = ref(false);
 
-const tasks = computed(() => {
-    // if (auth.isDirector) {
-    //   return store.tasks.filter(t => {
-    //     // 1. Core requirement: Must not be marked as 'design'
-    //     const isNotDesigned = !t.design;
+const isMobile = ref(window.innerWidth < 640);
+const checkViewport = () => (isMobile.value = window.innerWidth < 640);
 
-    //     const isParentTask = !t.parentId
-
-    //     // 2. The Exception:
-    //     // Show it if the Unit Head approved it (true)
-    //     // OR if the task type is 'Insertion' (typeId === 2)
-    //     const isVisibleToDirector = t.unitHead || t.typeId === 2;
-
-    //     return isNotDesigned;
-    //   });
-    // }
-
-    // Default filter for everyone else
-
-    return store.tasks.filter((t) => !t.design);
-});
-
-const activeUnitId = computed(() => {
-    const headRole = auth.positions?.find((p) => p.pos_id === 4);
-    return headRole?.unit_id ?? null;
-});
+const tasks = computed(() => store.tasks.filter((t) => !t.design));
+const fetchItems = async () => await store.fetchTasks(parentId.value);
 
 onMounted(async () => {
-    await Promise.all([
-        store.fetchTasks(parentId.value),
-        projectStore.fetchProjects(),
-    ]);
+    await Promise.all([fetchItems(), projectStore.fetchProjects()]);
+    window.addEventListener("resize", checkViewport);
 });
 
 const parentProjectTitle = computed(() => {
@@ -278,27 +256,29 @@ const onCloseAddTask = async (success) => {
         await store.fetchTasks(parentId.value);
     }
 };
+
+onUnmounted(() => window.removeEventListener("resize", checkViewport));
 </script>
 
 <template>
     <div class="flex flex-col h-full min-h-0">
-        <Loading v-if="loading" :message="'Loading tasks from the source...'" />
-
-        <div v-else class="flex flex-col h-full min-h-0">
+        <div class="flex flex-col h-full min-h-0">
             <!-- ── Toolbar ── -->
             <div
-                class="flex flex-wrap items-center gap-3 px-4 sm:px-6 lg:px-10 py-4 flex-shrink-0"
+                v-if="isMobile"
+                class="flex flex-wrap items-center gap-3 px-6 pt-4 shrink-0"
+            >
+                <SearchBar v-model="search" :placeholder="'Search Tasks...'" />
+            </div>
+
+            <div
+                class="flex flex-wrap sm:justify-start justify-end items-center gap-3 px-4 sm:px-6 lg:px-10 py-4 shrink-0"
             >
                 <!-- Add Task -->
                 <button
-                    v-if="
-                        !selectionMode &&
-                        (auth.isDirector ||
-                            (!route.params.id &&
-                                (auth.isMember || auth.isUnitHead)))
-                    "
+                    v-if="!selectionMode && auth.isDirector"
                     @click="addTask = true"
-                    class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl hover:bg-green-800 active:scale-95 transition-all text-sm flex-shrink-0 hover:cursor-pointer"
+                    class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl hover:bg-green-800 active:scale-95 transition-all text-sm shrink-0 hover:cursor-pointer"
                 >
                     <Icons :icon="'add'" />
                     <span class="hidden sm:inline">Add Task</span>
@@ -308,11 +288,11 @@ const onCloseAddTask = async (success) => {
                 <button
                     v-if="canDelete"
                     @click="toggleSelectMode"
-                    class="flex items-center gap-2 font-bold h-11 px-5 rounded-2xl transition-all text-sm flex-shrink-0"
+                    class="flex items-center gap-2 font-bold h-11 px-5 rounded-2xl transition-all text-sm shrink-0 hover:cursor-pointer"
                     :class="
                         selectionMode
                             ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            : 'outline outline-2 outline-green-950 text-green-950 bg-white hover:bg-green-50'
+                            : 'outline-2 outline-green-950 text-green-950 bg-white hover:bg-green-50'
                     "
                 >
                     <svg
@@ -345,7 +325,7 @@ const onCloseAddTask = async (success) => {
                     v-if="selectionMode"
                     @click="toggleSelectAll"
                     :disabled="selectableTasks.length === 0"
-                    class="flex items-center gap-2 font-bold h-11 px-4 rounded-2xl transition-all text-sm outline outline-2 outline-green-950 bg-white text-green-950 hover:bg-green-50 flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                    class="flex items-center gap-2 font-bold h-11 px-4 rounded-2xl transition-all text-sm outline-2 outline-green-950 bg-white text-green-950 hover:bg-green-50 hover:cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                     <div
                         class="w-4 h-4 rounded border-2 flex items-center justify-center transition-all"
@@ -376,37 +356,22 @@ const onCloseAddTask = async (success) => {
                             <path d="M19 13H5v-2h14v2z" />
                         </svg>
                     </div>
-                    <span class="hidden sm:inline">All</span>
-                </button>
-
-                <!-- Selected count badge -->
-                <Transition name="fade-slide">
-                    <div
-                        v-if="selectionMode && selectedCount > 0"
-                        class="flex items-center gap-1.5 h-11 px-4 rounded-2xl bg-green-950 text-white text-sm font-bold flex-shrink-0"
+                    <span v-if="selectedCount < 1" class="hidden sm:inline"
+                        >Select All</span
                     >
+
+                    <div v-else class="flex items-center gap-1.5">
                         <span>{{ selectedCount }}</span>
                         <span class="hidden sm:inline">selected</span>
-                        <!-- Warn Unit Head if some selections aren't deletable by them -->
-                        <span
-                            v-if="
-                                auth.isUnitHead &&
-                                !auth.isDirector &&
-                                deletableSelectedCount < selectedCount
-                            "
-                            class="text-amber-300 text-[10px] ml-1 hidden sm:inline"
-                        >
-                            ({{ deletableSelectedCount }} deletable)
-                        </span>
                     </div>
-                </Transition>
+                </button>
 
                 <!-- Delete button — visible only when ≥1 deletable task is selected -->
                 <Transition name="fade-slide">
                     <button
                         v-if="selectionMode && deletableSelectedCount > 0"
                         @click="showDeleteConfirm = true"
-                        class="flex items-center gap-2 h-11 px-5 rounded-2xl font-bold text-sm transition-all bg-red-700 text-white hover:bg-red-800 active:scale-95 flex-shrink-0"
+                        class="flex items-center gap-2 h-11 px-5 rounded-2xl font-bold text-sm transition-all bg-red-700 text-white hover:bg-red-800 hover:cursor-pointer active:scale-95 shrink-0"
                     >
                         <svg
                             class="w-4 h-4"
@@ -422,49 +387,51 @@ const onCloseAddTask = async (success) => {
                 </Transition>
 
                 <!-- Search -->
-                <div
-                    class="flex items-center rounded-2xl bg-white border border-gray-300 px-3 focus-within:border-green-800 focus-within:ring-2 focus-within:ring-green-800/20 transition-all flex-1 min-w-0 h-11"
-                >
-                    <Icons
-                        :icon="'search'"
-                        class="text-gray-400 flex-shrink-0"
-                    />
-                    <input
-                        v-model="search"
-                        type="text"
-                        placeholder="Search tasks…"
-                        class="ml-2 flex-1 min-w-0 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
-                    />
-                </div>
+                <SearchBar
+                    v-if="!isMobile"
+                    v-model="search"
+                    :placeholder="'Search Tasks...'"
+                />
 
-                <!-- Filter -->
-                <select
-                    v-model="filter"
-                    class="h-11 px-3 rounded-2xl border border-gray-300 text-sm text-gray-700 focus:outline-none focus:border-green-800 bg-white flex-shrink-0"
-                >
-                    <option v-for="o in filterOpts" :key="o" :value="o">
-                        {{ o }}
-                    </option>
-                </select>
+                <SettingsButton>
+                    <template v-slot:filter>
+                        <select
+                            v-model="filter"
+                            class="h-11 px-4 rounded-xl border border-gray-300 font-bold text-sm text-gray-700 focus:outline-none focus:border-green-800 bg-white shrink-0"
+                        >
+                            <option v-for="o in filterOpts" :key="o" :value="o">
+                                {{ o }}
+                            </option>
+                        </select>
+                    </template>
 
-                <!-- Sort -->
-                <select
-                    v-model="sortBy"
-                    class="h-11 px-3 rounded-2xl border border-gray-300 text-sm text-gray-700 focus:outline-none focus:border-green-800 bg-white flex-shrink-0"
+                    <template v-slot:sort>
+                        <!-- Sort -->
+                        <select
+                            v-model="sortBy"
+                            class="h-11 px-4 rounded-xl border border-gray-300 font-bold text-sm text-gray-700 focus:outline-none focus:border-green-800 bg-white shrink-0"
+                        >
+                            <option v-for="o in sortOpts" :key="o" :value="o">
+                                {{ o }}
+                            </option>
+                        </select>
+                    </template>
+                </SettingsButton>
+
+                <button
+                    @click="fetchItems"
+                    class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl hover:bg-green-800 active:scale-95 transition-all text-sm shrink-0 hover:cursor-pointer"
                 >
-                    <option v-for="o in sortOpts" :key="o" :value="o">
-                        {{ o }}
-                    </option>
-                </select>
+                    <Icons :icon="'resubmit'" />
+                    <span class="hidden sm:inline">Refresh</span>
+                </button>
 
                 <!-- Count -->
-                <span
-                    class="text-xs text-gray-500 flex-shrink-0 hidden sm:block"
-                >
-                    {{ filtered.length }} task{{
-                        filtered.length !== 1 ? "s" : ""
-                    }}
-                </span>
+                <!-- <span class="text-xs text-gray-500 shrink-0 hidden sm:block">
+                {{ filtered.length }} PPA{{
+                    filtered.length !== 1 ? "s" : ""
+                }}
+            </span> -->
             </div>
 
             <!-- ── View ── -->
@@ -504,7 +471,7 @@ const onCloseAddTask = async (success) => {
 
                                 <svg
                                     v-if="index < hierarchyItems.length - 1"
-                                    class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"
+                                    class="w-3.5 h-3.5 text-gray-400 shrink-0"
                                     viewBox="0 0 24 24"
                                     fill="currentColor"
                                     aria-hidden="true"
@@ -528,7 +495,7 @@ const onCloseAddTask = async (success) => {
                         @toggle-select="toggleTaskSelect"
                         @assign-subtask="onAssignSubtask"
                         @edit-task="onEditTask"
-                        :modal="loading"
+                        :item-loading="loading"
                         :empty-title="emptyTitle"
                         :empty-hint="emptyHint"
                         @open="taskDetail = true"
