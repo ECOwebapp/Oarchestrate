@@ -28,19 +28,16 @@ const selectedIds = ref(new Set());
 const selectionMode = ref(false);
 
 const tasks = computed(() => {
-    return [
-        ...taskStore.tasks.filter((t) => t.design),
-        ...subtaskStore.subtasks.filter((st) => st.design),
-    ];
+    return subtaskStore.subtasks.filter((st) => st.design);
 });
 
-const fetchItems = () => [taskStore.fetchTasks(), subtaskStore.fetchSubTasks()];
+const fetchItems = () => subtaskStore.fetchSubTasks();
 const reload = async () => {
     loading.value = true;
     isAlive.value = false;
 
     try {
-        await Promise.all([...fetchItems(), nextTick()]);
+        await Promise.all([fetchItems(), nextTick()]);
     } finally {
         isAlive.value = true;
         loading.value = false;
@@ -55,7 +52,7 @@ onMounted(async () => {
     isAlive.value = false;
 
     try {
-        await Promise.all(fetchItems());
+        await fetchItems();
         window.addEventListener("resize", checkViewport);
     } finally {
         isAlive.value = true;
