@@ -174,37 +174,6 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
             <div
                 class="flex-1 overflow-auto bg-white mx-4 sm:mx-6 lg:mx-10 rounded-xl shadow-md min-h-0"
             >
-<<<<<<< HEAD
-                <GridSubtasks
-                    v-if="state === 'Grid View'"
-                    :subtasks="filtered"
-                    :selectable="selectionMode"
-                    :selected-ids="selectedIds"
-                    @toggle-select="toggleTaskSelect"
-                    @assign-subtask="onAssignSubtask"
-                    :modal="loading"
-                    @open="taskDetail = true"
-                    @close="taskDetail = false"
-                    @success="
-                        () => {
-                            taskDetail = false;
-                            onCloseAddTask(true);
-                        }
-                    "
-                />
-                <TableSubtasks
-                    v-else-if="state === 'Table View'"
-                    :subtasks="filtered"
-                    :selectable="selectionMode"
-                    :selected-ids="selectedIds"
-                    @toggle-select="toggleTaskSelect"
-                    @assign-subtask="onAssignSubtask"
-                />
-                <ChartSubtasks
-                    v-else-if="state === 'Chart View'"
-                    :subtasks="filtered"
-                />
-=======
                 <div
                     v-for="isLoading in [{ load: !isAlive || loading }]"
                     :key="isLoading.load"
@@ -244,7 +213,6 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                         />
                     </div>
                 </div>
->>>>>>> development
             </div>
 
             <!-- ── View toggle ── -->
