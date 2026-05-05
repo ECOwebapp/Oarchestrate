@@ -96,27 +96,26 @@ const handleSave = async () => {
 
 <template>
     <div class="flex flex-col gap-5">
-        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <table class="flex-1 w-full">
-            <thead>
-                <tr class="bg-gradient-to-r from-emerald-950 to-green-800 text-white">
-                    <th v-for="head in ['Position', 'Unit', 'Action']" class="text-sm uppercase tracking-wide text-start px-5 py-3">{{ head }}
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr v-for="(pos, index) in (auth.positions || [])" class="border-b border-slate-100 transition-colors hover:bg-slate-50/80 last:border-b-0">
-                    <td class="py-4 px-5 text-sm font-medium text-slate-700">{{ pos.pos_name }}</td>
-                    <td class="px-5 text-sm text-slate-600">{{ pos.unit_name }}</td>
-                    <td v-if="![1, 4].includes(pos.pos_id)" class="flex flex-row items-center gap-3 py-4 px-5 text-slate-500">
-                        <Icons :icon="'edit'" class="hover:text-emerald-700 hover:cursor-pointer" @click="openEditModal(pos)" />
-                        <Icons :icon="'deleteOutline'" class="text-red-700 hover:text-red-800 hover:cursor-pointer"
-                            @click="openDeleteModal(pos)" />
-                    </td>
-                </tr>
-            </tbody>
-
-        </table>
+        <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <table class="min-w-[560px] w-full">
+                <thead>
+                    <tr class="bg-gradient-to-r from-emerald-950 to-green-800 text-white">
+                        <th v-for="head in ['Position', 'Unit', 'Action']" class="text-sm uppercase tracking-wide text-start px-5 py-3">{{ head }}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(pos, index) in (auth.positions || [])" class="border-b border-slate-100 transition-colors hover:bg-slate-50/80 last:border-b-0">
+                        <td class="py-4 px-5 text-sm font-medium text-slate-700">{{ pos.pos_name }}</td>
+                        <td class="px-5 text-sm text-slate-600">{{ pos.unit_name }}</td>
+                        <td v-if="![1, 4].includes(pos.pos_id)" class="flex flex-row items-center gap-3 py-4 px-5 text-slate-500">
+                            <Icons :icon="'edit'" class="hover:text-emerald-700 hover:cursor-pointer" @click="openEditModal(pos)" />
+                            <Icons :icon="'deleteOutline'" class="text-red-700 hover:text-red-800 hover:cursor-pointer"
+                                @click="openDeleteModal(pos)" />
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
         <div v-if="!auth.isDirector"
             class="self-center mt-2 flex gap-3 rounded-full bg-gradient-to-r from-emerald-800 to-green-700 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(4,120,87,0.25)] transition-all hover:-translate-y-0.5 hover:from-emerald-700 hover:to-green-600 hover:shadow-[0_10px_24px_rgba(4,120,87,0.32)] hover:cursor-pointer"

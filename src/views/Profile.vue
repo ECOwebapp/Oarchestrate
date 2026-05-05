@@ -98,12 +98,7 @@ onMounted(async () => {
 
 <template>
     <div
-        class="profile-view relative flex justify-center bg-slate-100 px-3 py-4 sm:px-6 sm:py-6 lg:px-10 lg:py-8"
-        :class="
-            infoSection === 'personal'
-                ? 'h-auto min-h-fit overflow-visible'
-                : 'h-full min-h-0 overflow-y-auto'
-        "
+        class="profile-view relative flex h-full min-h-0 flex-col items-center overflow-hidden bg-slate-100 px-3 py-4 sm:px-6 sm:py-6 lg:px-10 lg:py-8"
     >
         <div
             class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(6,95,70,0.15),_transparent_40%),radial-gradient(circle_at_bottom_right,_rgba(15,23,42,0.12),_transparent_48%)]"
@@ -141,20 +136,15 @@ onMounted(async () => {
         <!-- Main content -->
         <div
             v-else
-            class="profile-shell relative z-10 flex w-full max-w-305 flex-col gap-5 rounded-3xl border border-slate-200/80 bg-white/90 p-4 shadow-[0_26px_65px_rgba(15,23,42,0.12)] backdrop-blur-md sm:p-6 lg:min-h-0 lg:flex-row lg:p-8"
-            :class="
-                infoSection === 'personal'
-                    ? 'overflow-visible'
-                    : 'overflow-hidden'
-            "
+            class="profile-shell relative z-10 flex w-full max-w-[1200px] min-h-0 flex-1 flex-col gap-5 overflow-hidden rounded-3xl border border-slate-200/80 bg-white/90 p-4 shadow-[0_26px_65px_rgba(15,23,42,0.12)] backdrop-blur-md sm:p-6 md:flex-row md:p-7 lg:p-8"
         >
             <!-- Navbar -->
-            <div class="w-full lg:w-72 lg:shrink-0">
+            <div class="w-full md:w-64 md:shrink-0 lg:w-72">
                 <ul
-                    class="flex w-full lg:flex-col flex-row gap-2 border-b border-slate-200 pb-4 lg:border-b-0 lg:border-r lg:pr-5 lg:pb-0"
+                    class="flex w-full flex-row gap-1 border-b border-slate-200 pb-3 sm:gap-2 sm:pb-4 md:flex-col md:border-b-0 md:border-r md:pr-5 md:pb-0"
                 >
                     <li
-                        class="group flex items-center p-4 text-sm font-semibold rounded-2xl transition-all duration-200 hover:cursor-pointer"
+                        class="group flex flex-1 items-center justify-center gap-2 rounded-2xl p-2.5 text-sm font-semibold transition-all duration-200 hover:cursor-pointer sm:flex-initial sm:justify-start sm:p-4 md:w-full"
                         :class="
                             infoSection === section.key
                                 ? 'bg-linear-to-r from-emerald-950 via-green-900 to-green-800 text-white shadow-[0_10px_30px_rgba(6,78,59,0.28)]'
@@ -170,11 +160,11 @@ onMounted(async () => {
                             <Icons :icon="section.icon" />
                         </span>
                         <span
-                            class="flex-1 px-2 text-xs hidden md:block lg:text-sm"
+                            class="flex-1 px-2 text-xs hidden sm:block lg:text-sm"
                             >{{ section.label }}</span
                         >
                         <span
-                            class="transition-transform duration-200 group-hover:translate-x-0.5"
+                            class="transition-transform duration-200 group-hover:translate-x-0.5 hidden sm:inline-flex"
                         >
                             <Icons :icon="'chevronRight'" />
                         </span>
@@ -183,7 +173,7 @@ onMounted(async () => {
             </div>
 
             <div
-                class="min-w-0 flex-1 overflow-x-hidden rounded-2xl border border-slate-200/90 bg-white/80 p-4 shadow-inner shadow-slate-200/40 sm:p-6 lg:p-7"
+                class="min-w-0 flex-1 min-h-0 overflow-x-hidden overflow-y-auto rounded-2xl border border-slate-200/90 bg-white/80 p-4 shadow-inner shadow-slate-200/40 sm:p-6 lg:p-7"
             >
                 <!-- Feedback banners -->
                 <Transition name="fade">
