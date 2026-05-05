@@ -10,6 +10,7 @@ const props = defineProps({
     selectable: { type: Boolean, default: false },
     selectedIds: { type: Object, default: () => new Set() }, // Set of selected task ids
     isDeletable: { type: Function, default: () => false },
+    itemLoading: { type: Boolean, default: false },
     emptyTitle: { type: String, default: "No subtasks found" },
     emptyHint: { type: String, default: "" },
 });
@@ -84,10 +85,11 @@ const handleAssign = (event) => {
             <SubtaskCard
                 v-for="(subtask, index) in props.subtasks"
                 :key="subtask.id"
-                :task="subtask"
+                :subtask="subtask"
                 :selectable="props.selectable"
                 :selected="props.selectedIds.has(subtask.id)"
                 :is-deletable="props.isDeletable(subtask)"
+                :item-loading="props.itemLoading"
                 @open="handleOpen(subtask)"
                 @toggle-select="emit('toggle-select', $event)"
                 @assignSubtask="handleAssign"
@@ -104,7 +106,6 @@ const handleAssign = (event) => {
                         :task="selected"
                         :loading="loading"
                         @close="handleClose"
-                        @assignSubtask="handleAssign"
                     />
                 </Transition>
             </Teleport>

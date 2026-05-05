@@ -39,9 +39,6 @@ importers:
       html2canvas:
         specifier: ^1.4.1
         version: 1.4.1
-      jordium-gantt-vue3:
-        specifier: ^1.9.2
-        version: 1.10.2(vue@3.6.0-beta.10)
       jspdf:
         specifier: ^4.2.1
         version: 4.2.1
@@ -85,6 +82,9 @@ importers:
       '@vue/typescript-plugin':
         specifier: ^3.2.7
         version: 3.2.7
+      jordium-gantt-vue3:
+        specifier: ^1.9.2
+        version: 1.10.2(vue@3.6.0-beta.10)
       jsdom:
         specifier: ^28.1.0
         version: 28.1.0(@noble/hashes@1.8.0)

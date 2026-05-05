@@ -317,6 +317,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                             :selectable="selectionMode"
                             :selected-ids="selectedIds"
                             :is-deletable="isDeletable"
+                            :item-loading="isLoading.load"
                             @toggle-select="toggleTaskSelect"
                             @assign-subtask="onAssignSubtask"
                             @open="taskDetail = true"

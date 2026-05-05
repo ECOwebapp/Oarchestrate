@@ -7,6 +7,7 @@ const props = defineProps({
     selectable: { type: Boolean, default: false },
     selectedIds: { type: Object, default: () => new Set() }, // Set of selected task ids
     isDeletable: { type: Function, default: () => false },
+    itemLoading: { type: Boolean, default: false },
 });
 const emit = defineEmits([
     "assignSubtask",
@@ -91,7 +92,10 @@ const handleAssign = (event) => {
                                 '',
                             ]"
                             :key="h"
-                            class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider bg-green-950 text-white border border-green-800 whitespace-nowrap animate-slide-up"
+                            :class="[
+                                'px-4 py-3 text-left text-xs font-bold uppercase tracking-wider bg-green-950 text-white border border-green-800 whitespace-nowrap',
+                                !props.itemLoading ? 'animate-slide-up' : '',
+                            ]"
                         >
                             {{ h }}
                         </th>
@@ -109,7 +113,7 @@ const handleAssign = (event) => {
                     <tr
                         v-for="(task, index) in subtasks"
                         :key="task.id"
-                        class="border-b border-gray-100 transition-colors animate-slide-up"
+                        class="border-b border-gray-100 transition-colors"
                         :class="[
                             selectedIds.has(task.id)
                                 ? 'bg-green-50'
@@ -117,6 +121,7 @@ const handleAssign = (event) => {
                             selectable && isDeletable(task)
                                 ? 'cursor-pointer'
                                 : '',
+                            !props.itemLoading ? 'animate-slide-up' : '',
                         ]"
                         :style="{ animationDelay: `${index * 0.04}s` }"
                         @click="handleRowClick(task)"

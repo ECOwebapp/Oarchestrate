@@ -20,9 +20,7 @@ const search = ref("");
 const filter = ref("All");
 const sortBy = ref("Recently Assigned");
 const isAlive = ref(true);
-
 const taskDetail = ref(false);
-
 const { subtasks: tasks, loading } = storeToRefs(subtaskStore);
 
 const fetchItems = () => subtaskStore.fetchSubTasks(null, true);
@@ -184,9 +182,9 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                         <GridSubtasks
                             v-if="state === 'Grid View'"
                             :subtasks="filtered"
-                            :modal="loading"
                             :empty-title="'No designs found'"
                             :empty-hint="projectEmptyHint"
+                            :item-loading="isLoading.load"
                             @assign-subtask="onAssignSubtask"
                             @open="taskDetail = true"
                             @close="taskDetail = false"
@@ -200,6 +198,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                         <TableSubtasks
                             v-else-if="state === 'Table View'"
                             :subtasks="filtered"
+                            :item-loading="isLoading.load"
                             @assign-subtask="onAssignSubtask"
                         />
                         <ChartSubtasks

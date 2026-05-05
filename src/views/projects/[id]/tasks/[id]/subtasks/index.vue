@@ -16,7 +16,7 @@ import ChartSubtasks from "@/components/Subtasks/ChartSubtasks.vue";
 import AddSubtask from "@/components/Subtasks/AddSubtask.vue";
 
 const subtaskStore = useSubtaskStore();
-const { subtasks } = storeToRefs(subtaskStore);
+const { subtasks, loading } = storeToRefs(subtaskStore);
 const tasksStore = useTaskStore();
 const projectStore = useProjectStore();
 const auth = useAuthStore();
@@ -26,7 +26,6 @@ const addTask = ref(false);
 const search = ref("");
 const filter = ref("All");
 const sortBy = ref("Recently Assigned");
-const loading = storeToRefs(subtaskStore)?.loading;
 const parentId = computed(() => Number(route.params.id));
 
 const isMobile = ref(window.innerWidth < 640);
@@ -46,9 +45,12 @@ const isAlive = ref(true);
 
 const fetchItems = async () => await subtaskStore.fetchSubTasks(parentId.value);
 const reload = async () => {
-    isAlive.value = false; // Disconnect
-    await Promise.all([fetchItems(), nextTick()]); // Wait for DOM to update
-    isAlive.value = true; // Reconnect
+    isAlive.value = false;
+    try {
+        await Promise.all([fetchItems(), nextTick()]);
+    } finally {
+        isAlive.value = true;
+    }
 };
 
 onMounted(async () => {
@@ -321,7 +323,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                             :selectable="selectionMode"
                             :selected-ids="selectedIds"
                             :is-deletable="isDeletable"
-                            :item-loading="isLoading.loading"
+                            :item-loading="isLoading.load"
                             :empty-title="emptyTitle"
                             :empty-hint="emptyHint"
                             @toggle-select="toggleTaskSelect"
@@ -341,6 +343,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                             :selectable="selectionMode"
                             :selected-ids="selectedIds"
                             :is-deletable="isDeletable"
+                            :item-loading="isLoading.load"
                             @toggle-select="toggleTaskSelect"
                             @assign-subtask="onAssignSubtask"
                             @open="taskDetail = true"
@@ -361,7 +364,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
             </div>
 
             <!-- ── View toggle ── -->
-            <div class="flex justify-center py-3 flex-shrink-0">
+            <div class="flex justify-center py-3 shrink-0">
                 <div
                     class="inline-flex flex-wrap items-center gap-1 rounded-2xl bg-gray-100 p-1"
                 >
@@ -416,7 +419,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
             <Transition name="modal">
                 <div
                     v-if="showDeleteConfirm"
-                    class="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 px-4"
+                    class="fixed inset-0 z-200 flex items-center justify-center bg-black/50 px-4"
                     @click.self="cancelDelete"
                 >
                     <div

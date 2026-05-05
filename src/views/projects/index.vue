@@ -13,19 +13,18 @@ import { computed, onMounted, onUnmounted, ref, nextTick } from "vue";
 import { storeToRefs } from "pinia";
 
 const projectStore = useProjectStore();
-const fetchItems = async () => await projectStore.fetchProjects();
 const auth = useAuthStore();
+
 const state = ref("Grid View");
 const addTask = ref(false);
 const search = ref("");
 const filter = ref("All");
 const sortBy = ref("Recently Assigned");
-const { projects, loading: projectLoading } = storeToRefs(projectStore);
-const loading = projectLoading;
+const { projects, loading } = storeToRefs(projectStore);
 const isMobile = ref(window.innerWidth < 640);
 const checkViewport = () => (isMobile.value = window.innerWidth < 640);
-
 const isAlive = ref(true);
+const fetchItems = async () => await projectStore.fetchProjects();
 const reload = async () => {
     isAlive.value = false; // Disconnect
     await Promise.all([fetchItems(), nextTick()]); // Wait for DOM to update
@@ -44,9 +43,9 @@ const showDeleteConfirm = ref(false);
 const isDeleting = ref(false);
 const deleteError = ref("");
 
-onMounted(() => {
+onMounted(async () => {
     projects.value = [];
-    fetchItems();
+    await fetchItems();
     window.addEventListener("resize", checkViewport);
 });
 
@@ -266,9 +265,10 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                             :selectable="selectionMode"
                             :selected-ids="selectedIds"
                             :is-deletable="isDeletable"
-                            @toggle-select="toggleTaskSelect"
                             :empty-title="projectEmptyTitle"
                             :empty-hint="projectEmptyHint"
+                            :item-loading="isLoading.load"
+                            @toggle-select="toggleTaskSelect"
                             @success="onCloseAddProject(true)"
                         />
                         <TableProjects
@@ -277,13 +277,13 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                             :selectable="selectionMode"
                             :selected-ids="selectedIds"
                             :is-deletable="isDeletable"
+                            :item-loading="isLoading.load"
                             @toggle-select="toggleTaskSelect"
-                            :item-loading="loading"
                             @success="onCloseAddProject(true)"
                         />
                         <ChartProjects
                             v-else-if="state === 'Chart View'"
-                            :tasks="filtered"
+                            :items="filtered"
                         />
                     </div>
                 </div>

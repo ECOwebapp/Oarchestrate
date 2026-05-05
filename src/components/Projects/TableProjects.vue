@@ -1,6 +1,5 @@
 <script setup vapor>
 import { ref } from "vue";
-import Loading from "../Loading.vue";
 import TaskDetail from "../TaskDetail.vue";
 
 const props = defineProps({
@@ -83,11 +82,7 @@ const handleAssign = (event) => {
 
 <template>
     <div class="h-full min-h-0">
-        <Loading
-            v-if="props.itemLoading"
-            :message="'Loading projects from the source...'"
-        />
-        <div v-else class="overflow-auto h-full w-full">
+        <div class="overflow-auto h-full w-full">
             <table class="min-w-full text-sm border-collapse">
                 <thead class="sticky top-0 z-10">
                     <tr>
@@ -107,7 +102,10 @@ const handleAssign = (event) => {
                                 '',
                             ]"
                             :key="h"
-                            class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider bg-green-950 text-white border border-green-800 whitespace-nowrap animate-slide-up"
+                            :class="[
+                                'px-4 py-3 text-left text-xs font-bold uppercase tracking-wider bg-green-950 text-white border border-green-800 whitespace-nowrap',
+                                !props.itemLoading ? 'animate-slide-up' : '',
+                            ]"
                         >
                             {{ h }}
                         </th>
@@ -125,7 +123,7 @@ const handleAssign = (event) => {
                     <tr
                         v-for="(item, index) in items"
                         :key="item.id"
-                        class="border-b border-gray-100 transition-colors animate-slide-up"
+                        class="border-b border-gray-100 transition-colors"
                         :class="[
                             selectedIds.has(item.id)
                                 ? 'bg-green-50'
@@ -133,6 +131,7 @@ const handleAssign = (event) => {
                             selectable && isDeletable(item)
                                 ? 'cursor-pointer'
                                 : '',
+                            !props.itemLoading ? 'animate-slide-up' : '',
                         ]"
                         :style="{ animationDelay: `${index * 0.04}s` }"
                         @click="handleRowClick(item)"
@@ -189,7 +188,7 @@ const handleAssign = (event) => {
                             </span>
                         </td>
                         <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                            {{ fmt(item.to) }}
+                            {{ fmt(item.to || item.deadline) }}
                         </td>
                         <td class="px-4 py-3">
                             <span

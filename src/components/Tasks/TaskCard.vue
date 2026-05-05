@@ -191,7 +191,7 @@ const handleEditClick = () => {
                 class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1 whitespace-nowrap"
             >
                 <svg
-                    class="w-3 h-3 flex-shrink-0"
+                    class="w-3 h-3 shrink-0"
                     viewBox="0 0 24 24"
                     fill="currentColor"
                 >
@@ -220,7 +220,7 @@ const handleEditClick = () => {
                 class="text-[10px] sm:text-xs text-gray-400 truncate flex items-center gap-1"
             >
                 <svg
-                    class="w-3 h-3 flex-shrink-0"
+                    class="w-3 h-3 shrink-0"
                     viewBox="0 0 24 24"
                     fill="currentColor"
                 >
@@ -242,7 +242,7 @@ const handleEditClick = () => {
             class="flex items-center gap-1 text-[10px] text-blue-600 font-semibold mb-2"
         >
             <svg
-                class="w-3 h-3 flex-shrink-0"
+                class="w-3 h-3 shrink-0"
                 viewBox="0 0 24 24"
                 fill="currentColor"
             >
@@ -268,7 +268,7 @@ const handleEditClick = () => {
                 />
             </div>
             <p
-                class="text-[10px] font-bold italic flex-shrink-0"
+                class="text-[10px] font-bold italic shrink-0"
                 :class="
                     daysLeft < 0 && !task.director
                         ? 'text-red-600'

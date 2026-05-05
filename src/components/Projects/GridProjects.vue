@@ -2,13 +2,13 @@
 import { ref } from "vue";
 import ProjectCard from "./ProjectCard.vue";
 import TaskDetail from "../TaskDetail.vue";
-import Loading from "../Loading.vue";
 
 const props = defineProps({
     items: Array,
     selectable: { type: Boolean, default: false },
     selectedIds: { type: Object, default: () => new Set() }, // Set of selected task ids
     isDeletable: { type: Function, default: () => false },
+    itemLoading: { type: Boolean, default: false },
     emptyTitle: { type: String, default: "No projects found" },
     emptyHint: { type: String, default: "" },
 });
@@ -81,9 +81,10 @@ const handleAssign = (event) => {
                 :selectable="props.selectable"
                 :selected="props.selectedIds.has(item.id)"
                 :is-deletable="props.isDeletable(item)"
+                :style="{ animationDelay: `${index * 0.03}s` }"
+                :item-loading="props.itemLoading"
                 @open="handleOpen"
                 @toggle-select="emit('toggle-select', $event)"
-                :style="{ animationDelay: `${index * 0.03}s` }"
             />
         </div>
 

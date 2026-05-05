@@ -1,6 +1,5 @@
 <script setup vapor>
-import { useAuthStore } from "@/stores/useAuthStore";
-import { mdiAccount, mdiLink } from "@mdi/js";
+import { mdiAccount } from "@mdi/js";
 import { computed } from "vue";
 import router from "@/router";
 
@@ -8,10 +7,9 @@ const props = defineProps({
     project: Object,
     selectable: { type: Boolean, default: false },
     selected: { type: Boolean, default: false },
+    itemLoading: { type: Boolean, default: false },
 });
 const emit = defineEmits(["toggle-select", "open"]);
-const auth = useAuthStore();
-
 const daysLeft = computed(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -55,7 +53,10 @@ const handleCheckboxClick = (e) => {
 <template>
     <div
         @click="handleClick"
-        class="relative flex flex-col rounded-2xl py-3 px-3 sm:px-4 overflow-hidden bg-white shadow-lg hover:shadow-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 group animate-slide-up h-full min-h-[160px] sm:min-h-[176px]"
+        :class="[
+            'relative flex flex-col rounded-2xl py-3 px-3 sm:px-4 overflow-hidden bg-white shadow-lg hover:shadow-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 group h-full min-h-40 sm:min-h-44',
+            !props.itemLoading ? 'animate-slide-up' : '',
+        ]"
     >
         <div
             v-if="selectable"
@@ -141,7 +142,7 @@ const handleCheckboxClick = (e) => {
                 />
             </div>
             <p
-                class="text-[10px] font-bold italic flex-shrink-0"
+                class="text-[10px] font-bold italic shrink-0"
                 :class="
                     daysLeft < 0 && !project.director
                         ? 'text-red-600'
