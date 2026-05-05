@@ -9,6 +9,7 @@ import { useSubtaskStore } from "@/stores/subtasks";
 import { useTaskStore } from "@/stores/tasks";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { computed, onMounted, onUnmounted, ref, nextTick } from "vue";
+import { storeToRefs } from "pinia";
 
 const taskStore = useTaskStore();
 const subtaskStore = useSubtaskStore();
@@ -18,29 +19,19 @@ const addTask = ref(false);
 const search = ref("");
 const filter = ref("All");
 const sortBy = ref("Recently Assigned");
-const loading = ref(false);
 const isAlive = ref(true);
 
 const taskDetail = ref(false);
 
-// ── Selection state ─────────────────────────────────────────────────────────
-const selectedIds = ref(new Set());
-const selectionMode = ref(false);
+const { subtasks: tasks, loading } = storeToRefs(subtaskStore);
 
-const tasks = computed(() => {
-    return subtaskStore.subtasks.filter((st) => st.design);
-});
-
-const fetchItems = () => subtaskStore.fetchSubTasks();
+const fetchItems = () => subtaskStore.fetchSubTasks(null, true);
 const reload = async () => {
-    loading.value = true;
     isAlive.value = false;
-
     try {
         await Promise.all([fetchItems(), nextTick()]);
     } finally {
         isAlive.value = true;
-        loading.value = false;
     }
 };
 
@@ -48,7 +39,6 @@ const isMobile = ref(window.innerWidth < 640);
 const checkViewport = () => (isMobile.value = window.innerWidth < 640);
 
 onMounted(async () => {
-    loading.value = true;
     isAlive.value = false;
 
     try {
@@ -56,7 +46,6 @@ onMounted(async () => {
         window.addEventListener("resize", checkViewport);
     } finally {
         isAlive.value = true;
-        loading.value = false;
     }
 });
 

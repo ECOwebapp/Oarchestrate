@@ -115,14 +115,14 @@ router.beforeEach(async (to) => {
 
   // 3. PERFORMANCE BOOST: Parallel Data Fetching
   // Instead of awaiting one by one, start them all at once!
-  const loaders = [];
-  if (to.meta.requiresTasks && tasks.tasks.length === 0)
-    loaders.push(tasks.fetchTasks());
-  if (to.meta.requireMembers && members.members.length === 0)
-    loaders.push(members.fetchMembers());
+  // const loaders = [];
+  // if (to.meta.requiresTasks && tasks.tasks.length === 0)
+  //   loaders.push(tasks.fetchTasks());
+  // if (to.meta.requireMembers && members.members.length === 0)
+  //   loaders.push(members.fetchMembers());
 
-  // Wait for all data requirements to finish together
-  await Promise.all(loaders);
+  // // Wait for all data requirements to finish together
+  // await Promise.all(loaders);
 
   // 4. Final Verification
   if (to.meta.requiresAuth && auth.accountStatus !== 2) {
@@ -132,13 +132,6 @@ router.beforeEach(async (to) => {
 
   // If we get here, navigation is allowed and data is READY
   isPageLoading.value = false;
-});
-
-router.afterEach(() => {
-  // Add a tiny delay so the spinner doesn't "flicker" for fast loads
-  setTimeout(() => {
-    isPageLoading.value = false;
-  }, 300);
 });
 
 router.afterEach(() => {

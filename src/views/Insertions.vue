@@ -18,7 +18,7 @@ const addTask = ref(false);
 const search = ref("");
 const filter = ref("All");
 const sortBy = ref("Recently Assigned");
-const loading = storeToRefs(taskStore)?.loading;
+const { tasks, loading } = storeToRefs(taskStore);
 
 // ── Only Directors and Unit Heads can select / delete ──────────────────────
 const canDelete = computed(() => auth.isDirector || auth.isUnitHead);
@@ -32,24 +32,7 @@ const deleteError = ref("");
 const taskDetail = ref(false);
 const isAlive = ref(true);
 
-const insertionTasks = computed(() =>
-    taskStore.tasks.filter(
-        (t) =>
-            !t.parentId && t.type?.toLowerCase() === "insertion" && !t.design,
-    ),
-);
-
-const tasks = computed(() => {
-    if (auth.isDirector) {
-        return insertionTasks.value;
-    }
-
-    return insertionTasks.value.filter(
-        (t) => String(t.assignee) === String(auth.userID),
-    );
-});
-
-const fetchItems = async () => await taskStore.fetchTasks();
+const fetchItems = async () => await taskStore.fetchTasks(null, true);
 const reload = async () => {
     isAlive.value = false; // Disconnect
     await Promise.all([fetchItems(), nextTick()]); // Wait for DOM to update
@@ -221,7 +204,6 @@ const onAssignSubtask = (data) => {
         parentTask: data.parentTask,
         type: 1,
         endDate: data.parentTask?.to || null,
-        // action: data.action || ''
     };
     addTask.value = true;
 };
@@ -240,7 +222,6 @@ const onEditTask = (task) => {
         assignee: task?.assignee ?? null,
         type: inferredTypeId,
         urgent: !!task?.urgent,
-        design: !!task?.design,
         outputLink: task?.outputLink || "",
     };
 

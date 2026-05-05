@@ -10,15 +10,19 @@ export const useSubtaskStore = defineStore("subtasks", () => {
   const loading = ref(false);
 
   // ── FETCH SUBTASKS ─────────────────────────────────────────────────────────────
-  const fetchSubTasks = async (parentTaskId = null) => {
+  const fetchSubTasks = async (parentTaskId = null, design = false) => {
     const auth = useAuthStore();
     const uid = auth.userID;
     if (!uid) return;
     loading.value = true;
 
     try {
-      const taskId = parentTaskId ? `?parentId=${parentTaskId}` : "";
-      const response = await apiFetch(`/subtasks/fetch${taskId}`, {
+      const param = parentTaskId
+        ? `?parentId=${parentTaskId}`
+        : design
+          ? `?design=${design}`
+          : "";
+      const response = await apiFetch(`/subtasks/fetch${param}`, {
         method: "GET",
       });
 

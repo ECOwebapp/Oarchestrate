@@ -8,15 +8,19 @@ export const useTaskStore = defineStore("tasks", () => {
   const loading = ref(false);
 
   // ── FETCH TASKS ─────────────────────────────────────────────────────────────
-  const fetchTasks = async (parentId = null) => {
+  const fetchTasks = async (parentId = null, insertion = false) => {
     const auth = useAuthStore();
     const uid = auth.userID;
     if (!uid) return;
     loading.value = true;
 
     try {
-      const ppaId = parentId ? `?parentId=${parentId}` : "";
-      const response = await apiFetch(`/tasks/fetch${ppaId}`, {
+      const params = parentId
+        ? `?parentId=${parentId}`
+        : insertion
+          ? `?insertion=${insertion}`
+          : "";
+      const response = await apiFetch(`/tasks/fetch${params}`, {
         method: "GET",
       });
 
@@ -57,7 +61,6 @@ export const useTaskStore = defineStore("tasks", () => {
       const result = await response.json();
       if (response.ok) tasks.value = result;
       else throw new Error(result.error);
-      console.log(result);
     } catch (e) {
       console.log("Failed to add task: ", e);
     }
