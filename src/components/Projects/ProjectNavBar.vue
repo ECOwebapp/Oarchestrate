@@ -51,7 +51,10 @@ const sortOpts = computed(() => props.optionList.sortOpts);
         >
             <!-- Add Task -->
             <button
-                v-if="!props.selectionMode && props.isDirector"
+                v-if="
+                    (!props.selectionMode && props.isDirector) ||
+                    props.placeholderText === 'Insertion'
+                "
                 @click="emit('add')"
                 class="flex items-center gap-2 bg-green-950 text-white font-bold h-11 px-5 rounded-2xl hover:bg-green-800 active:scale-95 transition-all text-sm shrink-0 hover:cursor-pointer"
             >

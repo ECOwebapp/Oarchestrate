@@ -167,6 +167,10 @@ export const useNotifStore = defineStore("notif", () => {
     channel = null;
   };
 
+  const notifReset = () => {
+    notifs.value = [];
+  };
+
   return {
     notifs,
     loading,
@@ -182,5 +186,6 @@ export const useNotifStore = defineStore("notif", () => {
     denyUser,
     setupRealtime,
     teardownRealtime,
+    notifReset,
   };
 });

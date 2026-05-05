@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
-import { apiFetch, session } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
+import { reset } from "./resetOnLogout";
 import router from "@/router";
 
 export const useAuthStore = defineStore("auth", () => {
@@ -194,13 +195,6 @@ export const useAuthStore = defineStore("auth", () => {
     }
   };
 
-  // const listenToAuthChanges = async () => {
-  //   const res = await apiFetch('/auth/state')
-
-  //   if (res.status === 200) await fetchUserData()
-  //   else if (res.status === 401) await logout()
-  // }
-
   const logout = async () => {
     isLoggingOut.value = true;
     if (userID.value) {
@@ -212,8 +206,7 @@ export const useAuthStore = defineStore("auth", () => {
         console.log("Error logout: ", e);
       }
     }
-
-    localStorage.removeItem("eco_session");
+    await reset();
     $reset({ preserveLoggingOut: true });
     try {
       await router.replace({ name: "Login" });

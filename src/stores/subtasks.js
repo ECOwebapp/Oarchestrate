@@ -194,6 +194,10 @@ export const useSubtaskStore = defineStore("subtasks", () => {
     }
   };
 
+  const subtaskReset = () => {
+    subtasks.value = [];
+  };
+
   return {
     subtasks,
     loading,
@@ -206,7 +210,7 @@ export const useSubtaskStore = defineStore("subtasks", () => {
     fetchRevisions,
     deleteSubTasks,
     fetchSubtaskById,
-    // new
+    subtaskReset,
     editOutput,
     deleteOutput,
   };

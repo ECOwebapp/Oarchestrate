@@ -112,6 +112,10 @@ export const usePosStore = defineStore("pos", () => {
     }
   };
 
+  const posReset = () => {
+    position.value = roles.value = memberPos.value = [];
+  };
+
   return {
     position,
     roles,
@@ -123,5 +127,6 @@ export const usePosStore = defineStore("pos", () => {
     addUserPos,
     updateUserPos,
     deleteUserPos,
+    posReset,
   };
 });

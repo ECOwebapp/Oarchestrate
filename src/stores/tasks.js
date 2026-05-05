@@ -196,6 +196,10 @@ export const useTaskStore = defineStore("tasks", () => {
     }
   };
 
+  const taskReset = () => {
+    tasks.value = [];
+  };
+
   return {
     tasks,
     loading,
@@ -210,5 +214,6 @@ export const useTaskStore = defineStore("tasks", () => {
     fetchTaskById,
     editOutput,
     deleteOutput,
+    taskReset,
   };
 });

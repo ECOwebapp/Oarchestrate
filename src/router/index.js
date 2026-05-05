@@ -10,8 +10,6 @@ import Insertions from "@/views/Insertions.vue";
 import Main from "@/views/Main.vue";
 
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useTaskStore } from "@/stores/tasks";
-import { useMemberStore } from "@/stores/member";
 import { createRouter, createWebHistory } from "vue-router";
 import { routes as autoRoutes } from "vue-router/auto-routes";
 import { ref } from "vue";
@@ -101,8 +99,6 @@ export const isPageLoading = ref(false);
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
-  const tasks = useTaskStore();
-  const members = useMemberStore();
 
   isPageLoading.value = true;
 
@@ -112,17 +108,6 @@ router.beforeEach(async (to) => {
   // 2. Security Gates (Instant Returns)
   if (to.meta.guestOnly && loggedIn) return { name: "Dashboard" };
   if (to.meta.requiresAuth && !loggedIn) return { name: "Hero" };
-
-  // 3. PERFORMANCE BOOST: Parallel Data Fetching
-  // Instead of awaiting one by one, start them all at once!
-  // const loaders = [];
-  // if (to.meta.requiresTasks && tasks.tasks.length === 0)
-  //   loaders.push(tasks.fetchTasks());
-  // if (to.meta.requireMembers && members.members.length === 0)
-  //   loaders.push(members.fetchMembers());
-
-  // // Wait for all data requirements to finish together
-  // await Promise.all(loaders);
 
   // 4. Final Verification
   if (to.meta.requiresAuth && auth.accountStatus !== 2) {
