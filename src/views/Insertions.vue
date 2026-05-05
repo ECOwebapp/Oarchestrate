@@ -43,8 +43,16 @@ const isMobile = ref(window.innerWidth < 640);
 const checkViewport = () => (isMobile.value = window.innerWidth < 640);
 
 onMounted(async () => {
+    tasks.value = [];
     await fetchItems();
     window.addEventListener("resize", checkViewport);
+});
+
+const projectEmptyHint = computed(() => {
+    if (search.value || filter.value !== "All") {
+        return "Try clearing search or adjusting the filters.";
+    }
+    return "Add an insertion to populate this view.";
 });
 
 const filterOpts = computed(() => {
@@ -288,10 +296,12 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                             :selectable="selectionMode"
                             :selected-ids="selectedIds"
                             :is-deletable="isDeletable"
+                            :item-loading="isLoading.load"
+                            :empty-title="'No Insertions found'"
+                            :empty-hint="projectEmptyHint"
                             @toggle-select="toggleTaskSelect"
                             @assign-subtask="onAssignSubtask"
                             @edit-task="onEditTask"
-                            :item-loading="isLoading.load"
                             @open="taskDetail = true"
                             @close="taskDetail = false"
                             @success="

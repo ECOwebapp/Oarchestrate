@@ -1,7 +1,6 @@
 <script setup vapor>
 import AddProject from "@/components/Projects/AddProject.vue";
 import GridProjects from "@/components/Projects/GridProjects.vue";
-import GridTasks from "@/components/Tasks/GridTasks.vue";
 import TableProjects from "@/components/Projects/TableProjects.vue";
 import Icons from "@/components/Icons.vue";
 import ChartProjects from "@/components/Projects/ChartProjects.vue";
@@ -21,7 +20,7 @@ const addTask = ref(false);
 const search = ref("");
 const filter = ref("All");
 const sortBy = ref("Recently Assigned");
-const { loading: projectLoading } = storeToRefs(projectStore);
+const { projects, loading: projectLoading } = storeToRefs(projectStore);
 const loading = projectLoading;
 const isMobile = ref(window.innerWidth < 640);
 const checkViewport = () => (isMobile.value = window.innerWidth < 640);
@@ -35,12 +34,6 @@ const reload = async () => {
 
 const hierarchyItems = computed(() => [{ label: "PPAs", current: true }]);
 
-const isInsertionProject = (item) =>
-    item.type?.toLowerCase() === "insertion" ||
-    item.typeId === 2 ||
-    item.isInsertion === true ||
-    item.is_insertion === true;
-
 // ── Only Directors and Unit Heads can select / delete ──────────────────────
 const canDelete = computed(() => auth.isDirector);
 
@@ -51,13 +44,8 @@ const showDeleteConfirm = ref(false);
 const isDeleting = ref(false);
 const deleteError = ref("");
 
-const projects = computed(() =>
-    projectStore.projects.filter(
-        (p) => p.is_involved !== false && !isInsertionProject(p),
-    ),
-);
-
 onMounted(() => {
+    projects.value = [];
     fetchItems();
     window.addEventListener("resize", checkViewport);
 });

@@ -40,13 +40,20 @@ const checkViewport = () => (isMobile.value = window.innerWidth < 640);
 
 onMounted(async () => {
     isAlive.value = false;
-
     try {
+        tasks.value = [];
         await fetchItems();
         window.addEventListener("resize", checkViewport);
     } finally {
         isAlive.value = true;
     }
+});
+
+const projectEmptyHint = computed(() => {
+    if (search.value || filter.value !== "All") {
+        return "Try clearing search or adjusting the filters.";
+    }
+    return "Add a design to populate this view.";
 });
 
 const filterOpts = computed(() => {
@@ -177,8 +184,10 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                         <GridSubtasks
                             v-if="state === 'Grid View'"
                             :subtasks="filtered"
-                            @assign-subtask="onAssignSubtask"
                             :modal="loading"
+                            :empty-title="'No designs found'"
+                            :empty-hint="projectEmptyHint"
+                            @assign-subtask="onAssignSubtask"
                             @open="taskDetail = true"
                             @close="taskDetail = false"
                             @success="

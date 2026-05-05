@@ -84,10 +84,6 @@ export const useProjectStore = defineStore("ppa", () => {
     }
   };
 
-  const projectsReset = () => {
-    projects.value = [];
-  };
-
   return {
     projects,
     loading,
@@ -95,6 +91,5 @@ export const useProjectStore = defineStore("ppa", () => {
     insertProjects,
     updateProjects,
     deleteProjects,
-    projectsReset,
   };
 });

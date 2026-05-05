@@ -52,13 +52,14 @@ const reload = async () => {
 };
 
 onMounted(async () => {
+    tasks.value = [];
     await Promise.all([fetchItems(), projectStore.fetchProjects()]);
     window.addEventListener("resize", checkViewport);
 });
 
 const parentProjectTitle = computed(() => {
     const project = projectStore.projects.find((p) => p.id === parentId.value);
-    return project?.title || project?.name || "Unknown PPA";
+    return project?.title || project?.name || "PPAs";
 });
 
 const hierarchyItems = computed(() => [

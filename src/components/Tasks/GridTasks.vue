@@ -95,10 +95,10 @@ const handleClose = () => {
                 :selected="props.selectedIds.has(task.id)"
                 :is-deletable="props.isDeletable(task)"
                 :item-loading="props.itemLoading"
+                :style="{ animationDelay: `${index * 0.03}s` }"
                 @open="handleOpen"
                 @edit="handleEdit"
                 @toggle-select="emit('toggle-select', $event)"
-                :style="{ animationDelay: `${index * 0.03}s` }"
             />
         </div>
 

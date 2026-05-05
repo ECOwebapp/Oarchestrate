@@ -52,6 +52,7 @@ const reload = async () => {
 };
 
 onMounted(async () => {
+    subtasks.value = [];
     await Promise.all([
         fetchItems(),
         tasksStore.fetchTasks(),
@@ -65,11 +66,11 @@ const parentTask = computed(() => {
 });
 
 const parentProjectTitle = computed(() => {
-    if (!parentTask.value) return "Unknown PPA";
+    if (!parentTask.value) return "PPAs";
     const project = projectStore.projects.find(
         (p) => p.id === parentTask.value.parentId,
     );
-    return project?.title || project?.name || "Unknown PPA";
+    return project?.title || project?.name || "PPAs";
 });
 
 const hierarchyItems = computed(() => {
