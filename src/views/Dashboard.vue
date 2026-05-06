@@ -3,18 +3,40 @@ import Loading from "@/components/Loading.vue";
 import TaskDetail from "@/components/TaskDetail.vue";
 import AddTask from "@/components/Tasks/AddTask.vue";
 import TaskCard from "@/components/Tasks/TaskCard.vue";
-import { useTaskStore } from "@/stores/tasks";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { useDashboardStore } from "@/stores/dashboard";
+import { storeToRefs } from "pinia";
+import { computed, onMounted, watch, ref, watchEffect } from "vue";
 
 const auth = useAuthStore();
-const taskStore = useTaskStore();
+const dashboardStore = useDashboardStore();
 const loading = ref(false);
 const loaderVideo = ref(null);
+
+const {
+    tasks,
+    dashboardData,
+    loading: taskLoading,
+} = storeToRefs(dashboardStore);
+const activeDonut = computed(() => dashboardData.value?.activeDonut || []);
+const activePending = computed(() => dashboardData.value?.activePending || []);
+const activeRegular = computed(() => dashboardData.value?.activeRegular || []);
+const activeInsertion = computed(
+    () => dashboardData.value?.activeInsertion || [],
+);
+const uhOwn = computed(() => dashboardData.value?.uhOwn || null);
+const memberRevisions = computed(
+    () => dashboardData.value?.memberRevisions || [],
+);
 
 // ── Month navigation ──
 const selectedMonth = ref(new Date().getMonth());
 const selectedYear = ref(new Date().getFullYear());
+// ── Donut ──
+const R = 42;
+const CX = 56;
+const CY = 56;
+const CIRC = 2 * Math.PI * R;
 const MONTHS_FULL = [
     "January",
     "February",
@@ -71,15 +93,16 @@ const closeTask = () => {
     selectedTask.value = null;
 };
 const onRefresh = async () => {
-    await taskStore.fetchTasks();
+    await dashboardStore.fetchItems();
     if (selectedTask.value)
         selectedTask.value =
-            taskStore.tasks.find((t) => t.id === selectedTask.value.id) || null;
+            tasks.value.find((t) => t.id === selectedTask.value.id) || null;
 };
 
 // Realtime
-onMounted(() => {
+onMounted(async () => {
     loading.value = true;
+    tasks.value = [];
     if (loaderVideo.value) {
         // Force play in case the 'autoplay' attribute was ignored
         loaderVideo.value.play().catch(() => {
@@ -88,9 +111,16 @@ onMounted(() => {
             );
         });
     }
-    taskStore.fetchTasks();
 
     loading.value = false;
+});
+
+watchEffect(async () => {
+    await dashboardStore.fetchItems(
+        selectedMonth.value,
+        selectedYear.value,
+        CIRC,
+    );
 });
 
 // ── Helpers ──
@@ -103,165 +133,6 @@ const fmt = (d) =>
           })
         : "—";
 const isOverdue = (d) => d && new Date(d) < new Date();
-
-// ── Donut ──
-const R = 42;
-const CX = 56;
-const CY = 56;
-const CIRC = 2 * Math.PI * R;
-
-// ── Filtered tasks for current month ──
-const forMonth = (list) =>
-    list.filter((t) => {
-        if (!t.from) return false;
-        const d = new Date(t.from);
-        return (
-            d.getMonth() === selectedMonth.value &&
-            d.getFullYear() === selectedYear.value
-        );
-    });
-
-const directorPending = computed(() =>
-    taskStore.tasks.filter((t) => t.outputLink && !t.director),
-);
-const directorMonth = computed(() => forMonth(directorPending.value));
-const directorRegular = computed(() =>
-    directorMonth.value
-        .filter((t) => t.type?.toLowerCase() !== "insertion")
-        .sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)),
-);
-const directorInsertion = computed(() =>
-    directorMonth.value
-        .filter((t) => t.type?.toLowerCase() === "insertion")
-        .sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)),
-);
-
-const directorDonut = computed(() => {
-    const regular = directorMonth.value.filter(
-        (t) => t.type?.toLowerCase() !== "insertion" && !t.urgent,
-    ).length;
-    const urgent = directorMonth.value.filter((t) => t.urgent).length;
-    const insertion = directorMonth.value.filter(
-        (t) => t.type?.toLowerCase() === "insertion",
-    ).length;
-    const total = regular + urgent + insertion || 1;
-    let offset = 0;
-    return [
-        { value: regular, color: "#15803d", label: "Regular" },
-        { value: urgent, color: "#b91c1c", label: "Urgent" },
-        { value: insertion, color: "#b45309", label: "Insertion" },
-    ].map((s) => {
-        const len = CIRC * (s.value / total);
-        const seg = { ...s, len, offset: -offset };
-        offset += len;
-        return seg;
-    });
-});
-
-const uhPending = computed(() =>
-    taskStore.tasks.filter(
-        (t) => !t.isOwnTask && t.outputLink && !t.unitHead && !t.director,
-    ),
-);
-const uhOwn = computed(() => taskStore.tasks.filter((t) => t.isOwnTask));
-const uhMonth = computed(() => forMonth(uhPending.value));
-const uhRegular = computed(() =>
-    uhMonth.value
-        .filter((t) => t.type?.toLowerCase() !== "insertion")
-        .sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)),
-);
-const uhInsertion = computed(() =>
-    uhMonth.value
-        .filter((t) => t.type?.toLowerCase() === "insertion")
-        .sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)),
-);
-
-const uhDonut = computed(() => {
-    const regular = uhMonth.value.filter(
-        (t) => t.type?.toLowerCase() !== "insertion" && !t.urgent,
-    ).length;
-    const urgent = uhMonth.value.filter((t) => t.urgent).length;
-    const insertion = uhMonth.value.filter(
-        (t) => t.type?.toLowerCase() === "insertion",
-    ).length;
-    const total = regular + urgent + insertion || 1;
-    let offset = 0;
-    return [
-        { value: regular, color: "#15803d", label: "Regular" },
-        { value: urgent, color: "#b91c1c", label: "Urgent" },
-        { value: insertion, color: "#b45309", label: "Insertion" },
-    ].map((s) => {
-        const len = CIRC * (s.value / total);
-        const seg = { ...s, len, offset: -offset };
-        offset += len;
-        return seg;
-    });
-});
-
-const memberRegular = computed(() =>
-    taskStore.tasks
-        .filter((t) => t.type?.toLowerCase() !== "insertion" || t.design)
-        .sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)),
-);
-const memberInsertion = computed(() =>
-    taskStore.tasks
-        .filter((t) => t.type?.toLowerCase() === "insertion" && !t.design)
-        .sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)),
-);
-const memberRevisions = computed(() =>
-    taskStore.tasks.filter((t) => t.revision && !t.director),
-);
-
-const memberDonut = computed(() => {
-    const approved = taskStore.tasks.filter((t) => t.director).length;
-    const submitted = taskStore.tasks.filter(
-        (t) => (t.outputLink && !t.director) || t.design,
-    ).length;
-    const pending = taskStore.tasks.filter(
-        (t) => !t.outputLink && !t.director && !t.design,
-    ).length;
-    const total = approved + submitted + pending || 1;
-    let offset = 0;
-    return [
-        { value: approved, color: "#15803d", label: "Approved" },
-        { value: submitted, color: "#b45309", label: "Submitted" },
-        { value: pending, color: "#9ca3af", label: "Pending" },
-    ].map((s) => {
-        const len = CIRC * (s.value / total);
-        const seg = { ...s, len, offset: -offset };
-        offset += len;
-        return seg;
-    });
-});
-
-const activeDonut = computed(() =>
-    auth.isDirector
-        ? directorDonut.value
-        : auth.isUnitHead
-          ? uhDonut.value
-          : memberDonut.value,
-);
-const activePending = computed(() =>
-    auth.isDirector
-        ? directorMonth.value
-        : auth.isUnitHead
-          ? uhMonth.value
-          : taskStore.tasks,
-);
-const activeRegular = computed(() =>
-    auth.isDirector
-        ? directorRegular.value
-        : auth.isUnitHead
-          ? uhRegular.value
-          : memberRegular.value,
-);
-const activeInsertion = computed(() =>
-    auth.isDirector
-        ? directorInsertion.value
-        : auth.isUnitHead
-          ? uhInsertion.value
-          : memberInsertion.value,
-);
 
 // ── Subtask assign modal (Unit Head) ─────────────────────────────────────────
 const showAddTask = ref(false);
@@ -297,7 +168,7 @@ const onCloseAddTask = () => {
     >
         <!-- ══ LOADING ══ -->
         <div
-            v-if="taskStore.loading && !taskStore.tasks.length"
+            v-if="taskLoading && !tasks.length"
             class="flex-1 flex flex-col items-center justify-center gap-3"
         >
             <div class="flex flex-row gap-3">
@@ -330,7 +201,7 @@ const onCloseAddTask = () => {
         <div v-else class="flex flex-col flex-1 min-h-0">
             <!-- Top bar -->
             <div
-                class="flex items-center justify-between gap-2 px-3 sm:px-5 py-2.5 sm:py-3 bg-white border-b border-gray-100 flex-shrink-0 fade-in flex-wrap"
+                class="flex items-center justify-between gap-2 px-3 sm:px-5 py-2.5 sm:py-3 bg-white border-b border-gray-100 shrink-0 fade-in flex-wrap"
             >
                 <div class="min-w-0">
                     <p
@@ -344,10 +215,14 @@ const onCloseAddTask = () => {
                                   : "Member"
                         }}
                         <span
-                            v-if="auth.isUnitHead && auth.unitName"
+                            v-if="
+                                auth.isUnitHead && auth.positions[0].unit_name
+                            "
                             class="ml-1 sm:ml-2 font-normal text-green-700"
                         >
-                            ({{ auth.unitName }}, #{{ auth.unitId }})
+                            ({{ auth.positions[0].unit_name }}, #{{
+                                auth.positions[0].unit_id
+                            }})
                         </span>
                     </p>
                     <p
@@ -366,7 +241,7 @@ const onCloseAddTask = () => {
                 <!-- Month navigator (director + unit head) -->
                 <div
                     v-if="auth.isDirector || auth.isUnitHead"
-                    class="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-xl px-1.5 sm:px-2 py-1 flex-shrink-0"
+                    class="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-xl px-1.5 sm:px-2 py-1 shrink-0"
                 >
                     <button
                         @click="prevMonth"
@@ -398,17 +273,17 @@ const onCloseAddTask = () => {
 
                 <!-- Member: revision alert -->
                 <div
-                    v-else-if="memberRevisions.length"
-                    class="flex items-center gap-1.5 sm:gap-2 bg-orange-50 border border-orange-200 rounded-xl px-2.5 sm:px-3 py-1 sm:py-1.5 flex-shrink-0"
+                    v-else-if="memberRevisions?.length"
+                    class="flex items-center gap-1.5 sm:gap-2 bg-orange-50 border border-orange-200 rounded-xl px-2.5 sm:px-3 py-1 sm:py-1.5 shrink-0"
                 >
                     <span
-                        class="w-2 h-2 rounded-full bg-orange-500 animate-pulse flex-shrink-0"
+                        class="w-2 h-2 rounded-full bg-orange-500 animate-pulse shrink-0"
                     />
                     <span
                         class="text-[10px] sm:text-xs font-bold text-orange-700 whitespace-nowrap"
                     >
-                        {{ memberRevisions.length }} revision{{
-                            memberRevisions.length > 1 ? "s" : ""
+                        {{ memberRevisions?.length }} revision{{
+                            memberRevisions?.length > 1 ? "s" : ""
                         }}
                         needed
                     </span>
@@ -468,7 +343,7 @@ const onCloseAddTask = () => {
                                     font-weight="800"
                                     fill="#111827"
                                 >
-                                    {{ activePending.length }}
+                                    {{ activePending?.length }}
                                 </text>
                                 <text
                                     :x="CX"
@@ -492,7 +367,7 @@ const onCloseAddTask = () => {
                                         class="flex items-center gap-1.5 sm:gap-2"
                                     >
                                         <span
-                                            class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full flex-shrink-0"
+                                            class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full shrink-0"
                                             :style="`background:${seg.color}`"
                                         />
                                         <span
@@ -529,7 +404,7 @@ const onCloseAddTask = () => {
                                 <p
                                     class="text-3xl sm:text-4xl font-black text-gray-900 tabular-nums"
                                 >
-                                    {{ activeRegular.length }}
+                                    {{ activeRegular?.length }}
                                 </p>
                                 <p
                                     class="text-[10px] sm:text-xs text-gray-400 uppercase tracking-widest mt-1"
@@ -541,10 +416,11 @@ const onCloseAddTask = () => {
                                 class="text-[10px] sm:text-xs text-gray-400 mt-2 sm:mt-3 flex items-center gap-1.5"
                             >
                                 <span
-                                    class="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"
+                                    class="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0"
                                 />
                                 {{
-                                    activeRegular.filter((t) => t.urgent).length
+                                    activeRegular?.filter((t) => t.urgent)
+                                        .length
                                 }}
                                 urgent priority
                             </p>
@@ -571,7 +447,7 @@ const onCloseAddTask = () => {
                                 <p
                                     class="text-3xl sm:text-4xl font-black text-gray-900 tabular-nums"
                                 >
-                                    {{ activeInsertion.length }}
+                                    {{ activeInsertion?.length }}
                                 </p>
                                 <p
                                     class="text-[10px] sm:text-xs text-gray-400 uppercase tracking-widest mt-1"
@@ -583,10 +459,10 @@ const onCloseAddTask = () => {
                                 class="text-[10px] sm:text-xs text-gray-400 mt-2 sm:mt-3 flex items-center gap-1.5"
                             >
                                 <span
-                                    class="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"
+                                    class="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0"
                                 />
                                 {{
-                                    activeInsertion.filter((t) => t.urgent)
+                                    activeInsertion?.filter((t) => t.urgent)
                                         .length
                                 }}
                                 urgent priority
@@ -641,8 +517,8 @@ const onCloseAddTask = () => {
                                 >
                                     {{
                                         auth.isMember
-                                            ? memberRevisions.length
-                                            : activePending.filter(
+                                            ? memberRevisions?.length
+                                            : activePending?.filter(
                                                   (t) => t.urgent,
                                               ).length
                                     }}
@@ -666,7 +542,7 @@ const onCloseAddTask = () => {
                                 "
                             >
                                 <span
-                                    class="w-2 h-2 rounded-full animate-pulse flex-shrink-0"
+                                    class="w-2 h-2 rounded-full animate-pulse shrink-0"
                                     :class="
                                         auth.isMember
                                             ? 'bg-orange-500'
@@ -700,14 +576,14 @@ const onCloseAddTask = () => {
                                 }}
                             </h2>
                             <span
-                                class="text-[10px] sm:text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-2 sm:px-2.5 py-0.5 flex-shrink-0 whitespace-nowrap"
+                                class="text-[10px] sm:text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-2 sm:px-2.5 py-0.5 shrink-0 whitespace-nowrap"
                             >
-                                {{ activeRegular.length }} pending
+                                {{ activeRegular?.length }} pending
                             </span>
                         </div>
 
                         <div
-                            v-if="activeRegular.length === 0"
+                            v-if="activeRegular?.length === 0"
                             class="bg-white border border-dashed border-gray-200 rounded-2xl p-8 sm:p-10 text-center"
                         >
                             <p class="text-xs sm:text-sm text-gray-400">
@@ -751,14 +627,14 @@ const onCloseAddTask = () => {
                                 }}
                             </h2>
                             <span
-                                class="text-[10px] sm:text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-2 sm:px-2.5 py-0.5 flex-shrink-0 whitespace-nowrap"
+                                class="text-[10px] sm:text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-2 sm:px-2.5 py-0.5 shrink-0 whitespace-nowrap"
                             >
-                                {{ activeInsertion.length }} pending
+                                {{ activeInsertion?.length }} pending
                             </span>
                         </div>
 
                         <div
-                            v-if="activeInsertion.length === 0"
+                            v-if="activeInsertion?.length === 0"
                             class="bg-white border border-dashed border-gray-200 rounded-2xl p-8 sm:p-10 text-center"
                         >
                             <p class="text-xs sm:text-sm text-gray-400">
@@ -786,7 +662,7 @@ const onCloseAddTask = () => {
 
                     <!-- ── Unit Head: Own Tasks ── -->
                     <section
-                        v-if="auth.isUnitHead && uhOwn.length"
+                        v-if="auth.isUnitHead && uhOwn?.length"
                         class="slide-up pb-4"
                         style="animation-delay: 300ms"
                     >
@@ -799,9 +675,9 @@ const onCloseAddTask = () => {
                                 Your Own Tasks
                             </h2>
                             <span
-                                class="text-[10px] sm:text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-2 sm:px-2.5 py-0.5 flex-shrink-0"
+                                class="text-[10px] sm:text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-2 sm:px-2.5 py-0.5 shrink-0"
                             >
-                                {{ uhOwn.length }}
+                                {{ uhOwn?.length }}
                             </span>
                         </div>
                         <div
@@ -835,21 +711,6 @@ const onCloseAddTask = () => {
                 @refresh="onRefresh"
                 @assignSubtask="onAssignSubtask"
             />
-        </Transition>
-
-        <!-- ══ ADD TASK MODAL (Unit Head subtask assign) ══ -->
-        <Transition name="modal">
-            <div
-                v-if="showAddTask"
-                class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-3 sm:px-4"
-                @click.self="onCloseAddTask"
-            >
-                <AddTask
-                    @close="onCloseAddTask"
-                    :design="false"
-                    :pre-fill="preFillData"
-                />
-            </div>
         </Transition>
     </div>
 </template>

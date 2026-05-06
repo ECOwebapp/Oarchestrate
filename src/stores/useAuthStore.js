@@ -116,16 +116,6 @@ export const useAuthStore = defineStore("auth", () => {
       return;
     }
 
-    // const savedSession = session();
-
-    // if (!savedSession && !userID.value) {
-    //   console.log("No session found. Aborting fetch.");
-    //   return;
-    // } else if (!savedSession && userID.value) {
-    //   await logout();
-    //   return;
-    // }
-
     loading.value = true;
     console.log("Fetching ->", loading.value);
 
