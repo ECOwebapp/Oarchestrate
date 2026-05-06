@@ -10,6 +10,7 @@ const props = defineProps({
     selected: { type: Boolean, default: false },
     itemLoading: { type: Boolean, default: false },
 });
+
 const emit = defineEmits(["open", "edit", "toggle-select", "assignSubtask"]);
 const auth = useAuthStore();
 
@@ -80,8 +81,9 @@ const isResubmitted = computed(
 
 const isStandaloneInsertion = computed(
     () =>
-        !props.task?.parentId &&
-        props.task?.type?.toLowerCase() === "insertion",
+        (!props.task?.parentId &&
+            props.task?.type?.toLowerCase() === "insertion") ||
+        props.task?.isSubtask,
 );
 
 const handleClick = () => {
@@ -89,7 +91,7 @@ const handleClick = () => {
         emit("toggle-select", props.task);
     } else if (isStandaloneInsertion.value) {
         emit("open", props.task);
-    } else if (props.task?.parentId) {
+    } else if (props.task?.parentId && !props.task?.isSubtask) {
         router.push(
             `/projects/${props.task.parentId}/tasks/${props.task.id}/subtasks/`,
         );
