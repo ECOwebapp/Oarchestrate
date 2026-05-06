@@ -1,7 +1,6 @@
 <script setup vapor>
 import Loading from "@/components/Loading.vue";
 import TaskDetail from "@/components/TaskDetail.vue";
-import AddTask from "@/components/Tasks/AddTask.vue";
 import TaskCard from "@/components/Tasks/TaskCard.vue";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useDashboardStore } from "@/stores/dashboard";
@@ -93,6 +92,7 @@ const closeTask = () => {
     selectedTask.value = null;
 };
 const onRefresh = async () => {
+    closeTask();
     await dashboardStore.fetchItems();
     if (selectedTask.value)
         selectedTask.value =
@@ -779,7 +779,7 @@ const onCloseAddTask = () => {
 
 .line-clamp-2 {
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }

@@ -612,7 +612,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
             </button>
 
             <!-- Title bar -->
-            <div class="px-6 sm:px-8 pt-7 pb-4 flex-shrink-0">
+            <div class="px-6 sm:px-8 pt-7 pb-4 shrink-0">
                 <div class="flex flex-wrap gap-2 mb-3">
                     <span
                         class="px-3 py-1 text-xs font-bold rounded-full"
@@ -641,7 +641,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                     >
                         <svg
                             viewBox="0 0 24 24"
-                            class="w-3 h-3 flex-shrink-0"
+                            class="w-3 h-3 shrink-0"
                             fill="currentColor"
                         >
                             <path :d="statusLabel.icon" />
@@ -662,7 +662,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
 
             <!-- Tabs -->
             <div
-                class="flex border-b border-gray-100 px-6 sm:px-8 flex-shrink-0 gap-1"
+                class="flex border-b border-gray-100 px-6 sm:px-8 shrink-0 gap-1"
             >
                 <button
                     v-for="t in ['detail', 'comments']"
@@ -720,7 +720,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                 class="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 bg-white"
                             >
                                 <div
-                                    class="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0"
+                                    class="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center shrink-0"
                                 >
                                     <svg
                                         viewBox="0 0 24 24"
@@ -745,7 +745,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                 class="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 bg-white"
                             >
                                 <div
-                                    class="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0"
+                                    class="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center shrink-0"
                                 >
                                     <svg
                                         viewBox="0 0 24 24"
@@ -808,7 +808,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                             >
                                 <svg
                                     viewBox="0 0 24 24"
-                                    class="w-5 h-5 text-green-700 flex-shrink-0"
+                                    class="w-5 h-5 text-green-700 shrink-0"
                                     fill="currentColor"
                                 >
                                     <path :d="mdiLink" />
@@ -871,7 +871,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                 >
                                     <svg
                                         viewBox="0 0 24 24"
-                                        class="w-3.5 h-3.5 text-green-700 flex-shrink-0"
+                                        class="w-3.5 h-3.5 text-green-700 shrink-0"
                                         fill="currentColor"
                                     >
                                         <path :d="mdiLink" />
@@ -947,7 +947,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                     class="flex items-center gap-3 border-2 border-green-200 bg-green-50 rounded-2xl px-4 py-3"
                                 >
                                     <div
-                                        class="w-9 h-9 rounded-xl bg-white border border-green-200 flex items-center justify-center flex-shrink-0"
+                                        class="w-9 h-9 rounded-xl bg-white border border-green-200 flex items-center justify-center shrink-0"
                                     >
                                         <svg
                                             viewBox="0 0 24 24"
@@ -973,7 +973,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                             editInputRef &&
                                                 (editInputRef.value = '');
                                         "
-                                        class="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
+                                        class="text-gray-300 hover:text-red-400 transition-colors shrink-0"
                                     >
                                         <svg
                                             viewBox="0 0 24 24"
@@ -1015,7 +1015,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                 >
                                     <svg
                                         viewBox="0 0 24 24"
-                                        class="w-3.5 h-3.5 flex-shrink-0"
+                                        class="w-3.5 h-3.5 shrink-0"
                                         fill="currentColor"
                                     >
                                         <path :d="mdiAlertCircle" />
@@ -1082,7 +1082,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                 <div class="flex items-start gap-3">
                                     <svg
                                         viewBox="0 0 24 24"
-                                        class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0"
+                                        class="w-5 h-5 text-red-500 mt-0.5 shrink-0"
                                         fill="currentColor"
                                     >
                                         <path :d="mdiAlert" />
@@ -1109,7 +1109,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                 >
                                     <svg
                                         viewBox="0 0 24 24"
-                                        class="w-3.5 h-3.5 flex-shrink-0"
+                                        class="w-3.5 h-3.5 shrink-0"
                                         fill="currentColor"
                                     >
                                         <path :d="mdiAlertCircle" />
@@ -1222,7 +1222,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                 class="flex items-center gap-3 border-2 border-green-200 bg-green-50 rounded-2xl px-4 py-3"
                             >
                                 <div
-                                    class="w-9 h-9 rounded-xl bg-white border border-green-200 flex items-center justify-center flex-shrink-0"
+                                    class="w-9 h-9 rounded-xl bg-white border border-green-200 flex items-center justify-center shrink-0"
                                 >
                                     <svg
                                         viewBox="0 0 24 24"
@@ -1248,7 +1248,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                         fileInputRef &&
                                             (fileInputRef.value = '');
                                     "
-                                    class="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
+                                    class="text-gray-300 hover:text-red-400 transition-colors shrink-0"
                                 >
                                     <svg
                                         viewBox="0 0 24 24"
@@ -1282,7 +1282,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                             >
                                 <svg
                                     viewBox="0 0 24 24"
-                                    class="w-3.5 h-3.5 flex-shrink-0"
+                                    class="w-3.5 h-3.5 shrink-0"
                                     fill="currentColor"
                                 >
                                     <path :d="mdiAlertCircle" />
@@ -1338,7 +1338,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                             >
                                 <svg
                                     viewBox="0 0 24 24"
-                                    class="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0"
+                                    class="w-4 h-4 text-orange-500 mt-0.5 shrink-0"
                                     fill="currentColor"
                                 >
                                     <path :d="mdiAlert" />
@@ -1398,7 +1398,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                 class="flex items-center gap-3 border-2 border-orange-200 bg-orange-50 rounded-2xl px-4 py-3"
                             >
                                 <div
-                                    class="w-9 h-9 rounded-xl bg-white border border-orange-200 flex items-center justify-center flex-shrink-0"
+                                    class="w-9 h-9 rounded-xl bg-white border border-orange-200 flex items-center justify-center shrink-0"
                                 >
                                     <svg
                                         viewBox="0 0 24 24"
@@ -1424,7 +1424,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                         resubInputRef &&
                                             (resubInputRef.value = '');
                                     "
-                                    class="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
+                                    class="text-gray-300 hover:text-red-400 transition-colors shrink-0"
                                 >
                                     <svg
                                         viewBox="0 0 24 24"
@@ -1458,7 +1458,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                             >
                                 <svg
                                     viewBox="0 0 24 24"
-                                    class="w-3.5 h-3.5 flex-shrink-0"
+                                    class="w-3.5 h-3.5 shrink-0"
                                     fill="currentColor"
                                 >
                                     <path :d="mdiAlertCircle" />
@@ -1601,9 +1601,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                 <path :d="mdiCommentOutline" />
                             </svg>
                             <p class="text-sm font-semibold">No comments yet</p>
-                            <p
-                                class="text-xs mt-1 max-w-[200px] leading-relaxed"
-                            >
+                            <p class="text-xs mt-1 max-w-50 leading-relaxed">
                                 Revision notes and approval messages will appear
                                 here
                             </p>
@@ -1620,7 +1618,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                 "
                             >
                                 <div
-                                    class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-white self-end mb-1 overflow-hidden"
+                                    class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold text-white self-end mb-1 overflow-hidden"
                                     :class="
                                         rev.roleLabel.toLowerCase() ===
                                         'director'
@@ -1686,7 +1684,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                         </span>
                                     </div>
                                     <div
-                                        class="rounded-2xl px-4 py-2.5 text-sm leading-relaxed break-words"
+                                        class="rounded-2xl px-4 py-2.5 text-sm leading-relaxed wrap-break-word"
                                         :class="
                                             rev.from_user === auth.user?.id
                                                 ? 'bg-green-900 text-white rounded-tr-sm'
@@ -1704,7 +1702,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                     <!-- Resubmit bar -->
                     <div
                         v-if="canResubmit"
-                        class="flex-shrink-0 px-6 sm:px-8 py-3 border-t border-gray-100 bg-orange-50 space-y-2"
+                        class="shrink-0 px-6 sm:px-8 py-3 border-t border-gray-100 bg-orange-50 space-y-2"
                     >
                         <p
                             class="text-xs font-bold text-orange-700 flex items-center gap-1.5"
@@ -1723,7 +1721,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                             />
                             <button
                                 @click="resubInputRef?.click()"
-                                class="hover:cursor-pointer disabled:cursor-not-allowed flex items-center gap-2 h-9 px-3 rounded-xl border-2 border-orange-200 bg-white text-orange-700 text-xs font-bold hover:border-orange-400 transition-colors flex-shrink-0"
+                                class="hover:cursor-pointer disabled:cursor-not-allowed flex items-center gap-2 h-9 px-3 rounded-xl border-2 border-orange-200 bg-white text-orange-700 text-xs font-bold hover:border-orange-400 transition-colors shrink-0"
                             >
                                 <svg
                                     viewBox="0 0 24 24"
@@ -1744,7 +1742,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                             <button
                                 v-if="resubmitFile"
                                 @click="resubmitFile = null"
-                                class="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
+                                class="text-gray-300 hover:text-red-400 transition-colors shrink-0"
                             >
                                 <svg
                                     viewBox="0 0 24 24"
@@ -1803,7 +1801,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
 
             <!-- FOOTER -->
             <div
-                class="flex gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 flex-shrink-0 bg-white"
+                class="flex gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 shrink-0 bg-white"
             >
                 <!-- Design Task Approvals - New simplified workflow -->
                 <template v-if="props.task?.design && canApproveAsDesignRole">
