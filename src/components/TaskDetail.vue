@@ -1522,7 +1522,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                         <p
                             class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1"
                         >
-                            Approval Comments
+                            Revision Comments
                             <span
                                 class="ml-1.5 text-gray-400 font-normal normal-case"
                                 :class="
@@ -1534,7 +1534,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                 {{
                                     revisionComment.trim()
                                         ? "— ready to send"
-                                        : "— required for revision or approval"
+                                        : "— required for revision"
                                 }}
                             </span>
                         </p>

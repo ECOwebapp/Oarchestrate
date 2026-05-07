@@ -16,9 +16,10 @@ import ChartSubtasks from "@/components/Subtasks/ChartSubtasks.vue";
 import AddSubtask from "@/components/Subtasks/AddSubtask.vue";
 
 const subtaskStore = useSubtaskStore();
-const { subtasks, loading } = storeToRefs(subtaskStore);
 const tasksStore = useTaskStore();
 const projectStore = useProjectStore();
+const { subtasks, loading } = storeToRefs(subtaskStore);
+const { tasks } = storeToRefs(tasksStore);
 const auth = useAuthStore();
 const route = useRoute();
 const state = ref("Grid View");
@@ -64,7 +65,7 @@ onMounted(async () => {
 });
 
 const parentTask = computed(() => {
-    return tasksStore.tasks.find((t) => t.id === parentId.value) || null;
+    return tasks.value.find((t) => t.id === parentId.value) || null;
 });
 
 const parentProjectTitle = computed(() => {
@@ -409,6 +410,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                         :design="false"
                         :pre-fill="preFillData"
                         :parent-id="parentId"
+                        :task-has-assignee="parentTask?.assignee ? true : false"
                     />
                 </div>
             </Transition>

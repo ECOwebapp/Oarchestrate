@@ -25,10 +25,8 @@ const auth = useAuthStore();
 const { tasks } = storeToRefs(taskStore);
 
 const loading = ref(false);
-const subTasks = ref([{ text: "" }]);
 const outputUrl = ref("");
 const errorMsg = ref("");
-const showBulk = ref(false);
 
 // ── Upload state ──────────────────────────────────────────────────────────────
 const uploadMode = ref("link"); // 'link' | 'file'
@@ -513,7 +511,7 @@ const isLocked = computed(() => {
                     <select
                         v-model="newTask.type"
                         :disabled="(isLocked && preFill?.type) || lockType"
-                        class="hover:cursor-pointer w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm focus:outline-none focus:border-green-800 bg-white"
+                        class="hover:cursor-pointer w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm focus:outline-none focus:border-green-800 bg-white disabled:opacity-60"
                     >
                         <option value="" disabled hidden>
                             Select task type
@@ -543,7 +541,7 @@ const isLocked = computed(() => {
             </div>
 
             <!-- Assignee -->
-            <div v-if="!auth.isMember && !isSelfInsertion">
+            <div v-if="!auth.isMember && !isSelfInsertion && !props.tasks">
                 <label class="block text-sm font-semibold text-gray-700 mb-1">
                     Assign To <span class="text-red-500">*</span>
                 </label>
