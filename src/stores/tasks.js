@@ -83,11 +83,11 @@ export const useTaskStore = defineStore("tasks", () => {
   };
 
   // ── RESUBMIT ────────────────────────────────────────────────────────────────
-  const resubmitTask = async (taskId, newOutputLink, parentId) => {
+  const resubmitTask = async (taskId, newOutputLink, comment, parentId) => {
     try {
       const response = await apiFetch("/tasks/resubmit", {
         method: "POST",
-        body: JSON.stringify({ taskId, newOutputLink, parentId }),
+        body: JSON.stringify({ taskId, newOutputLink, comment, parentId }),
       });
 
       const result = await response.json();

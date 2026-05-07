@@ -527,6 +527,7 @@ const resubmit = async () => {
             await taskStore.resubmitTask(
                 props.task.id,
                 result.fileUrl,
+                revisionComment.value.trim(),
                 props.task.parentId,
             );
         resubmitFile.value = null;

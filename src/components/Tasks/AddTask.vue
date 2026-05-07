@@ -152,7 +152,12 @@ const assignableMembers = computed(() => {
     if (auth.isDirector) {
         const allowedIds = new Set(
             allPositions
-                .filter((p) => DIRECTOR_ASSIGNABLE.has(String(p.pos_id)))
+                .filter((p) => {
+                    // If condition is met, apply specific filter; otherwise, let everything through
+                    if (!props.lockType)
+                        return DIRECTOR_ASSIGNABLE.has(String(p.pos_id));
+                    return true;
+                })
                 .map((p) => String(p.user_id)),
         );
         return allMembers
@@ -162,7 +167,7 @@ const assignableMembers = computed(() => {
                 pos_name: _resolvePosName(
                     m.id,
                     allPositions,
-                    DIRECTOR_ASSIGNABLE_NR,
+                    !props.lockType ? DIRECTOR_ASSIGNABLE_NR : [],
                 ),
             }));
     }
@@ -251,7 +256,10 @@ const typeOptions = computed(() => {
 const showOutput = computed(() => auth.isMember && newTask.value.type === 2);
 const isSelfInsertion = computed(
     () =>
-        props.lockType && Number(newTask.value.type) === 2 && !newTask.value.id,
+        props.lockType &&
+        Number(newTask.value.type) === 2 &&
+        !newTask.value.id &&
+        !(auth.isDirector || auth.isUnitHead),
 );
 
 watch(
@@ -793,7 +801,7 @@ const isLocked = computed(() => {
                     <!-- Auto-filled link preview (editable) -->
                     <div v-if="outputUrl" class="flex items-center gap-2">
                         <svg
-                            class="w-3.5 h-3.5 text-green-700 flex-shrink-0"
+                            class="w-3.5 h-3.5 text-green-700 shrink-0"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -854,7 +862,7 @@ const isLocked = computed(() => {
                 class="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3"
             >
                 <svg
-                    class="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0"
+                    class="w-4 h-4 text-amber-600 mt-0.5 shrink-0"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
