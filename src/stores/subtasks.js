@@ -33,6 +33,7 @@ export const useSubtaskStore = defineStore("subtasks", () => {
       console.error("[taskStore] fetchSubTasks:", e);
     } finally {
       loading.value = false;
+      console.log(subtasks.value);
     }
   };
 
@@ -127,7 +128,8 @@ export const useSubtaskStore = defineStore("subtasks", () => {
           method: "GET",
         },
       );
-      if (response.ok) return await response.json();
+      const result = await response.json();
+      if (response.ok) return result;
     } catch (err) {
       console.log("Error deleting tasks: ", err);
     }

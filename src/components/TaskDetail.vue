@@ -151,7 +151,12 @@ const onFilePickEdit = (e) => {
 
 const loadRevisions = async () => {
     loadingRevs.value = true;
-    revisions.value = (await taskStore.fetchRevisions(props.task?.id)) || [];
+    if (Object.hasOwn(props.task, "designApproval"))
+        revisions.value =
+            (await subtaskStore.fetchRevisions(props.task?.id)) || [];
+    else
+        revisions.value =
+            (await taskStore.fetchRevisions(props.task?.id)) || [];
     loadingRevs.value = false;
     await nextTick();
     chatBottom.value?.scrollIntoView({ behavior: "smooth" });
