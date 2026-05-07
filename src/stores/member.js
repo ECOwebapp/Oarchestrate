@@ -37,9 +37,16 @@ export const useMemberStore = defineStore("member", () => {
     }
   };
 
+  const avatarMap = computed(() => {
+    return members.value.reduce((acc, m) => {
+      acc[m.id] = m.avatar_url;
+      return acc;
+    }, {});
+  });
+
   const memReset = () => {
     members.value = [];
   };
 
-  return { loading, members, fetchMembers, removeMember, memReset };
+  return { loading, members, fetchMembers, removeMember, avatarMap, memReset };
 });

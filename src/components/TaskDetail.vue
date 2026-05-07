@@ -48,7 +48,8 @@ const memberStore = useMemberStore();
 const posStore = usePosStore();
 const designStore = useDesignStore();
 const { plenary } = storeToRefs(designStore);
-const memberPos = storeToRefs(posStore)?.memberPos;
+const { memberPos } = storeToRefs(posStore);
+const { avatarMap } = storeToRefs(memberStore);
 
 const outputUrl = ref(props.task?.outputLink || "");
 const newOutputUrl = ref("");
@@ -79,6 +80,7 @@ onMounted(async () => {
         posStore.fetchMemberPos(),
         posStore.fetchPos(),
         designStore.getPlenaryMembers(),
+        memberStore.fetchMembers(),
         loadRevisions(),
     ]);
     document.addEventListener("click", handleOutsideClick);
@@ -188,17 +190,6 @@ const filteredRevisions = computed(() => {
     });
 });
 
-// In your component or Store
-const avatarMap = computed(() => {
-    return memberStore.members.reduce((acc, m) => {
-        acc[m.id] = m.avatar_url;
-        return acc;
-    }, {});
-});
-
-// Then your function becomes instant:
-const getAvatarUrl = (userId) => avatarMap.value[userId];
-
 watch(
     () => props.task?.id,
     async () => {
@@ -225,7 +216,7 @@ watch(tab, async (val) => {
 const unreadCount = computed(
     () =>
         filteredRevisions.value.filter(
-            (r) => r.to_user === auth.user?.id && !r.is_read,
+            (r) => r.to_user === auth.userID && !r.is_read,
         ).length,
 );
 // ── Capabilities ─────────────────────────────────────────────────────────────
@@ -514,6 +505,7 @@ const submitOutput = async () => {
 
 const resubmit = async () => {
     if (!resubmitFile.value) return;
+    if (!revisionComment.value) return;
     acting.value = "resubmit";
     submitError.value = "";
     uploadProgress.value = 0;
@@ -528,6 +520,7 @@ const resubmit = async () => {
             await subtaskStore.resubmitTask(
                 props.task.id,
                 result.fileUrl,
+                revisionComment.value.trim(),
                 props.task.parentId,
             );
         else
@@ -538,6 +531,7 @@ const resubmit = async () => {
             );
         resubmitFile.value = null;
         uploadProgress.value = 0;
+        revisionComment.value = "";
         await loadRevisions();
         emit("refresh");
         tab.value = "comments";
@@ -1617,7 +1611,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                 :key="rev.id"
                                 class="flex gap-3"
                                 :class="
-                                    rev.from_user === auth.user?.id
+                                    rev.from_user === auth.userID
                                         ? 'flex-row-reverse'
                                         : ''
                                 "
@@ -1632,8 +1626,8 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                     "
                                 >
                                     <img
-                                        v-if="getAvatarUrl(rev.from_user)"
-                                        :src="getAvatarUrl(rev.from_user)"
+                                        v-if="avatarMap[rev.from_user]"
+                                        :src="avatarMap[rev.from_user]"
                                         class="w-full h-full object-cover"
                                     />
 
@@ -1709,14 +1703,33 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                         v-if="canResubmit"
                         class="shrink-0 px-6 sm:px-8 py-3 border-t border-gray-100 bg-orange-50 space-y-2"
                     >
-                        <p
-                            class="text-xs font-bold text-orange-700 flex items-center gap-1.5"
-                        >
-                            <span
-                                class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"
-                            />
-                            Revision requested — upload your revised file:
-                        </p>
+                        <div class="flex justify-between item-center">
+                            <p
+                                class="text-xs font-bold text-orange-700 flex items-center gap-1.5"
+                            >
+                                <span
+                                    class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"
+                                />
+                                Revision requested — upload your revised file:
+                            </p>
+                            <p
+                                class="text-right text-[10px] text-gray-400 mt-1"
+                            >
+                                {{ revisionComment.length }}/500
+                            </p>
+                        </div>
+                        <textarea
+                            v-model="revisionComment"
+                            rows="3"
+                            maxlength="500"
+                            placeholder="Describe what did you revised…"
+                            class="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-amber-400 transition-colors leading-relaxed"
+                            :class="
+                                revisionComment.trim()
+                                    ? 'border-amber-300 bg-amber-50'
+                                    : ''
+                            "
+                        />
                         <div class="flex items-center gap-2">
                             <input
                                 ref="resubInputRef"

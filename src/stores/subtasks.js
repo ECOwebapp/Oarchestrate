@@ -88,11 +88,11 @@ export const useSubtaskStore = defineStore("subtasks", () => {
   };
 
   // ── RESUBMIT ────────────────────────────────────────────────────────────────
-  const resubmitTask = async (subtaskId, newOutputLink, parentId) => {
+  const resubmitTask = async (subtaskId, newOutputLink, comment, parentId) => {
     try {
       const response = await apiFetch("/subtasks/resubmit", {
         method: "POST",
-        body: JSON.stringify({ subtaskId, newOutputLink, parentId }),
+        body: JSON.stringify({ subtaskId, newOutputLink, comment, parentId }),
       });
 
       const result = await response.json();
