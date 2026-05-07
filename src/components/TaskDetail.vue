@@ -1663,11 +1663,13 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                             {{
                                                 new Date(
                                                     rev.created_at,
-                                                ).toLocaleDateString("en-PH", {
-                                                    month: "short",
+                                                ).toLocaleDateString("en-GB", {
                                                     day: "numeric",
+                                                    month: "short",
+                                                    year: "numeric",
                                                     hour: "2-digit",
                                                     minute: "2-digit",
+                                                    hour12: true,
                                                 })
                                             }}
                                         </span>
