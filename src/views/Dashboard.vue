@@ -1,16 +1,16 @@
 <script setup vapor>
 import Loading from "@/components/Loading.vue";
+import AnimateLoadingLine from "@/components/AnimateLoadingLine.vue";
 import TaskDetail from "@/components/TaskDetail.vue";
 import TaskCard from "@/components/Tasks/TaskCard.vue";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useDashboardStore } from "@/stores/dashboard";
 import { storeToRefs } from "pinia";
-import { computed, onMounted, watch, ref, watchEffect } from "vue";
+import { computed, ref, watch } from "vue";
 
 const auth = useAuthStore();
 const dashboardStore = useDashboardStore();
-const loading = ref(false);
-const loaderVideo = ref(null);
+const isAlive = ref(true);
 
 const {
     tasks,
@@ -83,6 +83,16 @@ const nextMonth = () => {
     } else selectedMonth.value++;
 };
 
+const fetchItems = async () => {
+    isAlive.value = false;
+    await dashboardStore.fetchItems(
+        selectedMonth.value,
+        selectedYear.value,
+        CIRC,
+    );
+    isAlive.value = true;
+};
+
 // ── Selected task (modal) ──
 const selectedTask = ref(null);
 const openTask = (t) => {
@@ -93,35 +103,22 @@ const closeTask = () => {
 };
 const onRefresh = async () => {
     closeTask();
-    await dashboardStore.fetchItems();
+    await fetchItems();
     if (selectedTask.value)
         selectedTask.value =
             tasks.value.find((t) => t.id === selectedTask.value.id) || null;
 };
 
-// Realtime
-onMounted(async () => {
-    loading.value = true;
-    tasks.value = [];
-    if (loaderVideo.value) {
-        // Force play in case the 'autoplay' attribute was ignored
-        loaderVideo.value.play().catch(() => {
-            console.log(
-                "Autoplay blocked, but that's okay—it will play on first click.",
-            );
-        });
-    }
-
-    loading.value = false;
-});
-
-watchEffect(async () => {
-    await dashboardStore.fetchItems(
-        selectedMonth.value,
-        selectedYear.value,
-        CIRC,
-    );
-});
+watch(
+    [selectedMonth, selectedYear],
+    async ([newMonth, newYear], [oldMonth, oldYear]) => {
+        const isSameMonth = oldMonth === newMonth;
+        const isSameYear = oldYear === newYear;
+        if (isSameMonth && isSameYear && tasks.value.length > 0) return;
+        await fetchItems();
+    },
+    { immediate: true },
+);
 
 // ── Helpers ──
 const fmt = (d) =>
@@ -160,45 +157,14 @@ const onCloseAddTask = () => {
 </script>
 
 <template>
-    <Loading v-if="loading" :message="'Setting up...'" />
-
     <div
-        v-else
-        class="director-dash flex flex-col w-full h-full overflow-hidden bg-gray-50"
+        v-for="isLoading in [{ load: !isAlive || taskLoading }]"
+        :key="isLoading.load"
+        class="flex-1 overflow-auto min-h-0"
     >
-        <!-- ══ LOADING ══ -->
-        <div
-            v-if="taskLoading && !tasks.length"
-            class="flex-1 flex flex-col items-center justify-center gap-3"
-        >
-            <div class="flex flex-row gap-3">
-                <svg
-                    class="animate-spin w-5 h-5 text-green-700"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                >
-                    <circle
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="#d1fae5"
-                        stroke-width="3"
-                    />
-                    <path
-                        d="M12 2a10 10 0 0 1 10 10"
-                        stroke="#15803d"
-                        stroke-width="3"
-                        stroke-linecap="round"
-                    />
-                </svg>
-                <span class="text-sm text-gray-500 tracking-wide"
-                    >Loading tasks...</span
-                >
-            </div>
-        </div>
+        <AnimateLoadingLine :loading="isLoading.load" />
 
-        <!-- ══ CONTENT ══ -->
-        <div v-else class="flex flex-col flex-1 min-h-0">
+        <div :class="isLoading.load ? 'opacity-60 pointer-events-none' : ''">
             <!-- Top bar -->
             <div
                 class="flex items-center justify-between gap-2 px-3 sm:px-5 py-2.5 sm:py-3 bg-white border-b border-gray-100 shrink-0 fade-in flex-wrap"
@@ -245,7 +211,7 @@ const onCloseAddTask = () => {
                 >
                     <button
                         @click="prevMonth"
-                        class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg hover:bg-gray-200 transition-colors text-gray-500 text-base sm:text-lg leading-none flex items-center justify-center"
+                        class="hover:cursor-pointer w-6 h-6 sm:w-7 sm:h-7 rounded-lg hover:bg-gray-200 transition-colors text-gray-500 text-base sm:text-lg leading-none flex items-center justify-center"
                     >
                         ‹
                     </button>
@@ -265,7 +231,7 @@ const onCloseAddTask = () => {
                     <button
                         @click="nextMonth"
                         :disabled="isCurrentMonth"
-                        class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg hover:bg-gray-200 transition-colors text-gray-500 text-base sm:text-lg leading-none flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                        class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg hover:bg-gray-200 transition-colors text-gray-500 text-base sm:text-lg leading-none flex items-center justify-center hover:cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                         ›
                     </button>
@@ -277,7 +243,7 @@ const onCloseAddTask = () => {
                     class="flex items-center gap-1.5 sm:gap-2 bg-orange-50 border border-orange-200 rounded-xl px-2.5 sm:px-3 py-1 sm:py-1.5 shrink-0"
                 >
                     <span
-                        class="w-2 h-2 rounded-full bg-orange-500 animate-pulse shrink-0"
+                        class="w-2 h-2 rounded-full bg-orange-500 shrink-0 animate-pulse"
                     />
                     <span
                         class="text-[10px] sm:text-xs font-bold text-orange-700 whitespace-nowrap"
@@ -297,7 +263,10 @@ const onCloseAddTask = () => {
                     <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
                         <!-- Donut — full width on mobile, 2-col span on sm, 1-col on xl -->
                         <div
-                            class="col-span-2 sm:col-span-1 xl:col-span-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-4 flex flex-col items-center slide-up"
+                            :class="[
+                                'col-span-2 sm:col-span-1 xl:col-span-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-4 flex flex-col items-center',
+                                !isLoading.load ? 'animate-slide-up' : '',
+                            ]"
                             style="animation-delay: 0ms"
                         >
                             <p
@@ -331,7 +300,11 @@ const onCloseAddTask = () => {
                                         stroke-linecap="butt"
                                         :stroke-dasharray="`${seg.len} ${CIRC - seg.len}`"
                                         :stroke-dashoffset="seg.offset"
-                                        class="donut-seg"
+                                        :class="
+                                            !isLoading.load
+                                                ? 'animate-donut'
+                                                : ''
+                                        "
                                         :style="`animation-delay:${i * 100}ms`"
                                     />
                                 </g>
@@ -385,7 +358,10 @@ const onCloseAddTask = () => {
 
                         <!-- Stat card 1 -->
                         <div
-                            class="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-5 flex flex-col justify-between animate-slide-up"
+                            :class="[
+                                'bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-5 flex flex-col justify-between',
+                                !isLoading.load ? 'animate-slide-up' : '',
+                            ]"
                             style="animation-delay: 60ms"
                         >
                             <div
@@ -428,7 +404,10 @@ const onCloseAddTask = () => {
 
                         <!-- Stat card 2 -->
                         <div
-                            class="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-5 flex flex-col justify-between animate-slide-up"
+                            :class="[
+                                'bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-5 flex flex-col justify-between',
+                                !isLoading.load ? 'animate-slide-up' : '',
+                            ]"
                             style="animation-delay: 120ms"
                         >
                             <div
@@ -471,12 +450,13 @@ const onCloseAddTask = () => {
 
                         <!-- Stat card 3 -->
                         <div
-                            class="bg-white rounded-2xl border shadow-sm p-3 sm:p-5 flex flex-col justify-between animate-slide-up"
-                            :class="
+                            :class="[
+                                'bg-white rounded-2xl border shadow-sm p-3 sm:p-5 flex flex-col justify-between',
+                                !isLoading.load ? 'animate-slide-up' : '',
                                 auth.isMember
                                     ? 'border-orange-100'
-                                    : 'border-red-100'
-                            "
+                                    : 'border-red-100',
+                            ]"
                             style="animation-delay: 180ms"
                         >
                             <div
@@ -560,8 +540,11 @@ const onCloseAddTask = () => {
 
                     <!-- ── Regular Tasks ── -->
                     <section
-                        class="animate-slide-up"
-                        style="animation-delay: 220ms"
+                        :class="
+                            !isLoading.load
+                                ? 'animate-slide-up [animation-delay: 220ms]'
+                                : ''
+                        "
                     >
                         <div
                             class="flex items-center justify-between mb-2 sm:mb-3 gap-2"
@@ -603,6 +586,7 @@ const onCloseAddTask = () => {
                                 v-for="task in activeRegular"
                                 :key="task.id"
                                 :task="task"
+                                :item-loading="isLoading.load"
                                 @open="openTask"
                                 @edit="openTask"
                             />
@@ -654,6 +638,7 @@ const onCloseAddTask = () => {
                                 v-for="task in activeInsertion"
                                 :key="task.id"
                                 :task="task"
+                                :item-loading="isLoading.load"
                                 @open="openTask"
                                 @edit="openTask"
                             />
@@ -693,8 +678,9 @@ const onCloseAddTask = () => {
                                     )"
                                 :key="task.id"
                                 :task="task"
-                                @open="openTask"
-                                @edit="openTask"
+                                :item-loading="isLoading.load"
+                                @open="openTask(task)"
+                                @edit="openTask(task)"
                             />
                         </div>
                     </section>
@@ -706,7 +692,7 @@ const onCloseAddTask = () => {
         <Transition name="modal">
             <TaskDetail
                 v-if="selectedTask"
-                :task="selectedTask"
+                :item="selectedTask"
                 @close="closeTask"
                 @refresh="onRefresh"
                 @assignSubtask="onAssignSubtask"
@@ -726,18 +712,6 @@ const onCloseAddTask = () => {
     }
 }
 
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(14px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
 @keyframes donutIn {
     from {
         stroke-dashoffset: 340;
@@ -753,19 +727,7 @@ const onCloseAddTask = () => {
     animation: fadeIn 0.35s ease both;
 }
 
-.task-card {
-    animation: slideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
-    transition:
-        transform 0.16s ease,
-        box-shadow 0.16s ease;
-}
-
-.task-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 28px -6px rgba(0, 0, 0, 0.11);
-}
-
-.donut-seg {
+.animate-donut {
     animation: donutIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
