@@ -1,15 +1,21 @@
 <script setup vapor>
 import { useAuthStore } from "@/stores/useAuthStore";
 import { mdiAccount, mdiLink } from "@mdi/js";
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 
 const props = defineProps({
     subtask: Object,
     selectable: { type: Boolean, default: false },
     selected: { type: Boolean, default: false },
     itemLoading: { type: Boolean, default: false },
+    editMode: { type: Boolean, default: false },
 });
-const emit = defineEmits(["assignSubtask", "open", "toggle-select"]);
+const emit = defineEmits([
+    "assignSubtask",
+    "open",
+    "toggle-select",
+    "visibleEditToggle",
+]);
 const auth = useAuthStore();
 
 const daysLeft = computed(() => {
@@ -105,7 +111,7 @@ const handleEditClick = () => {
     });
 };
 
-const canEdit = () => {
+const canEdit = computed(() => {
     // 1. Directors always have access
     if (auth.isDirector) return true;
 
@@ -116,7 +122,8 @@ const canEdit = () => {
 
     // 3. If it IS assigned, only the original assigner can edit it
     return props.subtask?.assigner === auth.userID;
-};
+});
+onMounted(() => emit("visibleEditToggle", canEdit.value));
 </script>
 
 <template>
@@ -155,7 +162,7 @@ const canEdit = () => {
         </div>
 
         <div
-            v-else-if="canEdit"
+            v-else-if="canEdit && props.editMode"
             @click.stop="handleEditClick"
             class="absolute top-2.5 right-2.5 z-20 w-10 h-5 rounded-sm flex items-center justify-center transition-all duration-150 shadow-sm text-xs bg-yellow-500"
         >

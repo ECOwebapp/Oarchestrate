@@ -7,6 +7,7 @@ import Icons from "../Icons.vue";
 const search = defineModel("search");
 const filter = defineModel("filter");
 const sortBy = defineModel("sort");
+const edit = defineModel("edit");
 const props = defineProps([
     "isMobile",
     "selectionMode",
@@ -18,6 +19,7 @@ const props = defineProps([
     "selected",
     "optionList",
     "placeholderText",
+    "visibleEditToggle",
 ]);
 const emit = defineEmits([
     "add",
@@ -27,6 +29,8 @@ const emit = defineEmits([
     "delete-modal",
     "reload",
 ]);
+
+console.log(props.visibleEditToggle);
 
 const allVisibleSelected = computed(() => props.selected?.allVisibleSelected);
 const someSelected = computed(() => props.selected?.someSelected);
@@ -195,6 +199,23 @@ const sortOpts = computed(() => props.optionList.sortOpts);
                             {{ o }}
                         </option>
                     </select>
+                </template>
+                <template v-if="props.visibleEditToggle" v-slot:editName
+                    ><p>Edit Mode:</p></template
+                >
+                <template v-if="props.visibleEditToggle" v-slot:edit
+                    ><label
+                        class="relative inline-flex items-center cursor-pointer"
+                    >
+                        <input
+                            v-model="edit"
+                            type="checkbox"
+                            class="sr-only peer"
+                        />
+                        <div
+                            class="w-14 h-7 bg-green-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6.5 after:transition-all peer-checked:bg-red-600"
+                        />
+                    </label>
                 </template>
             </SettingsButton>
 

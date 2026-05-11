@@ -27,6 +27,8 @@ const addTask = ref(false);
 const search = ref("");
 const filter = ref("All");
 const sortBy = ref("Recently Assigned");
+const edit = ref(false);
+const visibleEditToggle = ref(false);
 const parentId = computed(() => Number(route.params.task_id));
 
 const isMobile = ref(window.innerWidth < 640);
@@ -281,6 +283,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                 v-model:search="search"
                 v-model:filter="filter"
                 v-model:sort="sortBy"
+                v-model:edit="edit"
                 :is-mobile="isMobile"
                 :selection-mode="selectionMode"
                 :can-delete="canDelete"
@@ -291,6 +294,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                 :selected="{ allVisibleSelected, someSelected }"
                 :option-list="{ filterOpts, sortOpts }"
                 :placeholder-text="'Subtask'"
+                :visible-edit-toggle="visibleEditToggle"
                 @add="addTask = true"
                 @toggle-single="toggleSelectMode"
                 @toggle-all="toggleSelectAll"
@@ -328,6 +332,8 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                             :item-loading="isLoading.load"
                             :empty-title="emptyTitle"
                             :empty-hint="emptyHint"
+                            :edit-mode="edit"
+                            @visible-edit-toggle="visibleEditToggle = $event"
                             @toggle-select="toggleTaskSelect"
                             @assign-subtask="onAssignSubtask"
                             @open="taskDetail = true"

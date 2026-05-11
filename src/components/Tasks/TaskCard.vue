@@ -1,7 +1,7 @@
 <script setup vapor>
 import { useAuthStore } from "@/stores/useAuthStore";
 import { mdiAccount, mdiLink } from "@mdi/js";
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import router from "@/router";
 
 const props = defineProps({
@@ -9,9 +9,16 @@ const props = defineProps({
     selectable: { type: Boolean, default: false },
     selected: { type: Boolean, default: false },
     itemLoading: { type: Boolean, default: false },
+    editMode: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["open", "edit", "toggle-select", "assignSubtask"]);
+const emit = defineEmits([
+    "open",
+    "edit",
+    "toggle-select",
+    "assignSubtask",
+    "visibleEditToggle",
+]);
 const auth = useAuthStore();
 
 const daysLeft = computed(() => {
@@ -107,6 +114,12 @@ const handleCheckboxClick = (e) => {
 const handleEditClick = () => {
     emit("edit", props.task);
 };
+
+const canEdit = computed(
+    () => auth.isDirector || props.task?.assigner === auth.userID,
+);
+
+onMounted(() => emit("visibleEditToggle", canEdit.value));
 </script>
 
 <template>
@@ -145,7 +158,7 @@ const handleEditClick = () => {
         </div>
 
         <div
-            v-else-if="auth.isDirector || props.task?.assigner === auth.userID"
+            v-else-if="canEdit && props.editMode"
             @click.stop="handleEditClick"
             class="absolute top-2.5 right-2.5 z-20 w-10 h-5 rounded-sm flex items-center justify-center transition-all duration-150 shadow-sm text-xs bg-yellow-500"
         >

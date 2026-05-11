@@ -1,5 +1,5 @@
 <script setup vapor>
-import { ref, onUnmounted } from "vue";
+import { ref, onUnmounted, computed, watchEffect } from "vue";
 import TaskCard from "./TaskCard.vue";
 import TaskDetail from "../TaskDetail.vue";
 
@@ -11,6 +11,7 @@ const props = defineProps({
     isDeletable: { type: Function, default: () => false },
     emptyTitle: { type: String, default: "No tasks found" },
     emptyHint: { type: String, default: "" },
+    editMode: { type: Boolean, default: false },
 });
 const emit = defineEmits([
     "assignSubtask",
@@ -20,11 +21,16 @@ const emit = defineEmits([
     "close",
     "success",
     "clear",
+    "visibleEditToggle",
 ]);
 const selected = ref(null);
 const loading = ref(false);
 const success = ref(false);
 const tasks = ref({ ...(props.tasks || []) });
+const editStates = ref({});
+const isAnySubtaskBeingEdited = computed(() => {
+    return Object.values(editStates.value).some((status) => status === true);
+});
 
 const handleOpen = (task) => {
     if (props.selectable) return;
@@ -52,7 +58,20 @@ const handleClose = () => {
     }, 10);
 };
 
-onUnmounted(() => (tasks.value = null));
+const handleEditToggle = (id, isVisible) => {
+    if (isVisible) {
+        editStates.value[id] = true;
+    } else {
+        delete editStates.value[id]; // Clean up to keep the object small
+    }
+};
+watchEffect(() => {
+    emit("visibleEditToggle", isAnySubtaskBeingEdited.value);
+});
+onUnmounted(() => {
+    tasks.value = null;
+    emit("visibleEditToggle", false);
+});
 </script>
 
 <template>
@@ -99,8 +118,10 @@ onUnmounted(() => (tasks.value = null));
                 :is-deletable="props.isDeletable(task)"
                 :item-loading="props.itemLoading"
                 :style="{ animationDelay: `${index * 0.03}s` }"
+                :edit-mode="props.editMode"
+                @visible-edit-toggle="handleEditToggle(task.id, $event)"
                 @open="handleOpen(task)"
-                @edit="handleEdit"
+                @edit="handleEdit(task)"
                 @toggle-select="emit('toggle-select', $event)"
             />
         </div>

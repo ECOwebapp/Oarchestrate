@@ -49,11 +49,13 @@ const filterModal = ref(false);
                             <div class="flex flex-col gap-10">
                                 <p>Filter:</p>
                                 <p>Sort:</p>
+                                <slot name="editName"></slot>
                             </div>
 
                             <div class="flex flex-col gap-6">
                                 <slot name="filter"></slot>
                                 <slot name="sort"></slot>
+                                <slot name="edit"></slot>
                             </div>
                         </div>
                     </div>

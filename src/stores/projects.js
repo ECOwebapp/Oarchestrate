@@ -36,7 +36,7 @@ export const useProjectStore = defineStore("ppa", () => {
         const response = await apiFetch("/ppa/insert", {
           method: "POST",
           body: JSON.stringify({
-            title: project.title,
+            name: project.name,
             description: project.description,
             deadline: project.deadline,
           }),

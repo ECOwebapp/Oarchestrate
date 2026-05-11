@@ -1,10 +1,8 @@
 <script setup vapor>
-import { ref, watch, nextTick } from "vue";
+import { ref, computed, onUnmounted, watchEffect } from "vue";
 import SubtaskCard from "./SubtaskCard.vue";
 import TaskDetail from "../TaskDetail.vue";
-import { useSubtaskStore } from "@/stores/subtasks";
 
-const subtaskStore = useSubtaskStore();
 const props = defineProps({
     subtasks: Array,
     selectable: { type: Boolean, default: false },
@@ -13,6 +11,7 @@ const props = defineProps({
     itemLoading: { type: Boolean, default: false },
     emptyTitle: { type: String, default: "No subtasks found" },
     emptyHint: { type: String, default: "" },
+    editMode: { type: Boolean, default: false },
 });
 const emit = defineEmits([
     "assignSubtask",
@@ -20,10 +19,15 @@ const emit = defineEmits([
     "open",
     "close",
     "success",
+    "visibleEditToggle",
 ]);
 const selected = ref(null);
 const loading = ref(false);
 const success = ref(false);
+const editStates = ref({});
+const isAnySubtaskBeingEdited = computed(() => {
+    return Object.values(editStates.value).some((status) => status === true);
+});
 
 const handleOpen = (subtask) => {
     if (props.selectable) return;
@@ -45,6 +49,20 @@ const handleAssign = (event) => {
     emit("assignSubtask", event);
     if (event) success.value = true;
 };
+
+const handleEditToggle = (subtaskId, isVisible) => {
+    if (isVisible) {
+        editStates.value[subtaskId] = true;
+    } else {
+        delete editStates.value[subtaskId]; // Clean up to keep the object small
+    }
+};
+watchEffect(() => {
+    emit("visibleEditToggle", isAnySubtaskBeingEdited.value);
+});
+onUnmounted(() => {
+    emit("visibleEditToggle", false);
+});
 </script>
 
 <template>
@@ -90,10 +108,12 @@ const handleAssign = (event) => {
                 :selected="props.selectedIds.has(subtask.id)"
                 :is-deletable="props.isDeletable(subtask)"
                 :item-loading="props.itemLoading"
+                :edit-mode="props.editMode"
+                :style="{ animationDelay: `${index * 0.03}s` }"
                 @open="handleOpen(subtask)"
                 @toggle-select="emit('toggle-select', $event)"
                 @assignSubtask="handleAssign"
-                :style="{ animationDelay: `${index * 0.03}s` }"
+                @visibleEditToggle="handleEditToggle(subtask.id, $event)"
             />
         </div>
 

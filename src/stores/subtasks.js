@@ -47,7 +47,6 @@ export const useSubtaskStore = defineStore("subtasks", () => {
       console.error("[taskStore] fetchSubTasks:", e);
     } finally {
       loading.value = false;
-      console.log(subtasks.value);
     }
   };
 

@@ -154,6 +154,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                 v-model:search="search"
                 v-model:filter="filter"
                 v-model:sort="sortBy"
+                :visible-edit-toggle="false"
                 :is-mobile="isMobile"
                 :option-list="{ filterOpts, sortOpts }"
                 :placeholder-text="'Design'"

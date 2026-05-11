@@ -72,8 +72,6 @@ const applyPreFill = (fill) => {
         newTask.value.type = Number(props.defaultType);
         newTask.value.assignee = auth.userID;
     }
-
-    console.log(fill);
 };
 
 watch(

@@ -1,15 +1,26 @@
 <script setup vapor>
 import { mdiAccount } from "@mdi/js";
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
+import { useAuthStore } from "@/stores/useAuthStore";
 import router from "@/router";
+import { storeToRefs } from "pinia";
+
+const authStore = useAuthStore();
+const { isDirector } = storeToRefs(authStore);
 
 const props = defineProps({
     project: Object,
     selectable: { type: Boolean, default: false },
     selected: { type: Boolean, default: false },
     itemLoading: { type: Boolean, default: false },
+    editMode: { type: Boolean, default: false },
 });
-const emit = defineEmits(["toggle-select", "open"]);
+const emit = defineEmits([
+    "toggle-select",
+    "open",
+    "edit",
+    "visibleEditToggle",
+]);
 const daysLeft = computed(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -48,6 +59,13 @@ const handleCheckboxClick = (e) => {
     e.stopPropagation();
     emit("toggle-select", props.project);
 };
+
+const handleEditClick = () => {
+    emit("edit", props.task);
+};
+
+const canEdit = computed(() => isDirector.value);
+onMounted(() => emit("visibleEditToggle", canEdit.value));
 </script>
 
 <template>
@@ -76,6 +94,14 @@ const handleCheckboxClick = (e) => {
             >
                 <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
             </svg>
+        </div>
+
+        <div
+            v-else-if="canEdit && props.editMode"
+            @click.stop="handleEditClick"
+            class="absolute top-2.5 right-2.5 z-20 w-10 h-5 rounded-sm flex items-center justify-center transition-all duration-150 shadow-sm text-xs bg-yellow-500"
+        >
+            Edit
         </div>
 
         <div

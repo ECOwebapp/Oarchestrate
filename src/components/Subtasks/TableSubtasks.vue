@@ -158,7 +158,7 @@ const handleAssign = (event) => {
                         </td>
 
                         <td
-                            class="px-4 py-3 font-semibold text-gray-900 max-w-[180px] truncate"
+                            class="px-4 py-3 font-semibold text-gray-900 max-w-45 truncate"
                         >
                             {{ task.name }}
                         </td>

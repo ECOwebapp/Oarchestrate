@@ -15,12 +15,17 @@ import { storeToRefs } from "pinia";
 const projectStore = useProjectStore();
 const auth = useAuthStore();
 
+const preFillData = ref(null);
 const state = ref("Grid View");
 const addTask = ref(false);
 const search = ref("");
 const filter = ref("All");
 const sortBy = ref("Recently Assigned");
+const edit = ref(false);
+const visibleEditToggle = ref(false);
 const { projects, loading } = storeToRefs(projectStore);
+const itemDetail = ref(false);
+
 const isMobile = ref(window.innerWidth < 640);
 const checkViewport = () => (isMobile.value = window.innerWidth < 640);
 const isAlive = ref(true);
@@ -182,6 +187,21 @@ const toggleSelectAll = () => {
     }
 };
 
+const onEditItem = (item) => {
+    preFillData.value = {
+        id: item?.id || null,
+        name: item?.name || "",
+        description: item?.description || "",
+        deadline: formattedDate(item?.deadline || null),
+    };
+
+    addTask.value = true;
+};
+
+const formattedDate = (dateString) => {
+    const d = new Date(dateString);
+    return d.toISOString().split("T")[0];
+};
 // ── Delete via store action ──────────────────────────────────────────────────
 const deleteTasks = async () => {
     isDeleting.value = true;
@@ -208,8 +228,8 @@ const cancelDelete = () => {
 
 const onCloseAddProject = async (success) => {
     addTask.value = false;
-
-    if (success) {
+    preFillData.value = null;
+    if (success && itemDetail.value === false) {
         await projectStore.fetchProjects();
     }
 };
@@ -225,6 +245,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                 v-model:search="search"
                 v-model:filter="filter"
                 v-model:sort="sortBy"
+                v-model:edit="edit"
                 :is-mobile="isMobile"
                 :selection-mode="selectionMode"
                 :can-delete="canDelete"
@@ -235,6 +256,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                 :selected="{ allVisibleSelected, someSelected }"
                 :option-list="{ filterOpts, sortOpts }"
                 :placeholder-text="'PPA'"
+                :visible-edit-toggle="visibleEditToggle"
                 @add="addTask = true"
                 @toggle-single="toggleSelectMode"
                 @toggle-all="toggleSelectAll"
@@ -270,8 +292,18 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                             :empty-title="projectEmptyTitle"
                             :empty-hint="projectEmptyHint"
                             :item-loading="isLoading.load"
+                            :edit-mode="edit"
+                            @open="itemDetail = true"
+                            @close="itemDetail = false"
+                            @edit-item="onEditItem"
+                            @visible-edit-toggle="visibleEditToggle = $event"
                             @toggle-select="toggleTaskSelect"
-                            @success="onCloseAddProject(true)"
+                            @success="
+                                () => {
+                                    itemDetail = false;
+                                    onCloseAddProject(true);
+                                }
+                            "
                         />
                         <TableProjects
                             v-else-if="state === 'Table View'"
@@ -280,8 +312,15 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                             :selected-ids="selectedIds"
                             :is-deletable="isDeletable"
                             :item-loading="isLoading.load"
+                            @open="itemDetail = true"
+                            @close="itemDetail = false"
                             @toggle-select="toggleTaskSelect"
-                            @success="onCloseAddProject(true)"
+                            @success="
+                                () => {
+                                    itemDetail = false;
+                                    onCloseAddProject(true);
+                                }
+                            "
                         />
                         <ChartProjects
                             v-else-if="state === 'Chart View'"
@@ -332,6 +371,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                     @click.self="onCloseAddProject"
                 >
                     <AddProject
+                        :pre-fill="preFillData"
                         @close="onCloseAddProject"
                         @success="onCloseAddProject(true)"
                     />
