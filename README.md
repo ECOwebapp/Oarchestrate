@@ -6,10 +6,10 @@ Welcome to **Oarchestrate**, a task management system developed by the Student I
 
 The whole system was developed using [Vue](https://github.com/vuejs), [Express](https://github.com/expressjs/express), and the following modules:
 
-1. [Tailwind]()
-2. [Jordium Gantt Vue]()
-3. [SheetJS]()
-4. [JSPDF]()
+1. [Tailwind](https://github.com/tailwindlabs/tailwindcss)
+2. [Jordium Gantt Vue](https://github.com/nelson820125/jordium-gantt-vue3)
+3. [SheetJS](https://git.sheetjs.com/sheetjs/sheetjs)
+4. [JSPDF](https://github.com/parallax/jsPDF)
 ## Recommended Browser Setup
 
 - Chromium-based browsers (Chrome, Edge, Brave, etc.):
@@ -18,10 +18,6 @@ The whole system was developed using [Vue](https://github.com/vuejs), [Express](
 - Firefox:
   - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
   - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
 
 ## Project Setup
 
