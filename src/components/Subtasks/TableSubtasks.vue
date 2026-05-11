@@ -199,7 +199,7 @@ const handleAssign = (event) => {
                         <td class="px-4 py-3 text-center" @click.stop>
                             <button
                                 :disabled="selectable"
-                                @click="handleOpen(task)"
+                                @click.stop="handleOpen(task)"
                                 class="bg-green-950 text-white text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-green-800 active:scale-95 transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                             >
                                 View
@@ -213,7 +213,7 @@ const handleAssign = (event) => {
         <Transition name="modal">
             <TaskDetail
                 v-if="selected"
-                :task="selected"
+                :item="selected"
                 :loading="loading"
                 @close="handleClose"
                 @assignSubtask="handleAssign"

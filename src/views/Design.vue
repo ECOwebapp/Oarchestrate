@@ -21,7 +21,7 @@ const filter = ref("All");
 const sortBy = ref("Recently Assigned");
 const isAlive = ref(true);
 const taskDetail = ref(false);
-const { subtasks: tasks, loading } = storeToRefs(subtaskStore);
+const { designs, loading } = storeToRefs(subtaskStore);
 
 const fetchItems = () => subtaskStore.fetchSubTasks(null, true);
 const reload = async () => {
@@ -39,8 +39,7 @@ const checkViewport = () => (isMobile.value = window.innerWidth < 640);
 onMounted(async () => {
     isAlive.value = false;
     try {
-        tasks.value = [];
-        await fetchItems();
+        if (designs.value.length < 1) await fetchItems();
         window.addEventListener("resize", checkViewport);
     } finally {
         isAlive.value = true;
@@ -65,7 +64,7 @@ const filterOpts = computed(() => {
 const sortOpts = ["Recently Assigned", "Date Due", "Name A→Z", "Urgent First"];
 
 const filtered = computed(() => {
-    let list = tasks.value;
+    let list = designs.value;
     const q = search.value.toLowerCase();
     if (q)
         list = list.filter(

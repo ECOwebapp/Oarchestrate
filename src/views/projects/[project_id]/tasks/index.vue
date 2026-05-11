@@ -2,7 +2,6 @@
 import AddTask from "@/components/Tasks/AddTask.vue";
 import ChartTasks from "@/components/Tasks/ChartTasks.vue";
 import GridTasks from "@/components/Tasks/GridTasks.vue";
-import GridProjects from "@/components/Projects/GridProjects.vue";
 import Icons from "@/components/Icons.vue";
 import TableTasks from "@/components/Tasks/TableTasks.vue";
 import ProjectNavBar from "@/components/Projects/ProjectNavBar.vue";
@@ -19,14 +18,14 @@ const taskStore = useTaskStore();
 const projectStore = useProjectStore();
 const auth = useAuthStore();
 const route = useRoute();
-const { loading } = storeToRefs(taskStore);
+const { tasks, loading } = storeToRefs(taskStore);
 
 const state = ref("Grid View");
 const addTask = ref(false);
 const search = ref("");
 const filter = ref("All");
 const sortBy = ref("Recently Assigned");
-const parentId = computed(() => Number(route.params.id));
+const parentId = computed(() => Number(route.params.project_id));
 const isAlive = ref(true);
 
 // ── Only Directors and Unit Heads can select / delete ──────────────────────
@@ -43,8 +42,8 @@ const taskDetail = ref(false);
 const isMobile = ref(window.innerWidth < 640);
 const checkViewport = () => (isMobile.value = window.innerWidth < 640);
 
-const tasks = computed(() => taskStore.tasks.filter((t) => !t.design));
-const fetchItems = async () => await taskStore.fetchTasks(parentId.value);
+const fetchItems = async () =>
+    await taskStore.fetchTasks(parentId.value, false);
 const reload = async () => {
     isAlive.value = false; // Disconnect
     await Promise.all([fetchItems(), nextTick()]); // Wait for DOM to update
@@ -52,9 +51,13 @@ const reload = async () => {
 };
 
 onMounted(async () => {
-    tasks.value = [];
-    await Promise.all([fetchItems(), projectStore.fetchProjects()]);
-    window.addEventListener("resize", checkViewport);
+    try {
+        const isSameParent = taskStore.checkAndCompare(parentId.value);
+        if (isSameParent && tasks.value.length > 0) return;
+        await fetchItems();
+    } finally {
+        window.addEventListener("resize", checkViewport);
+    }
 });
 
 const parentProjectTitle = computed(() => {
@@ -151,7 +154,7 @@ const isDeletable = (task) => {
 const deletableSelectedCount = computed(
     () =>
         [...selectedIds.value].filter((id) => {
-            const t = taskStore.tasks.find((t) => t.id === id);
+            const t = tasks.value.find((t) => t.id === id);
             return t && isDeletable(t);
         }).length,
 );
@@ -320,6 +323,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                             :item-loading="isLoading.load"
                             :empty-title="emptyTitle"
                             :empty-hint="emptyHint"
+                            :key="filtered.id"
                             @toggle-select="toggleTaskSelect"
                             @assign-subtask="onAssignSubtask"
                             @edit-task="onEditTask"
@@ -359,7 +363,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
             </div>
 
             <!-- ── View toggle ── -->
-            <div class="flex justify-center py-3 flex-shrink-0">
+            <div class="flex justify-center py-3 shrink-0">
                 <div
                     class="inline-flex flex-wrap items-center gap-1 rounded-2xl bg-gray-100 p-1"
                 >

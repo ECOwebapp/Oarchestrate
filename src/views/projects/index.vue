@@ -44,9 +44,11 @@ const isDeleting = ref(false);
 const deleteError = ref("");
 
 onMounted(async () => {
-    projects.value = [];
-    await fetchItems();
-    window.addEventListener("resize", checkViewport);
+    try {
+        if (projects.value.length < 1) await fetchItems();
+    } finally {
+        window.addEventListener("resize", checkViewport);
+    }
 });
 
 const filterOpts = computed(() => {

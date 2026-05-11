@@ -103,7 +103,7 @@ const handleAssign = (event) => {
                     <TaskDetail
                         v-if="selected"
                         :key="selected.id"
-                        :task="selected"
+                        :item="selected"
                         :loading="loading"
                         @close="handleClose"
                     />

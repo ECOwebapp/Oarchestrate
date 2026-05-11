@@ -1,8 +1,7 @@
 <script setup vapor>
-import { ref } from "vue";
+import { ref, onUnmounted } from "vue";
 import TaskCard from "./TaskCard.vue";
 import TaskDetail from "../TaskDetail.vue";
-import Loading from "../Loading.vue";
 
 const props = defineProps({
     tasks: Array,
@@ -20,10 +19,12 @@ const emit = defineEmits([
     "open",
     "close",
     "success",
+    "clear",
 ]);
 const selected = ref(null);
 const loading = ref(false);
 const success = ref(false);
+const tasks = ref({ ...(props.tasks || []) });
 
 const handleOpen = (task) => {
     if (props.selectable) return;
@@ -50,6 +51,8 @@ const handleClose = () => {
         else emit("close");
     }, 10);
 };
+
+onUnmounted(() => (tasks.value = null));
 </script>
 
 <template>
@@ -88,7 +91,7 @@ const handleClose = () => {
             class="mask-y-from-95% mask-y-to-97% h-full overflow-y-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 justify-items-stretch px-4 sm:px-6 lg:px-10 py-6 gap-4"
         >
             <TaskCard
-                v-for="(task, index) in props.tasks"
+                v-for="(task, index) in tasks"
                 :key="task.id"
                 :task="task"
                 :selectable="props.selectable"
@@ -96,7 +99,7 @@ const handleClose = () => {
                 :is-deletable="props.isDeletable(task)"
                 :item-loading="props.itemLoading"
                 :style="{ animationDelay: `${index * 0.03}s` }"
-                @open="handleOpen"
+                @open="handleOpen(task)"
                 @edit="handleEdit"
                 @toggle-select="emit('toggle-select', $event)"
             />

@@ -19,6 +19,4 @@ import router from "./router";
   app.use(router);
   app.use(vaporInteropPlugin);
   app.mount("#app");
-
-  // auth.listenToAuthChanges()
 })();

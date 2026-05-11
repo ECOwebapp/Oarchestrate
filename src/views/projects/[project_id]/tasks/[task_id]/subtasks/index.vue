@@ -27,7 +27,7 @@ const addTask = ref(false);
 const search = ref("");
 const filter = ref("All");
 const sortBy = ref("Recently Assigned");
-const parentId = computed(() => Number(route.params.id));
+const parentId = computed(() => Number(route.params.task_id));
 
 const isMobile = ref(window.innerWidth < 640);
 const checkViewport = () => (isMobile.value = window.innerWidth < 640);
@@ -44,7 +44,8 @@ const deleteError = ref("");
 const taskDetail = ref(false);
 const isAlive = ref(true);
 
-const fetchItems = async () => await subtaskStore.fetchSubTasks(parentId.value);
+const fetchItems = async () =>
+    await subtaskStore.fetchSubTasks(parentId.value, false);
 const reload = async () => {
     isAlive.value = false;
     try {
@@ -55,13 +56,13 @@ const reload = async () => {
 };
 
 onMounted(async () => {
-    subtasks.value = [];
-    await Promise.all([
-        fetchItems(),
-        tasksStore.fetchTasks(),
-        projectStore.fetchProjects(),
-    ]);
-    window.addEventListener("resize", checkViewport);
+    try {
+        const isSameParent = subtaskStore.checkAndCompare(parentId.value);
+        if (isSameParent && subtasks.value.length > 0) return;
+        await fetchItems();
+    } finally {
+        window.addEventListener("resize", checkViewport);
+    }
 });
 
 const parentTask = computed(() => {

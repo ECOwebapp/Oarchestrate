@@ -39,7 +39,7 @@ const mdiPencil =
 const mdiTrashCan =
     "M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z";
 
-const props = defineProps(["task", "loading"]);
+const props = defineProps(["item", "loading"]);
 const emit = defineEmits(["close", "refresh"]);
 const auth = useAuthStore();
 const taskStore = useTaskStore();
@@ -51,7 +51,7 @@ const { plenary } = storeToRefs(designStore);
 const { memberPos } = storeToRefs(posStore);
 const { avatarMap } = storeToRefs(memberStore);
 
-const outputUrl = ref(props.task?.outputLink || "");
+const outputUrl = ref(props.item?.outputLink || "");
 const newOutputUrl = ref("");
 const revisionComment = ref("");
 const submitting = ref(false);
@@ -153,12 +153,12 @@ const onFilePickEdit = (e) => {
 
 const loadRevisions = async () => {
     loadingRevs.value = true;
-    if (Object.hasOwn(props.task, "designApproval"))
+    if (Object.hasOwn(props.item, "designApproval"))
         revisions.value =
-            (await subtaskStore.fetchRevisions(props.task?.id)) || [];
+            (await subtaskStore.fetchRevisions(props.item?.id)) || [];
     else
         revisions.value =
-            (await taskStore.fetchRevisions(props.task?.id)) || [];
+            (await taskStore.fetchRevisions(props.item?.id)) || [];
     loadingRevs.value = false;
     await nextTick();
     chatBottom.value?.scrollIntoView({ behavior: "smooth" });
@@ -191,9 +191,9 @@ const filteredRevisions = computed(() => {
 });
 
 watch(
-    () => props.task?.id,
+    () => props.item?.id,
     async () => {
-        outputUrl.value = props.task?.outputLink || "";
+        outputUrl.value = props.item?.outputLink || "";
         newOutputUrl.value = "";
         revisionComment.value = "";
         submitError.value = "";
@@ -222,29 +222,29 @@ const unreadCount = computed(
 // ── Capabilities ─────────────────────────────────────────────────────────────
 const canApproveAsUnitHead = computed(() => {
     if (!auth.isUnitHead) return false;
-    if (props.task?.isOwnTask) return false;
-    if (props.task?.unitHead) return false;
-    if (props.task?.director) return false;
-    if (!props.task?.outputLink) return false;
-    if (props.task?.assigneeIsOffice) return false;
+    if (props.item?.isOwnTask) return false;
+    if (props.item?.unitHead) return false;
+    if (props.item?.director) return false;
+    if (!props.item?.outputLink) return false;
+    if (props.item?.assigneeIsOffice) return false;
     return true;
 });
 
 // For regular tasks: Director can only approve AFTER unit head approves
 // For design tasks: Depends on the design approval chain
 const canApproveAsDirector = computed(() => {
-    if (!auth.isDirector || props.task?.director || !props.task?.outputLink)
+    if (!auth.isDirector || props.item?.director || !props.item?.outputLink)
         return false;
 
-    // Regular task: requires unit_head approval first
-    if (!props.task?.design) {
-        return props.task?.unitHead === true;
+    // Regular item: requires unit_head approval first
+    if (!props.item?.design) {
+        return props.item?.unitHead === true;
     }
 
-    // Design task: director can approve only after unit_head approves
+    // Design item: director can approve only after unit_head approves
     return (
-        props.task?.designApproval?.unit_head === true &&
-        props.task?.designApproval?.director === false
+        props.item?.designApproval?.unit_head === true &&
+        props.item?.designApproval?.director === false
     );
 });
 
@@ -252,11 +252,11 @@ const canApproveAsDirector = computed(() => {
 // New workflow: Unit Head → Director (no senior draftsman/engineers approval)
 // All involved (engineers, unit head, director) can see and comment
 const canApproveAsDesignRole = computed(() => {
-    if (props.task?.director) return false;
-    if (!props.task?.outputLink) return false;
-    if (!props.task?.design) return false;
+    if (props.item?.director) return false;
+    if (!props.item?.outputLink) return false;
+    if (!props.item?.design) return false;
 
-    const designApp = props.task?.designApproval || {};
+    const designApp = props.item?.designApproval || {};
     const userPosIds = (auth.positions || []).map((p) => p.pos_id);
 
     // 1. Unit Head (pos_id = 4) - FIRST in approval chain
@@ -274,9 +274,9 @@ const canApproveAsDesignRole = computed(() => {
 
 // All engineers, unit heads, and director can see and comment on design output
 const canCommentOnDesign = computed(() => {
-    if (!props.task?.outputLink) return false;
-    if (!props.task?.design) return false;
-    if (props.task?.director) return false;
+    if (!props.item?.outputLink) return false;
+    if (!props.item?.design) return false;
+    if (props.item?.director) return false;
 
     const userPosIds = (auth.positions || []).map((p) => p.pos_id);
     const isPlenaryUser = userPosIds.some((id) =>
@@ -288,69 +288,69 @@ const canCommentOnDesign = computed(() => {
 
 const canSubmitOutput = computed(
     () =>
-        (auth.isMember || (auth.isUnitHead && props.task?.isOwnTask)) &&
-        !props.task?.outputLink &&
-        !props.task?.director,
+        (auth.isMember || (auth.isUnitHead && props.item?.isOwnTask)) &&
+        !props.item?.outputLink &&
+        !props.item?.director,
 );
 const canResubmit = computed(
     () =>
-        (auth.isMember || (auth.isUnitHead && props.task?.isOwnTask)) &&
-        !!props.task?.revision &&
-        !props.task?.director,
+        (auth.isMember || (auth.isUnitHead && props.item?.isOwnTask)) &&
+        !!props.item?.revision &&
+        !props.item?.director,
 );
 
 // ── can the submitter manage (edit/delete) their own submission?
 // Conditions:
-//   - current user is the task assignee
+//   - current user is the item assignee
 //   - output has been submitted (outputLink exists)
 //   - director has NOT given final approval yet
 const canManageSubmission = computed(() => {
-    const isAssignee = String(props.task?.assignee) === String(auth.userID);
-    const isUnitHeadOwnTask = auth.isUnitHead && props.task?.isOwnTask;
+    const isAssignee = String(props.item?.assignee) === String(auth.userID);
+    const isUnitHeadOwnTask = auth.isUnitHead && props.item?.isOwnTask;
     return (
         (auth.isMember || isUnitHeadOwnTask || isAssignee) &&
-        !!props.task?.outputLink &&
-        !props.task?.director
+        !!props.item?.outputLink &&
+        !props.item?.director
     );
 });
 
 const canRequestRevision = computed(() => {
     const hasComment = revisionComment.value.trim().length > 0;
-    if (!hasComment || !props.task?.outputLink || props.task?.director)
+    if (!hasComment || !props.item?.outputLink || props.item?.director)
         return false;
 
-    // Design task: only unit head and director can request revision (no engineers)
-    if (props.task?.design) {
+    // Design item: only unit head and director can request revision (no engineers)
+    if (props.item?.design) {
         return canApproveAsDesignRole.value; // Unit head or director
     }
 
-    // Regular task: unit head and director can request revision
+    // Regular item: unit head and director can request revision
     return true;
 });
 const isOverdue = computed(
     () =>
-        props.task?.to &&
-        new Date(props.task.to) < new Date() &&
-        !props.task?.director,
+        props.item?.to &&
+        new Date(props.item.to) < new Date() &&
+        !props.item?.director,
 );
 
 const statusLabel = computed(() => {
-    if (props.task?.director)
+    if (props.item?.director)
         return {
             label: "Approved by Director",
             cls: "bg-green-100 text-green-800",
             icon: mdiCheckCircle,
         };
 
-    // Design task specific status
-    if (props.task?.design) {
-        if (props.task?.designApproval?.unit_head) {
+    // Design item specific status
+    if (props.item?.design) {
+        if (props.item?.designApproval?.unit_head) {
             return {
                 label: "Pending Director Final Review",
                 cls: "bg-blue-100 text-blue-800",
                 icon: mdiClockOutline,
             };
-        } else if (props.task?.outputLink) {
+        } else if (props.item?.outputLink) {
             return {
                 label: "Pending Unit Head Review",
                 cls: "bg-amber-100 text-amber-800",
@@ -359,19 +359,19 @@ const statusLabel = computed(() => {
         }
     }
 
-    if (props.task?.unitHead)
+    if (props.item?.unitHead)
         return {
             label: "Pending Director Review",
             cls: "bg-amber-100 text-amber-800",
             icon: mdiClockOutline,
         };
-    if (props.task?.revision)
+    if (props.item?.revision)
         return {
             label: "Revision Requested",
             cls: "bg-orange-100 text-orange-700",
             icon: mdiRefresh,
         };
-    if (props.task?.assigneeIsOffice && props.task?.outputLink)
+    if (props.item?.assigneeIsOffice && props.item?.outputLink)
         return {
             label: "Pending Director Review",
             cls: "bg-amber-100 text-amber-800",
@@ -409,27 +409,27 @@ const approve = async () => {
     try {
         let role = 4; // default to unit head
 
-        if (props.task?.design) {
-            // Design task: only unit head (4) or director (1) can approve
+        if (props.item?.design) {
+            // Design item: only unit head (4) or director (1) can approve
             const userPosId = auth.positions?.map((p) => p.pos_id) || [];
             if (userPosId.includes(1))
                 role = 1; // Director
             else if (userPosId.includes(4)) role = 4; // Unit Head
         } else {
-            // Regular task: use director or unit_head
+            // Regular item: use director or unit_head
             role = auth.isDirector ? 1 : 4;
         }
-        if (Object.hasOwn(props.task, "designApproval"))
+        if (Object.hasOwn(props.item, "designApproval"))
             await subtaskStore.approveSubTask(
-                props.task.id,
+                props.item.id,
                 role,
-                props.task.parentId,
+                props.item.parentId,
             );
         else
             await taskStore.approveTask(
-                props.task.id,
+                props.item.id,
                 role,
-                props.task.parentId,
+                props.item.parentId,
             );
         emit("refresh");
         emit("close");
@@ -444,30 +444,30 @@ const requestRevision = async () => {
     try {
         let role = 4; // default to unit head
 
-        if (props.task?.design) {
-            // Design task: only unit head (4) or director (1) can request revision
+        if (props.item?.design) {
+            // Design item: only unit head (4) or director (1) can request revision
             const userPosId = auth.positions?.map((p) => p.pos_id) || [];
             if (userPosId.includes(1))
                 role = 1; // Director
             else if (userPosId.includes(4)) role = 4; // Unit Head
         } else {
-            // Regular task: use director or unit_head
+            // Regular item: use director or unit_head
             role = auth.isDirector ? 1 : 4;
         }
 
-        if (Object.hasOwn(props.task, "designApproval")) {
+        if (Object.hasOwn(props.item, "designApproval")) {
             await subtaskStore.requestRevision(
-                props.task.id,
+                props.item.id,
                 revisionComment.value.trim(),
                 role,
-                props.task.parentId,
+                props.item.parentId,
             );
         } else
             await taskStore.requestRevision(
-                props.task.id,
+                props.item.id,
                 revisionComment.value.trim(),
                 role,
-                props.task.parentId,
+                props.item.parentId,
             );
         revisionComment.value = "";
         await loadRevisions();
@@ -490,9 +490,9 @@ const submitOutput = async () => {
                 uploadProgress.value = p;
             },
         });
-        if (Object.hasOwn(props.task, "designApproval"))
-            await subtaskStore.submitOutput(props.task.id, result.fileUrl);
-        else await taskStore.submitOutput(props.task.id, result.fileUrl);
+        if (Object.hasOwn(props.item, "designApproval"))
+            await subtaskStore.submitOutput(props.item.id, result.fileUrl);
+        else await taskStore.submitOutput(props.item.id, result.fileUrl);
         emit("refresh");
         emit("close");
     } catch (err) {
@@ -516,19 +516,19 @@ const resubmit = async () => {
                 uploadProgress.value = p;
             },
         });
-        if (Object.hasOwn(props.task, "designApproval"))
+        if (Object.hasOwn(props.item, "designApproval"))
             await subtaskStore.resubmitTask(
-                props.task.id,
+                props.item.id,
                 result.fileUrl,
                 revisionComment.value.trim(),
-                props.task.parentId,
+                props.item.parentId,
             );
         else
             await taskStore.resubmitTask(
-                props.task.id,
+                props.item.id,
                 result.fileUrl,
                 revisionComment.value.trim(),
-                props.task.parentId,
+                props.item.parentId,
             );
         resubmitFile.value = null;
         uploadProgress.value = 0;
@@ -557,9 +557,9 @@ const saveEditedOutput = async () => {
                 uploadProgress.value = p;
             },
         });
-        if (Object.hasOwn(props.task, "designApproval"))
-            await subtaskStore.editOutput(props.task.id, result.fileUrl);
-        else await taskStore.editOutput(props.task.id, result.fileUrl);
+        if (Object.hasOwn(props.item, "designApproval"))
+            await subtaskStore.editOutput(props.item.id, result.fileUrl);
+        else await taskStore.editOutput(props.item.id, result.fileUrl);
         editFile.value = null;
         editingSubmission.value = false;
         uploadProgress.value = 0;
@@ -577,12 +577,12 @@ const saveEditedOutput = async () => {
 const confirmDeleteOutput = async () => {
     acting.value = "deleteOutput";
     try {
-        if (Object.hasOwn(props.task, "designApproval"))
-            await subtaskStore.deleteOutput(props.task.id);
-        else await taskStore.deleteOutput(props.task.id);
+        if (Object.hasOwn(props.item, "designApproval"))
+            await subtaskStore.deleteOutput(props.item.id);
+        else await taskStore.deleteOutput(props.item.id);
         confirmingDelete.value = false;
         emit("refresh");
-        // Stay open; task now shows the upload UI again
+        // Stay open; item now shows the upload UI again
     } catch (err) {
         submitError.value = err.message || "Failed to remove submission.";
     } finally {
@@ -594,7 +594,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
 
 <template>
     <div
-        v-if="task"
+        v-if="item"
         class="fixed inset-0 z-100 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4"
         @click.self="emit('close')"
     >
@@ -616,12 +616,12 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                 <div class="flex flex-wrap gap-2 mb-3">
                     <span
                         class="px-3 py-1 text-xs font-bold rounded-full"
-                        :class="badgeClass(task.type)"
+                        :class="badgeClass(item.type)"
                     >
-                        {{ task.type }}
+                        {{ item.type }}
                     </span>
                     <span
-                        v-if="task.urgent"
+                        v-if="item.urgent"
                         class="px-3 py-1 text-xs font-bold rounded-full bg-red-800 text-white flex items-center gap-1"
                     >
                         <span
@@ -630,7 +630,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                         Urgent
                     </span>
                     <span
-                        v-if="task.revision"
+                        v-if="item.revision"
                         class="px-3 py-1 text-xs font-bold rounded-full bg-purple-600 text-white"
                     >
                         Revision
@@ -656,7 +656,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                     </span>
                 </div>
                 <h2 class="text-xl font-bold text-gray-900 leading-snug pr-8">
-                    {{ task.name }}
+                    {{ item.name }}
                 </h2>
             </div>
 
@@ -705,7 +705,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                         <div
                             class="border border-gray-200 rounded-xl p-4 text-sm text-gray-700 leading-relaxed bg-gray-50"
                         >
-                            {{ task.description || "—" }}
+                            {{ item.description || "—" }}
                         </div>
                     </div>
 
@@ -731,7 +731,9 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                     </svg>
                                 </div>
                                 <span class="text-xs text-gray-700 truncate">{{
-                                    task.assignerName || "—"
+                                    item.assignerName ||
+                                    item.directorName ||
+                                    "—"
                                 }}</span>
                             </div>
                         </div>
@@ -756,7 +758,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                     </svg>
                                 </div>
                                 <span class="text-xs text-gray-700 truncate">{{
-                                    task.assigneeName || "—"
+                                    item.assigneeName || "—"
                                 }}</span>
                             </div>
                         </div>
@@ -767,7 +769,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                 Date Given
                             </p>
                             <p class="text-sm text-gray-700 font-medium">
-                                {{ fmt(task.from) }}
+                                {{ fmt(item.from) }}
                             </p>
                         </div>
                         <div>
@@ -782,7 +784,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                     isOverdue ? 'text-red-600' : 'text-gray-700'
                                 "
                             >
-                                {{ fmt(task.to) }}
+                                {{ fmt(item.to) }}
                             </p>
                         </div>
                     </div>
@@ -798,7 +800,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                         <!-- ── SUBMITTED: normal view + manage controls ── -->
                         <template
                             v-if="
-                                task.outputLink &&
+                                item.outputLink &&
                                 !editingSubmission &&
                                 !confirmingDelete
                             "
@@ -814,7 +816,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                     <path :d="mdiLink" />
                                 </svg>
                                 <a
-                                    :href="task.outputLink"
+                                    :href="item.outputLink"
                                     target="_blank"
                                     class="text-sm text-green-800 font-semibold hover:underline truncate flex-1"
                                 >
@@ -879,7 +881,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                     <span class="truncate"
                                         >Current:
                                         <a
-                                            :href="task.outputLink"
+                                            :href="item.outputLink"
                                             target="_blank"
                                             class="text-green-700 hover:underline font-medium"
                                         >
@@ -1097,7 +1099,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                             class="text-xs text-red-600 mt-0.5 leading-relaxed"
                                         >
                                             The submitted file will be removed
-                                            and the task will return to
+                                            and the item will return to
                                             "awaiting submission" state. The
                                             reviewer will be notified.
                                         </p>
@@ -1333,7 +1335,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                 @change="onFilePickResub"
                             />
                             <div
-                                v-if="task.revisionComment"
+                                v-if="item.revisionComment"
                                 class="flex items-start gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3"
                             >
                                 <svg
@@ -1352,7 +1354,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                                     <p
                                         class="text-xs text-orange-800 leading-relaxed"
                                     >
-                                        {{ task.revisionComment }}
+                                        {{ item.revisionComment }}
                                     </p>
                                 </div>
                             </div>
@@ -1514,8 +1516,8 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                     <!-- REVISION NOTES -->
                     <div
                         v-if="
-                            (props.task?.design && canApproveAsDesignRole) ||
-                            (!props.task?.design &&
+                            (props.item?.design && canApproveAsDesignRole) ||
+                            (!props.item?.design &&
                                 (canApproveAsUnitHead || canApproveAsDirector))
                         "
                     >
@@ -1543,7 +1545,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                             rows="3"
                             maxlength="500"
                             :placeholder="
-                                props.task?.design && canApproveAsDesignRole
+                                props.item?.design && canApproveAsDesignRole
                                     ? 'Add your approval feedback or revision notes…'
                                     : 'Describe what needs to be revised before you can approve…'
                             "
@@ -1825,7 +1827,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                 class="flex gap-3 px-6 sm:px-8 py-4 border-t border-gray-100 shrink-0 bg-white"
             >
                 <!-- Design Task Approvals - New simplified workflow -->
-                <template v-if="props.task?.design && canApproveAsDesignRole">
+                <template v-if="props.item?.design && canApproveAsDesignRole">
                     <button
                         @click="requestRevision"
                         :disabled="acting !== '' || !canRequestRevision"
@@ -1870,7 +1872,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                         {{
                             acting === "approve"
                                 ? "Approving…"
-                                : props.task?.designApproval?.unit_head
+                                : props.item?.designApproval?.unit_head
                                   ? "Final Approve"
                                   : "Approve Design"
                         }}
@@ -1878,7 +1880,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                 </template>
                 <!-- Regular Task - Unit Head Approval -->
                 <template
-                    v-else-if="!props.task?.design && canApproveAsUnitHead"
+                    v-else-if="!props.item?.design && canApproveAsUnitHead"
                 >
                     <button
                         @click="requestRevision"
@@ -1930,7 +1932,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                 </template>
                 <!-- Regular Task - Director Approval (only after unit head approves) -->
                 <template
-                    v-else-if="!props.task?.design && canApproveAsDirector"
+                    v-else-if="!props.item?.design && canApproveAsDirector"
                 >
                     <button
                         @click="requestRevision"
@@ -1981,7 +1983,7 @@ onUnmounted(() => document.removeEventListener("click", handleOutsideClick));
                     </button>
                 </template>
                 <!-- Fully Approved State -->
-                <template v-else-if="task.director">
+                <template v-else-if="item.director">
                     <div
                         class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-green-50 border border-green-200"
                     >

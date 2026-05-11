@@ -5,7 +5,19 @@ import { apiFetch } from "@/lib/api";
 
 export const useTaskStore = defineStore("tasks", () => {
   const tasks = ref([]);
+  const insertions = ref([]);
   const loading = ref(false);
+  const currentParentId = ref(null);
+
+  // Helper
+  const checkAndCompare = (parentId) => {
+    if (currentParentId.value === parentId) {
+      return true;
+    } else {
+      currentParentId.value = parentId;
+      return false;
+    }
+  };
 
   // ── FETCH TASKS ─────────────────────────────────────────────────────────────
   const fetchTasks = async (parentId = null, insertion = false) => {
@@ -25,8 +37,10 @@ export const useTaskStore = defineStore("tasks", () => {
       });
 
       const result = await response.json();
-      if (response.ok) tasks.value = result;
-      else throw new Error(result.error);
+      if (response.ok) {
+        if (insertion === true) insertions.value = result;
+        else tasks.value = result;
+      } else throw new Error(result.error);
     } catch (e) {
       console.error("[taskStore] fetchTasks:", e);
     } finally {
@@ -62,7 +76,7 @@ export const useTaskStore = defineStore("tasks", () => {
       if (response.ok) tasks.value = result;
       else throw new Error(result.error);
     } catch (e) {
-      console.log("Failed to add task: ", e);
+      console.error("Failed to add task: ", e);
     }
   };
 
@@ -78,7 +92,7 @@ export const useTaskStore = defineStore("tasks", () => {
       if (response.ok) tasks.value = result;
       else throw new Error(result.error);
     } catch (err) {
-      console.log("Failed to approve task: ", err.message);
+      console.error("Failed to approve task: ", err.message);
     }
   };
 
@@ -94,7 +108,7 @@ export const useTaskStore = defineStore("tasks", () => {
       if (response.ok) tasks.value = result;
       else throw new Error(result.error);
     } catch (err) {
-      console.log("Failed to resubmit task: ", err.message);
+      console.error("Failed to resubmit task: ", err.message);
     }
   };
 
@@ -108,9 +122,8 @@ export const useTaskStore = defineStore("tasks", () => {
       const result = await response.json();
       if (response.ok) tasks.value = result;
       else throw new Error(result.error);
-      console.log(result);
     } catch (err) {
-      console.log("Error deleting tasks: ", err);
+      console.error("Error deleting tasks: ", err);
     }
   };
 
@@ -125,7 +138,7 @@ export const useTaskStore = defineStore("tasks", () => {
       );
       if (response.ok) return await response.json();
     } catch (err) {
-      console.log("Error deleting tasks: ", err);
+      console.error("Error deleting tasks: ", err);
     }
   };
 
@@ -141,7 +154,7 @@ export const useTaskStore = defineStore("tasks", () => {
       if (response.ok) tasks.value = result;
       else throw new Error(result.error);
     } catch (err) {
-      console.log("Failed to submit output: ", err.message);
+      console.error("Failed to submit output: ", err.message);
     }
   };
 
@@ -156,9 +169,8 @@ export const useTaskStore = defineStore("tasks", () => {
       const result = await response.json();
       if (response.ok) tasks.value = result;
       else throw new Error(result.error);
-      console.log(result);
     } catch (err) {
-      console.log("Failed to submit output: ", err.message);
+      console.error("Failed to submit output: ", err.message);
     }
   };
 
@@ -173,9 +185,8 @@ export const useTaskStore = defineStore("tasks", () => {
       const result = await response.json();
       if (response.ok) tasks.value = result;
       else throw new Error(result.error);
-      console.log(result);
     } catch (err) {
-      console.log("Failed to submit output: ", err.message);
+      console.error("Failed to submit output: ", err.message);
     }
   };
 
@@ -190,9 +201,8 @@ export const useTaskStore = defineStore("tasks", () => {
       const result = await response.json();
       if (response.ok) tasks.value = result;
       else throw new Error(result.error);
-      console.log(result);
     } catch (err) {
-      console.log("Failed to submit output: ", err.message);
+      console.error("Failed to submit output: ", err.message);
     }
   };
 
@@ -202,7 +212,9 @@ export const useTaskStore = defineStore("tasks", () => {
 
   return {
     tasks,
+    insertions,
     loading,
+    checkAndCompare,
     fetchTasks,
     addTasks,
     submitOutput,

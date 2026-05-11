@@ -18,7 +18,7 @@ const addTask = ref(false);
 const search = ref("");
 const filter = ref("All");
 const sortBy = ref("Recently Assigned");
-const { tasks, loading } = storeToRefs(taskStore);
+const { insertions, loading } = storeToRefs(taskStore);
 
 // ── Only Directors and Unit Heads can select / delete ──────────────────────
 const canDelete = computed(() => auth.isDirector || auth.isUnitHead);
@@ -43,9 +43,11 @@ const isMobile = ref(window.innerWidth < 640);
 const checkViewport = () => (isMobile.value = window.innerWidth < 640);
 
 onMounted(async () => {
-    tasks.value = [];
-    await fetchItems();
-    window.addEventListener("resize", checkViewport);
+    try {
+        if (insertions.value.length < 1) await fetchItems();
+    } finally {
+        window.addEventListener("resize", checkViewport);
+    }
 });
 
 const projectEmptyHint = computed(() => {
@@ -71,7 +73,7 @@ const filterOpts = computed(() => {
 const sortOpts = ["Recently Assigned", "Date Due", "Name A→Z", "Urgent First"];
 
 const filtered = computed(() => {
-    let list = tasks.value;
+    let list = insertions.value;
     const q = search.value.toLowerCase();
     if (q)
         list = list.filter(
@@ -299,6 +301,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
                             :item-loading="isLoading.load"
                             :empty-title="'No Insertions found'"
                             :empty-hint="projectEmptyHint"
+                            :key="filtered.id"
                             @toggle-select="toggleTaskSelect"
                             @assign-subtask="onAssignSubtask"
                             @edit-task="onEditTask"
@@ -394,7 +397,7 @@ onUnmounted(() => window.removeEventListener("resize", checkViewport));
             <Transition name="modal">
                 <div
                     v-if="showDeleteConfirm"
-                    class="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 px-4"
+                    class="fixed inset-0 z-200 flex items-center justify-center bg-black/50 px-4"
                     @click.self="cancelDelete"
                 >
                     <div

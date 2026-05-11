@@ -91,7 +91,7 @@ const handleAssign = (event) => {
         <Transition name="modal">
             <TaskDetail
                 v-if="selected"
-                :task="selected"
+                :item="selected"
                 :loading="loading"
                 @close="handleClose"
                 @assignSubtask="handleAssign"

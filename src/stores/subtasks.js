@@ -7,7 +7,19 @@ const OFFICE_UNIT_ID = 3;
 
 export const useSubtaskStore = defineStore("subtasks", () => {
   const subtasks = ref([]);
+  const designs = ref([]);
   const loading = ref(false);
+  const currentParentId = ref(null);
+
+  // Helper
+  const checkAndCompare = (parentId) => {
+    if (currentParentId.value === parentId) {
+      return true;
+    } else {
+      currentParentId.value = parentId;
+      return false;
+    }
+  };
 
   // ── FETCH SUBTASKS ─────────────────────────────────────────────────────────────
   const fetchSubTasks = async (parentTaskId = null, design = false) => {
@@ -27,8 +39,10 @@ export const useSubtaskStore = defineStore("subtasks", () => {
       });
 
       const result = await response.json();
-      if (response.ok) subtasks.value = result;
-      else throw new Error(result.error);
+      if (response.ok) {
+        if (design === true) designs.value = result;
+        else subtasks.value = result;
+      } else throw new Error(result.error);
     } catch (e) {
       console.error("[taskStore] fetchSubTasks:", e);
     } finally {
@@ -202,7 +216,9 @@ export const useSubtaskStore = defineStore("subtasks", () => {
 
   return {
     subtasks,
+    designs,
     loading,
+    checkAndCompare,
     fetchSubTasks,
     addSubTasks,
     submitOutput,
