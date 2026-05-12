@@ -130,7 +130,7 @@ const isDeletable = (task) => {
 const deletableSelectedCount = computed(
     () =>
         [...selectedIds.value].filter((id) => {
-            const t = taskStore.tasks.find((t) => t.id === id);
+            const t = insertions.value.find((t) => t.id === id);
             return t && isDeletable(t);
         }).length,
 );

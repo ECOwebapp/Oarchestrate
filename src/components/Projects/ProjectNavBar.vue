@@ -30,7 +30,7 @@ const emit = defineEmits([
     "reload",
 ]);
 
-console.log(props.visibleEditToggle);
+console.log(props.isDeletable);
 
 const allVisibleSelected = computed(() => props.selected?.allVisibleSelected);
 const someSelected = computed(() => props.selected?.someSelected);

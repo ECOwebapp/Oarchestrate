@@ -129,7 +129,7 @@ onUnmounted(() => {
         <Transition name="loading">
             <TaskDetail
                 v-if="selected"
-                :task="selected"
+                :item="selected"
                 :loading="loading"
                 @close="handleClose"
                 @assignSubtask="handleAssign"
