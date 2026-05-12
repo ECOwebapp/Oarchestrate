@@ -36,13 +36,17 @@ const submitForm = async () => {
 
         let request = null;
         if (props.preFill)
-            request = projectStore.updateProjects(newProject.value);
-        else request = projectStore.insertProjects(newProject.value);
+            request = projectStore.updateProjects({
+                project: { ...newProject.value },
+            });
+        else
+            request = projectStore.insertProjects({
+                project: { ...newProject.value },
+            });
 
         const response = await request;
 
-        console.log(response);
-        if (response === "success") emit("success");
+        if (response === "success") return emit("success");
     } catch (e) {
         console.error("[AddProject] submit error:", e);
         errorMsg.value = e.message || "Something went wrong. Please try again.";

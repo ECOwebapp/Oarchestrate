@@ -26,61 +26,46 @@ export const useProjectStore = defineStore("ppa", () => {
     }
   };
 
-  const insertProjects = async (project) => {
+  const insertProjects = async ({ project }) => {
     try {
       if (!auth.isDirector) {
         console.log("Not authorised!");
         return;
       } else {
-        loading.value = true;
         const response = await apiFetch("/ppa/insert", {
           method: "POST",
-          body: JSON.stringify({
-            name: project.name,
-            description: project.description,
-            deadline: project.deadline,
-          }),
+          body: JSON.stringify({ ...project }),
         });
 
-        console.log(await response.json());
-        return response.ok ? "success" : "failed";
+        return await response.text();
       }
     } catch (e) {
       console.log("Error adding PPAs: ", e);
-    } finally {
-      loading.value = false;
     }
   };
 
-  const updateProjects = async (project) => {
+  const updateProjects = async ({ project }) => {
     try {
-      loading.value = true;
       const response = await apiFetch("/ppa/update", {
         method: "POST",
-        body: JSON.stringify(project),
+        body: JSON.stringify({ ...project }),
       });
-
-      return response.ok ? "success" : "failed";
+      return await response.text();
     } catch (e) {
       console.log("Error updating PPAs: ", e);
-    } finally {
-      loading.value = false;
     }
   };
 
   const deleteProjects = async (id) => {
     try {
-      loading.value = true;
       const response = await apiFetch("/ppa/delete", {
         method: "POST",
         body: JSON.stringify({ id }),
       });
 
-      return response.status;
+      return await response.text();
     } catch (e) {
       console.log("Error adding PPAs: ", e);
-    } finally {
-      loading.value = false;
     }
   };
 

@@ -382,7 +382,6 @@ const submitForm = async () => {
                 outputLink: showOutput.value ? outputUrl.value : "",
             },
         });
-        // }
 
         emit("success");
     } catch (e) {
