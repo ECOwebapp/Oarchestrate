@@ -307,7 +307,7 @@ const openUnitStructureModal = (unitKey) => {
         };
     } else if (unitKey === "office") {
         unitStructureModalData.value = {
-            title: "Office Staff Functional Structure",
+            title: "Techincal and Office Operations Unit Functional Structure",
             sections: [
                 ...(orgData.value.officeStaff.head
                     ? [
@@ -318,7 +318,7 @@ const openUnitStructureModal = (unitKey) => {
                       ]
                     : []),
                 {
-                    heading: "Office Staff Members",
+                    heading: "TOOU Members",
                     items: orgData.value.officeStaff.members,
                 },
             ],
@@ -442,7 +442,7 @@ const sz = {
                             <VLine />
 
                             <div :style="connectorRowStyle">
-                                <div class="relative min-h-[14px]">
+                                <div class="relative min-h-3.5">
                                     <div
                                         class="absolute top-0 h-px bg-black"
                                         :style="topConnectorStyle"
@@ -450,17 +450,17 @@ const sz = {
                                     <div class="grid" :style="topGridStyle">
                                         <div class="flex justify-center">
                                             <div
-                                                class="w-px h-[14px] bg-black"
+                                                class="w-px h-3.5 bg-black"
                                             ></div>
                                         </div>
                                         <div class="flex justify-center">
                                             <div
-                                                class="w-px h-[14px] bg-black"
+                                                class="w-px h-3.5 bg-black"
                                             ></div>
                                         </div>
                                         <div class="flex justify-center">
                                             <div
-                                                class="w-px h-[14px] bg-black"
+                                                class="w-px h-3.5 bg-black"
                                             ></div>
                                         </div>
                                     </div>
@@ -495,23 +495,23 @@ const sz = {
 
                                     <div
                                         v-if="orgData.pdu.members.length"
-                                        class="relative min-h-[14px]"
+                                        class="relative min-h-3.5"
                                         :style="pduMemberBranchStyle"
                                     >
                                         <div
-                                            class="absolute top-0 left-[40px] right-[40px] h-px bg-black"
+                                            class="absolute top-0 left-10 right-10 h-px bg-black"
                                         ></div>
                                         <div
-                                            class="flex justify-center items-start gap-[10px]"
+                                            class="flex justify-center items-start gap-2.5"
                                         >
                                             <div
                                                 v-for="i in orgData.pdu.members
                                                     .length"
                                                 :key="i"
-                                                class="w-[80px] flex justify-center"
+                                                class="w-20 flex justify-center"
                                             >
                                                 <div
-                                                    class="w-px h-[14px] bg-black"
+                                                    class="w-px h-3.5 bg-black"
                                                 ></div>
                                             </div>
                                         </div>
@@ -519,7 +519,7 @@ const sz = {
 
                                     <div
                                         v-if="orgData.pdu.members.length"
-                                        class="flex justify-center items-start gap-[10px]"
+                                        class="flex justify-center items-start gap-2.5"
                                         :style="pduMemberBranchStyle"
                                     >
                                         <OrgCard
@@ -552,23 +552,23 @@ const sz = {
                                             v-if="
                                                 orgData.pdu.juniorDrafts.length
                                             "
-                                            class="relative min-h-[14px]"
+                                            class="relative min-h-3.5"
                                             :style="pduDraftBranchStyle"
                                         >
                                             <div
-                                                class="absolute top-0 left-[40px] right-[40px] h-px bg-black"
+                                                class="absolute top-0 left-10 right-10 h-px bg-black"
                                             ></div>
                                             <div
-                                                class="flex justify-center items-start gap-[10px]"
+                                                class="flex justify-center items-start gap-2.5"
                                             >
                                                 <div
                                                     v-for="i in orgData.pdu
                                                         .juniorDrafts.length"
                                                     :key="i"
-                                                    class="w-[80px] flex justify-center"
+                                                    class="w-20 flex justify-center"
                                                 >
                                                     <div
-                                                        class="w-px h-[14px] bg-black"
+                                                        class="w-px h-3.5 bg-black"
                                                     ></div>
                                                 </div>
                                             </div>
@@ -578,7 +578,7 @@ const sz = {
                                             v-if="
                                                 orgData.pdu.juniorDrafts.length
                                             "
-                                            class="flex justify-center items-start gap-[10px]"
+                                            class="flex justify-center items-start gap-2.5"
                                             :style="pduDraftBranchStyle"
                                         >
                                             <OrgCard
@@ -604,7 +604,7 @@ const sz = {
                                             openUnitStructureModal('office')
                                         "
                                     >
-                                        OFFICE STAFF
+                                        TECHNICAL AND OFFICE OPERATIONS UNIT
                                     </p>
                                     <VLine />
                                     <OrgCard
@@ -627,23 +627,23 @@ const sz = {
                                         v-if="
                                             orgData.officeStaff.members.length
                                         "
-                                        class="relative min-h-[14px]"
+                                        class="relative min-h-3.5"
                                         :style="officeBranchStyle"
                                     >
                                         <div
-                                            class="absolute top-0 left-[40px] right-[40px] h-px bg-black"
+                                            class="absolute top-0 left-10 right-10 h-px bg-black"
                                         ></div>
                                         <div
-                                            class="flex justify-center items-start gap-[10px]"
+                                            class="flex justify-center items-start gap-2.5"
                                         >
                                             <div
                                                 v-for="i in orgData.officeStaff
                                                     .members.length"
                                                 :key="i"
-                                                class="w-[80px] flex justify-center"
+                                                class="w-20 flex justify-center"
                                             >
                                                 <div
-                                                    class="w-px h-[14px] bg-black"
+                                                    class="w-px h-3.5 bg-black"
                                                 ></div>
                                             </div>
                                         </div>
@@ -653,7 +653,7 @@ const sz = {
                                         v-if="
                                             orgData.officeStaff.members.length
                                         "
-                                        class="flex justify-center items-start gap-[10px]"
+                                        class="flex justify-center items-start gap-2.5"
                                         :style="officeBranchStyle"
                                     >
                                         <OrgCard
@@ -703,23 +703,23 @@ const sz = {
 
                                     <div
                                         v-if="orgData.piu.siteEngineers.length"
-                                        class="relative min-h-[14px]"
+                                        class="relative min-h-3.5"
                                         :style="piuBranchStyle"
                                     >
                                         <div
-                                            class="absolute top-0 left-[40px] right-[40px] h-px bg-black"
+                                            class="absolute top-0 left-10 right-10 h-px bg-black"
                                         ></div>
                                         <div
-                                            class="flex justify-center items-start gap-[10px]"
+                                            class="flex justify-center items-start gap-2.5"
                                         >
                                             <div
                                                 v-for="i in orgData.piu
                                                     .siteEngineers.length"
                                                 :key="i"
-                                                class="w-[80px] flex justify-center"
+                                                class="w-20 flex justify-center"
                                             >
                                                 <div
-                                                    class="w-px h-[14px] bg-black"
+                                                    class="w-px h-3.5 bg-black"
                                                 ></div>
                                             </div>
                                         </div>
@@ -727,7 +727,7 @@ const sz = {
 
                                     <div
                                         v-if="orgData.piu.siteEngineers.length"
-                                        class="flex justify-center items-start gap-[10px]"
+                                        class="flex justify-center items-start gap-2.5"
                                         :style="piuBranchStyle"
                                     >
                                         <OrgCard
@@ -777,7 +777,7 @@ const sz = {
 
         <div
             v-if="showUnitStructureModal"
-            class="fixed inset-0 z-[1200] flex items-center justify-center p-4"
+            class="fixed inset-0 z-1200 flex items-center justify-center p-4"
         >
             <div
                 class="absolute inset-0 bg-black/50"
@@ -830,14 +830,14 @@ const sz = {
         <Teleport to="body">
             <div
                 v-if="selectedProfile"
-                class="fixed inset-0 z-[1300] flex items-center justify-center p-4"
+                class="fixed inset-0 z-1300 flex items-center justify-center p-4"
             >
                 <div
                     class="absolute inset-0 bg-black/50"
                     @click="selectedProfile = null"
                 ></div>
                 <div
-                    class="relative z-10 w-full max-w-[280px] rounded-xl bg-white p-6 shadow-2xl text-center"
+                    class="relative z-10 w-full max-w-70 rounded-xl bg-white p-6 shadow-2xl text-center"
                 >
                     <div class="text-xs text-gray-400 mb-3">
                         Profile (click to view)
@@ -873,7 +873,7 @@ const sz = {
                         {{ selectedProfile.title }}
                     </p>
                     <div
-                        class="bg-gray-100 rounded-lg min-h-[100px] mb-4 flex items-center justify-center text-gray-400 text-sm"
+                        class="bg-gray-100 rounded-lg min-h-25 mb-4 flex items-center justify-center text-gray-400 text-sm"
                     >
                         Additional information
                     </div>

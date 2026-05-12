@@ -395,7 +395,7 @@ const areaSeries = computed(() =>
                         @click="showIndividualPicker = true"
                     >
                         <svg
-                            class="w-3.5 h-3.5 flex-shrink-0"
+                            class="w-3.5 h-3.5 shrink-0"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -419,7 +419,7 @@ const areaSeries = computed(() =>
             >
                 <!-- Bar Chart: Completion Rate -->
                 <div
-                    class="relative flex min-h-[260px] flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0"
+                    class="relative flex min-h-65 flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0"
                 >
                     <div class="mb-2 flex items-start justify-between gap-3">
                         <h3
@@ -529,7 +529,7 @@ const areaSeries = computed(() =>
 
                 <!-- Pie Chart: Task Distribution -->
                 <div
-                    class="relative flex min-h-[260px] flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0"
+                    class="relative flex min-h-65 flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0"
                 >
                     <div class="mb-2 flex items-start justify-between gap-3">
                         <h3
@@ -549,7 +549,7 @@ const areaSeries = computed(() =>
                     >
                         <svg
                             viewBox="0 0 200 200"
-                            class="h-full max-h-44 w-full max-w-[220px] flex-shrink-0 sm:max-h-52"
+                            class="h-full max-h-44 w-full max-w-55 shrink-0 sm:max-h-52"
                         >
                             <!-- Empty state: gray circle with 0% -->
                             <circle
@@ -632,7 +632,7 @@ const areaSeries = computed(() =>
                                 class="flex items-center gap-2 text-xs text-gray-700 sm:text-sm"
                             >
                                 <span
-                                    class="w-3 h-3 rounded-sm flex-shrink-0"
+                                    class="w-3 h-3 rounded-sm shrink-0"
                                     :style="{ background: d.color }"
                                 ></span>
                                 {{ d.label }}
@@ -643,7 +643,7 @@ const areaSeries = computed(() =>
 
                 <!-- Line Chart: Completed tasks trend monthly -->
                 <div
-                    class="relative flex min-h-[260px] flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0"
+                    class="relative flex min-h-65 flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0"
                 >
                     <div class="mb-2 flex items-start justify-between gap-3">
                         <h3
@@ -737,7 +737,7 @@ const areaSeries = computed(() =>
 
                 <!-- Area Chart: Submitted, Pending & Revision Monthly Trend -->
                 <div
-                    class="relative flex min-h-[260px] flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0"
+                    class="relative flex min-h-65 flex-col rounded-xl bg-white p-4 shadow-sm md:h-full md:min-h-0"
                 >
                     <div class="mb-2 flex items-start justify-between gap-3">
                         <h3
@@ -853,7 +853,7 @@ const areaSeries = computed(() =>
                             class="flex items-center gap-1.5"
                         >
                             <span
-                                class="w-5 h-2.5 rounded-sm flex-shrink-0"
+                                class="w-5 h-2.5 rounded-sm shrink-0"
                                 :style="{ background: s.color }"
                             ></span>
                             {{ s.key }}
