@@ -24,6 +24,7 @@ The whole system was primarily developed using [Vue](https://github.com/vuejs), 
 It is recommended to optimise the system, particularly in:
 
 1. UI development. Add proper animations if possible.
+2. Notifications. Fixes on the notification for non-Director users.
 2. Data processing, especially the repeated calls in database.
 3. Data compression or backup for old tasks.
 4. Code reusability, especially in the Projects, Tasks, and Subtasks.
