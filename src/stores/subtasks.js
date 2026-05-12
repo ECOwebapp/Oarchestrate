@@ -211,6 +211,7 @@ export const useSubtaskStore = defineStore("subtasks", () => {
 
   const subtaskReset = () => {
     subtasks.value = [];
+    designs.value = [];
   };
 
   return {

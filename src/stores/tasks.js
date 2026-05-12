@@ -208,6 +208,7 @@ export const useTaskStore = defineStore("tasks", () => {
 
   const taskReset = () => {
     tasks.value = [];
+    insertions.value = [];
   };
 
   return {
