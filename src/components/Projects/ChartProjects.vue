@@ -33,11 +33,11 @@ const ganttTasks = computed(() =>
             endDate: (item.to || item.deadline).split("T")[0], // 'YYYY-MM-DD'
             progress: getProgress(item),
             assigner:
-                item.assignerName || item.assigner || item.director || "—",
+                item.assignerName || item.assigner || item.directorName || "—",
             assignee: item.assigneeName || item.assignee || "—",
             type: item.type || "—",
             status: item.is_completed ? "Completed" : "Ongoing",
-            barColor: item.urgent ? "#7f1d1d" : "#003300",
+            barColor: item.urgent || !item.is_completed ? "#7f1d1d" : "#003300",
         })),
 );
 
@@ -89,14 +89,14 @@ const formatKey = (key) =>
             theme="light"
         >
             <!-- Tooltip -->
-            <template #taskbar-tooltip="{ item }">
+            <template #taskbar-tooltip="{ task }">
                 <div class="p-2 min-w-50 max-w-70">
                     <div
                         class="font-bold text-[13px] mb-2 pb-1.5 border-b border-b-white/30 text-white"
                     >
-                        {{ item.name }}
+                        {{ task.name }}
                     </div>
-                    <div v-for="(value, key) in item" :key="key">
+                    <div v-for="(value, key) in task" :key="key">
                         <div
                             v-if="
                                 [
