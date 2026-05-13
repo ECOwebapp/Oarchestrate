@@ -3,6 +3,7 @@ import Dashboard from "@/views/Dashboard.vue";
 import Design from "@/views/Design.vue";
 import HeroLanding from "@/views/HeroLanding.vue";
 import Login from "@/views/Login.vue";
+import Recovery from "@/views/Recovery.vue";
 import Organization from "@/views/Organization.vue";
 import Profile from "@/views/Profile.vue";
 import Register from "@/views/Register.vue";
@@ -32,6 +33,12 @@ const routes = [
     path: "/register",
     name: "Register",
     component: Register,
+    meta: { guestOnly: true },
+  },
+  {
+    path: "/recovery",
+    name: "Recovery",
+    component: Recovery,
     meta: { guestOnly: true },
   },
 

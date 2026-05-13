@@ -83,7 +83,7 @@ export const useAuthStore = defineStore("auth", () => {
       const response = await apiFetch("/auth/login", {
         method: "POST",
         body: JSON.stringify({
-          idNumber: form.idNumber, // Matches your req.body destructuring
+          email: form.email, // Matches your req.body destructuring
           password: form.password,
         }),
       });
@@ -105,9 +105,51 @@ export const useAuthStore = defineStore("auth", () => {
         };
       }
     } catch (e) {
-      console.log("Failed to login: ", e);
+      console.error("Failed to login: ", e);
     }
   };
+
+  const forgotPass = (() => {
+    const requestOTP = async (email) => {
+      try {
+        const response = await apiFetch("/recovery/request-otp", {
+          method: "POST",
+          body: JSON.stringify({ email }),
+        });
+
+        const result = await response.text();
+        if (response.ok) return { status: 200, message: result };
+        else return { status: 500, message: result };
+      } catch (err) {
+        console.error("Failed to send email: ", err.message);
+      }
+    };
+
+    const verifyOTP = async (form) => {
+      try {
+        const response = await apiFetch("/recovery/verify-and-reset", {
+          method: "POST",
+          body: JSON.stringify({
+            email: form.email,
+            token: form.token,
+            newPassword: form.password,
+          }),
+        });
+
+        const result = await response.text();
+        if (response.ok) {
+          return { status: 200, message: result };
+        } else return { status: 401, message: result };
+      } catch (err) {
+        console.error(err.message);
+      }
+    };
+
+    return {
+      requestOTP,
+      verifyOTP,
+    };
+  })();
 
   // ── Fetch user data ──
   const fetchUserData = async () => {
@@ -250,6 +292,7 @@ export const useAuthStore = defineStore("auth", () => {
     login,
     fetchUserData,
     logout,
+    forgotPass,
     $reset,
     editProfile,
     passManagement,

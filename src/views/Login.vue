@@ -7,7 +7,7 @@ const router = useRouter();
 const auth = useAuthStore();
 
 const form = reactive({
-    idNumber: "",
+    email: "",
     password: "",
     rememberMe: true,
 });
@@ -25,7 +25,7 @@ const clearError = (field) => {
 
 const validate = () => {
     const e = {};
-    if (!form.idNumber.trim()) e.idNumber = "ID Number is required";
+    if (!form.email.trim()) e.email = "Email is required";
     if (!form.password) e.password = "Password is required";
     Object.keys(errors).forEach((k) => delete errors[k]);
     Object.assign(errors, e);
@@ -123,20 +123,18 @@ const handleSubmit = async () => {
                 <!-- ID Number -->
                 <div>
                     <input
-                        v-model="form.idNumber"
-                        type="text"
-                        placeholder="ID Number"
-                        @input="clearError('idNumber')"
+                        v-model="form.email"
+                        type="email"
+                        placeholder="CarSU email"
+                        @input="clearError('email')"
                         autocomplete="username"
                         class="w-full px-4 py-3 rounded-lg border text-gray-700 bg-white transition placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent"
                         :class="
-                            errors.idNumber
-                                ? 'border-red-400'
-                                : 'border-gray-300'
+                            errors.email ? 'border-red-400' : 'border-gray-300'
                         "
                     />
-                    <p v-if="errors.idNumber" class="text-red-500 text-xs mt-1">
-                        {{ errors.idNumber }}
+                    <p v-if="errors.email" class="text-red-500 text-xs mt-1">
+                        {{ errors.email }}
                     </p>
                 </div>
 
@@ -198,19 +196,29 @@ const handleSubmit = async () => {
                 </div>
 
                 <!-- Remember me -->
-                <div class="flex items-center gap-2">
-                    <input
-                        id="remember"
-                        v-model="form.rememberMe"
-                        type="checkbox"
-                        class="w-4 h-4 rounded accent-green-700 hover:cursor-pointer"
-                    />
-                    <label
-                        for="remember"
-                        class="text-sm text-gray-600 cursor-pointer select-none"
-                    >
-                        Remember me
-                    </label>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <input
+                            id="remember"
+                            v-model="form.rememberMe"
+                            type="checkbox"
+                            class="w-4 h-4 rounded accent-green-700 hover:cursor-pointer"
+                        />
+                        <label
+                            for="remember"
+                            class="text-sm text-gray-600 cursor-pointer select-none"
+                        >
+                            Remember me
+                        </label>
+                    </div>
+                    <p class="text-center text-sm text-gray-500">
+                        <RouterLink
+                            to="/recovery"
+                            class="text-green-800 font-semibold hover:underline"
+                        >
+                            Forgot Password?
+                        </RouterLink>
+                    </p>
                 </div>
 
                 <!-- Create account -->
@@ -342,7 +350,7 @@ const handleSubmit = async () => {
                                 fill="none"
                                 stroke="currentColor"
                                 stroke-width="1.5"
-                                class="w-4 h-4 text-green-700 flex-shrink-0"
+                                class="w-4 h-4 text-green-700 shrink-0"
                             >
                                 <circle cx="10" cy="10" r="8" />
                                 <path d="M10 6v4l2.5 2.5" />
@@ -360,7 +368,7 @@ const handleSubmit = async () => {
                                 fill="none"
                                 stroke="currentColor"
                                 stroke-width="1.5"
-                                class="w-4 h-4 text-green-700 flex-shrink-0"
+                                class="w-4 h-4 text-green-700 shrink-0"
                             >
                                 <path
                                     d="M3 4h14v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4z"
@@ -474,7 +482,7 @@ const handleSubmit = async () => {
                                 fill="none"
                                 stroke="currentColor"
                                 stroke-width="1.5"
-                                class="w-4 h-4 text-gray-400 flex-shrink-0"
+                                class="w-4 h-4 text-gray-400 shrink-0"
                             >
                                 <path
                                     d="M3 4h14v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4z"
