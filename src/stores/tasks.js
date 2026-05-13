@@ -114,6 +114,7 @@ export const useTaskStore = defineStore("tasks", () => {
 
   // ── DELETE TASKS ────────────────────────────────────────────────────────────
   const deleteTasks = async (taskIds, parentId) => {
+    console.log(taskIds);
     try {
       const response = await apiFetch("/tasks/delete", {
         method: "POST",
