@@ -12,7 +12,7 @@ const props = defineProps([
     "isMobile",
     "selectionMode",
     "canDelete",
-    "isDirector",
+    "canAdd",
     "isDisabled",
     "isDeletable",
     "selectedCount",
@@ -56,7 +56,7 @@ const sortOpts = computed(() => props.optionList.sortOpts);
             <!-- Add Task -->
             <button
                 v-if="
-                    (!props.selectionMode && props.isDirector) ||
+                    (!props.selectionMode && props.canAdd) ||
                     props.placeholderText === 'Insertion'
                 "
                 @click="emit('add')"
