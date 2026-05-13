@@ -192,7 +192,9 @@ const onEditItem = (item) => {
         id: item?.id || null,
         name: item?.name || "",
         description: item?.description || "",
+        created_at: formattedDate(item?.created_at || null),
         deadline: formattedDate(item?.deadline || null),
+        is_completed: item?.is_completed || false,
     };
 
     addTask.value = true;

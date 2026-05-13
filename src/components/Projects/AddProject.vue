@@ -1,5 +1,6 @@
 <script setup vapor>
 import { useProjectStore } from "@/stores/projects";
+import Icons from "../Icons.vue";
 import { computed, ref, watch, onMounted } from "vue";
 
 const props = defineProps({
@@ -16,7 +17,9 @@ const newProject = ref({
     id: null,
     name: "",
     description: "",
+    created_at: null,
     deadline: null,
+    is_completed: false,
 });
 
 const applyPreFill = (fill) => {
@@ -31,8 +34,6 @@ const submitForm = async () => {
     try {
         if (!newProject.value.name.trim())
             throw new Error("Title is required.");
-        if (!newProject.value.deadline)
-            throw new Error("Deadline is required.");
 
         let request = null;
         if (props.preFill)
@@ -100,7 +101,8 @@ onMounted(() => {
             <!-- Description -->
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">
-                    Description <span class="text-green-900">(Optional)</span>
+                    Description
+                    <span class="text-green-900 text-[0.8em]">(Optional)</span>
                 </label>
                 <textarea
                     v-model="newProject.description"
@@ -114,19 +116,71 @@ onMounted(() => {
                 </p>
             </div>
 
-            <!-- Type + Deadline -->
+            <!-- Created at -->
             <div class="flex gap-3">
                 <div class="flex-1">
                     <label
-                        class="block text-sm font-semibold text-gray-700 mb-1"
+                        class="flex items-center text-sm font-semibold text-gray-700 mb-1 flex-row gap-2"
                     >
-                        Deadline <span class="text-red-500">*</span>
+                        Created
+                        <div class="group relative">
+                            <Icons :icon="'info'" :icon-class="'w-4 h-4'" />
+
+                            <!-- Tooltip text -->
+                            <span
+                                class="absolute bottom-full mb-2 w-max scale-0 rounded bg-gray-500 p-2 text-xs text-white transition-all group-hover:scale-100"
+                            >
+                                Uses the start date of the current year if not
+                                provided
+                            </span>
+                        </div>
+                    </label>
+                    <input
+                        v-model="newProject.created_at"
+                        type="date"
+                        class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm focus:outline-none focus:border-green-800 transition-colors hover:cursor-pointer"
+                    />
+                </div>
+
+                <div class="flex-1">
+                    <label
+                        class="flex items-center text-sm font-semibold text-gray-700 mb-1 flex-row gap-2"
+                    >
+                        Deadline
+                        <div class="group relative">
+                            <Icons :icon="'info'" :icon-class="'w-4 h-4'" />
+
+                            <!-- Tooltip text -->
+                            <span
+                                class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max scale-0 rounded bg-gray-500 p-2 text-xs text-white transition-all group-hover:scale-100"
+                            >
+                                Uses the end date of the current year if not
+                                provided
+                            </span>
+                        </div>
                     </label>
                     <input
                         v-model="newProject.deadline"
                         type="date"
                         class="w-full border-2 border-gray-300 rounded-xl h-11 px-3 text-sm focus:outline-none focus:border-green-800 transition-colors hover:cursor-pointer"
                     />
+                </div>
+            </div>
+
+            <div v-if="props.preFill" class="flex justify-start gap-10">
+                <!-- Urgent -->
+                <div class="flex items-center gap-2">
+                    <input
+                        v-model="newProject.is_completed"
+                        type="checkbox"
+                        id="urgent"
+                        class="w-4 h-4 accent-green-900 hover:cursor-pointer"
+                    />
+                    <label
+                        for="urgent"
+                        class="text-sm font-semibold text-green-900 hover:cursor-pointer"
+                        >Mark as Completed</label
+                    >
                 </div>
             </div>
 

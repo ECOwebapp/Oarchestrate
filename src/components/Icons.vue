@@ -12,7 +12,6 @@ import {
     mdiFileDocumentOutline,
     mdiFormatListBulleted,
     mdiFullscreen,
-    mdiInformation,
     mdiLink,
     mdiLoading,
     mdiLogout,
@@ -31,6 +30,7 @@ import {
     mdiPencil,
     mdiNoteMultipleOutline,
     mdiCogOutline,
+    mdiInformationSlabCircle,
 } from "@mdi/js";
 import { computed } from "vue";
 
@@ -56,7 +56,7 @@ const icons = {
     check: mdiCheck,
     checkCircle: mdiCheckCircle,
     alert: mdiAlertCircle,
-    info: mdiInformation,
+    info: mdiInformationSlabCircle,
     resubmit: mdiRefresh,
     down: mdiMenuDown,
     spin: mdiLoading,
