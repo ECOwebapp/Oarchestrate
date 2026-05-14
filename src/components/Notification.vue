@@ -179,7 +179,7 @@ onUnmounted(() => {
                     class="mb-2 sm:mb-3 bg-white rounded-2xl shadow-2xl border border-gray-100 flex flex-col overflow-hidden w-[calc(100vw-1.5rem)] max-w-sm sm:w-84"
                 >
                     <div
-                        class="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-100 flex-shrink-0"
+                        class="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-100 shrink-0"
                     >
                         <div class="flex items-center gap-2">
                             <span
@@ -248,9 +248,7 @@ onUnmounted(() => {
                                             <div
                                                 class="flex items-start gap-2.5 sm:gap-3"
                                             >
-                                                <div
-                                                    class="relative flex-shrink-0"
-                                                >
+                                                <div class="relative shrink-0">
                                                     <div
                                                         class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-700 flex items-center justify-center text-white text-xs font-bold uppercase tracking-wide"
                                                     >
@@ -271,7 +269,7 @@ onUnmounted(() => {
                                                             Registration</span
                                                         >
                                                         <span
-                                                            class="text-[10px] text-gray-400 flex-shrink-0"
+                                                            class="text-[10px] text-gray-400 shrink-0"
                                                             >{{
                                                                 timeAgo(n.time)
                                                             }}</span
@@ -395,7 +393,7 @@ onUnmounted(() => {
 
                                             <template v-else>
                                                 <span
-                                                    class="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
+                                                    class="w-2 h-2 rounded-full shrink-0 mt-1.5"
                                                     :class="dotClass(n)"
                                                 />
                                                 <div class="flex-1 min-w-0">
@@ -438,7 +436,7 @@ onUnmounted(() => {
                                             class="px-2.5 sm:px-3 py-2 sm:py-2.5 flex items-start gap-2 sm:gap-2.5"
                                         >
                                             <span
-                                                class="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
+                                                class="w-2 h-2 rounded-full shrink-0 mt-1.5"
                                                 :class="dotClass(n)"
                                             />
                                             <div class="flex-1 min-w-0">
@@ -453,7 +451,7 @@ onUnmounted(() => {
                                                         }}</span
                                                     >
                                                     <span
-                                                        class="text-[10px] sm:text-xs text-gray-400 flex-shrink-0"
+                                                        class="text-[10px] sm:text-xs text-gray-400 shrink-0"
                                                         >{{
                                                             timeAgo(n.time)
                                                         }}</span
@@ -533,7 +531,7 @@ onUnmounted(() => {
 
             <TaskDetail
                 v-if="activeTask"
-                :task="activeTask"
+                :item="activeTask"
                 @close="closeTask"
                 @refresh="notifStore.fetchNotifs()"
             />
