@@ -91,9 +91,14 @@ export const useAuthStore = defineStore("auth", () => {
       const result = await response.json();
 
       if (response.ok) {
-        const { userData, userId } = result;
+        const { userData, userId, access_token } = result;
         userID.value = userId;
-        // localStorage.setItem("eco_session", JSON.stringify(session));
+        if (access_token) {
+          localStorage.setItem(
+            "eco_session",
+            JSON.stringify({ access_token, user_id: userId }),
+          );
+        }
         $fill(userData);
         initialized.value = true;
       } else if (response.status === 401) {
@@ -209,7 +214,7 @@ export const useAuthStore = defineStore("auth", () => {
   // Requires testing when internet connection returns
   // >> Hexer <<
   const passManagement = async (payload, status) => {
-    if (!status) return new Error("Please provide instance type");
+    if (!status) return { error: "Please provide instance type" };
 
     try {
       const response = await apiFetch(`/auth/pass`, {
@@ -220,10 +225,18 @@ export const useAuthStore = defineStore("auth", () => {
         }),
       });
 
-      return await response.json();
+      const result = await response
+        .json()
+        .catch(() => ({}));
+
+      if (!response.ok) {
+        return { error: result?.error || "Password request failed" };
+      }
+
+      return result;
     } catch (e) {
       console.log("Process failed: ", e);
-      return new Error("Process failed: ", e);
+      return { error: "Process failed" };
     }
   };
 
@@ -239,6 +252,7 @@ export const useAuthStore = defineStore("auth", () => {
       }
     }
     await reset();
+    localStorage.removeItem("eco_session");
     $reset({ preserveLoggingOut: true });
     try {
       await router.replace({ name: "Login" });

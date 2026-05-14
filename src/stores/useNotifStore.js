@@ -1,5 +1,4 @@
 import { apiFetch } from "@/lib/api";
-import { EventSource } from "eventsource";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { defineStore } from "pinia";
 import { computed, ref, watch } from "vue";
@@ -11,7 +10,6 @@ export const useNotifStore = defineStore("notif", () => {
   const shown = ref(PAGE);
 
   const unread = computed(() => notifs.value.filter((n) => !n.read).length);
-  console.log(unread.value);
   const visible = computed(() => notifs.value.slice(0, shown.value));
   const hasMore = computed(() => shown.value < notifs.value.length);
 
@@ -53,8 +51,8 @@ export const useNotifStore = defineStore("notif", () => {
       });
       const result = await response.json();
       if (response.ok) results = result?.data;
-    } catch (e) {
-      console.error("[notifStore] fetchNotifs error:", e);
+    } catch {
+      // Silent: keep notification UI usable even when the stream/fetch is unavailable.
     } finally {
       loading.value = false;
     }
@@ -143,24 +141,15 @@ export const useNotifStore = defineStore("notif", () => {
   const setupRealtime = (onNew) => {
     const url = `${import.meta.env.VITE_API_BASE_URL}/notifications/events`;
 
-    channel = new EventSource(url, {
-      fetch: (url, options) => {
-        // We pass our existing apiFetch configuration here
-        return apiFetch(url, {
-          ...options,
-          method: "GET", // SSE requires GET
-        });
-      },
-    });
+    // Browser EventSource supports credentialed cross-origin SSE.
+    channel = new window.EventSource(url, { withCredentials: true });
     channel.onmessage = (event) => {
       const data = JSON.parse(event.data);
       // Handle notification
       fetchNotifs();
       onNew?.(data);
     };
-    channel.onerror = (e) => {
-      console.error("SSE Connection failed: ", e.message);
-    };
+    channel.onerror = () => {};
   };
   const teardownRealtime = () => {
     channel?.close();

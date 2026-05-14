@@ -2,6 +2,8 @@
 import { computed, reactive, ref } from 'vue'
 import { useAuthStore } from '@/stores/useAuthStore'
 
+const emit = defineEmits(['saved'])
+
 const saving = ref(false)
 const saveSuccess = ref(false)
 const saveError = ref('')
@@ -121,13 +123,22 @@ async function handleSave() {
   saveError.value = ''
 
   try {
-    const response = await auth.passManagement({ password: form.password }, 'change')
+    const response = await auth.passManagement(
+      {
+        currentPassword: form.currentPassword,
+        password: form.password,
+      },
+      'change',
+    )
 
     if (response.error) throw response.error
 
     saveSuccess.value = true
+    emit('saved')
+    form.currentPassword = ''
     form.password = ''
     form.confirmPassword = ''
+    oldPasswordVerified.value = false
   } catch (err) {
     saveError.value = err?.message || 'Unable to update password right now.'
   } finally {

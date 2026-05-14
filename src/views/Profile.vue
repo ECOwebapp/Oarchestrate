@@ -46,6 +46,11 @@ const saveErrorMessage = computed(() => {
     return typeof value === "string" ? value : "";
 });
 
+const activeSectionLabel = computed(() => {
+    const section = infoTabs.find((tab) => tab.key === infoSection.value);
+    return section?.key === "password" ? "password" : "profile";
+});
+
 const closeSaveModal = () => {
     showSaveModal.value = false;
 
@@ -207,6 +212,7 @@ onMounted(async () => {
                 <ChangePassword
                     v-else-if="infoSection === 'password'"
                     ref="saveDialog"
+                    @saved="showSaveModal = true"
                 />
             </div>
         </div>
@@ -245,7 +251,11 @@ onMounted(async () => {
                             Saved Successfully
                         </h3>
                         <p class="mt-1 text-center text-sm text-slate-600">
-                            Your profile details have been updated.
+                            {{
+                                activeSectionLabel === "password"
+                                    ? "Your password has been updated."
+                                    : "Your profile details have been updated."
+                            }}
                         </p>
 
                         <div class="mt-5 flex justify-center">
