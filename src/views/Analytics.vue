@@ -549,7 +549,8 @@ const areaSeries = computed(() =>
                     >
                         <svg
                             viewBox="0 0 200 200"
-                            class="h-full max-h-44 w-full max-w-55 shrink-0 sm:max-h-52"
+                            preserveAspectRatio="xMidYMid meet"
+                            class="w-full h-full"
                         >
                             <!-- Empty state: gray circle with 0% -->
                             <circle
@@ -659,7 +660,7 @@ const areaSeries = computed(() =>
                         </button>
                     </div>
                     <div class="min-h-0 flex-1 overflow-hidden">
-                        <svg viewBox="0 0 500 215" class="w-full h-full">
+                        <svg viewBox="0 0 500 215" preserveAspectRatio="xMidYMid meet" class="w-full h-full">
                             <!-- Axes -->
                             <line
                                 x1="35"
@@ -753,7 +754,7 @@ const areaSeries = computed(() =>
                         </button>
                     </div>
                     <div class="min-h-0 flex-1 overflow-hidden">
-                        <svg viewBox="0 0 500 200" class="w-full h-full">
+                        <svg viewBox="0 0 500 200" preserveAspectRatio="xMidYMid meet" class="w-full h-full">
                             <!-- Axes -->
                             <line
                                 x1="35"

@@ -75,8 +75,8 @@ function hideTooltip() {
       <div class="flex flex-1 min-h-0 items-center justify-center overflow-auto p-3 sm:p-6">
 
         <!-- Bar Chart -->
-        <div v-if="expandedChart === 'bar'" class="h-full w-full overflow-x-auto">
-        <svg viewBox="0 0 500 245" class="h-full min-w-[520px] w-full">
+        <div v-if="expandedChart === 'bar'" class="h-full w-full">
+        <svg viewBox="0 0 500 245" preserveAspectRatio="xMidYMid meet" class="w-full h-full">
           <line x1="40" y1="10" x2="40"  y2="200" stroke="#d1d5db" stroke-width="1" />
           <line x1="40" y1="200" x2="490" y2="200" stroke="#d1d5db" stroke-width="1" />
           <template v-for="t in barTickPos" :key="'bg'+t.v">
@@ -127,8 +127,8 @@ function hideTooltip() {
         </div>
 
         <!-- Line Chart -->
-        <div v-else-if="expandedChart === 'line'" class="h-full w-full overflow-x-auto">
-        <svg viewBox="0 0 500 215" class="h-full min-w-[520px] w-full">
+        <div v-else-if="expandedChart === 'line'" class="h-full w-full">
+        <svg viewBox="0 0 500 215" preserveAspectRatio="xMidYMid meet" class="w-full h-full">
           <line x1="35" y1="10"  x2="35"  y2="185" stroke="#d1d5db" stroke-width="1" />
           <line x1="35" y1="185" x2="495" y2="185" stroke="#d1d5db" stroke-width="1" />
           <template v-for="t in lineTickPos" :key="'lg'+t.v">
@@ -149,8 +149,8 @@ function hideTooltip() {
 
         <!-- Area Chart -->
         <div v-else-if="expandedChart === 'area'" class="flex h-full w-full flex-col">
-          <div class="min-h-0 flex-1 overflow-x-auto">
-          <svg viewBox="0 0 500 200" class="min-w-[520px] w-full flex-1 min-h-0">
+          <div class="min-h-0 flex-1 overflow-auto">
+          <svg viewBox="0 0 500 200" preserveAspectRatio="xMidYMid meet" class="w-full h-full flex-1 min-h-0">
             <line x1="35" y1="10"  x2="35"  y2="175" stroke="#d1d5db" stroke-width="1" />
             <line x1="35" y1="175" x2="495" y2="175" stroke="#d1d5db" stroke-width="1" />
             <template v-for="t in areaTickPos" :key="'ag'+t.v">

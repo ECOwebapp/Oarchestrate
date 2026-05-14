@@ -152,7 +152,7 @@ async function exportUnitPdfFallback() {
     row.showTask ? row.startDate : '',
     row.showTask ? row.endDate : '',
     row.showTask ? (row.mov?.url || 'No file') : '',
-    row.showTask ? row.remarks : '',
+    row.showTask ? (row.remarks === 'Approved' ? row.remarks : '') : '',
   ])
 
   autoTable(doc, {
@@ -513,7 +513,7 @@ const periodLabel = computed(() => {
               <!-- Remarks (spans task rows) -->
               <td v-if="row.showTask" :rowspan="row.taskRowspan"
                 class="px-2 py-2 text-center text-[10px] text-gray-600 font-medium align-middle whitespace-nowrap">
-                {{ row.remarks }}
+                {{ row.remarks === 'Approved' ? row.remarks : '' }}
               </td>
             </tr>
           </tbody>

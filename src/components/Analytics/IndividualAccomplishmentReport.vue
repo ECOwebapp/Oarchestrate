@@ -34,7 +34,12 @@ const loadOwnTasks = async () => {
   const uid = auth.userID
   if (!uid) return
   try {
-    const response = await apiFetch('/report/load_own_tasks', { method: 'GET' })
+    const params = new URLSearchParams()
+    if (props.dateFrom) params.append('dateFrom', props.dateFrom)
+    if (props.dateTo) params.append('dateTo', props.dateTo)
+    const url = '/report/load_own_tasks' + (params.toString() ? '?' + params.toString() : '')
+    
+    const response = await apiFetch(url, { method: 'GET' })
     const result = await response.json()
 
     if (response.ok) ownTasks.value = result.data
@@ -45,8 +50,8 @@ const loadOwnTasks = async () => {
   }
 }
 
-watch(() => props.show, (val) => {
-  if (val) {
+watch([() => props.show, () => props.dateFrom, () => props.dateTo], ([show]) => {
+  if (show) {
     loadOwnTasks()
     if (showRecommendingApproval.value) {
       loadUnitHead()
@@ -144,7 +149,7 @@ async function exportIndividualPdfFallback() {
   const head = [['No.', 'Date', 'PPAs', 'Activity', 'Description', 'Remarks', 'Drive Link']]
   const body = reportRows.value
     .filter((r) => r.no !== '')
-    .map((row) => [row.no, row.date, row.ppa, row.activity, row.description, row.remarks, row.link])
+    .map((row) => [row.no, row.date, row.ppa, row.activity, row.description, row.remarks === 'Approved' ? row.remarks : '', row.link])
 
   autoTable(doc, {
     head,
@@ -545,7 +550,7 @@ const normalizeOutputLink = (value) => {
               <td class="border border-gray-300 px-2 py-1 text-gray-600 break-words">{{ row.ppa }}</td>
               <td class="border border-gray-300 px-2 py-1 text-gray-600 break-words">{{ row.activity }}</td>
               <td class="border border-gray-300 px-2 py-1 text-gray-600 break-words">{{ row.description }}</td>
-              <td class="border border-gray-300 px-2 py-1 text-center text-gray-600">{{ row.remarks }}</td>
+              <td class="border border-gray-300 px-2 py-1 text-center text-gray-600">{{ row.remarks === 'Approved' ? row.remarks : '' }}</td>
               <td class="border border-gray-300 px-2 py-1 text-center">
                 <a v-if="row.link" :href="normalizeOutputLink(row.link)" target="_blank" rel="noopener noreferrer"
                   class="text-[9px] text-green-800 underline break-all hover:text-green-700">
