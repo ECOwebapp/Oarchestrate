@@ -220,7 +220,7 @@ const modal = (() => {
                         <input
                             v-model="form.password"
                             ref="newPass"
-                            placeholder="Password"
+                            placeholder="New Password"
                             :type="showPassword ? 'text' : 'password'"
                             @keydown.enter="$refs.confirmPass.focus()"
                             @input="clearError('password')"
@@ -303,7 +303,7 @@ const modal = (() => {
                         <div class="relative">
                             <input
                                 v-model="form.confirmPassword"
-                                placeholder="Confirm Password"
+                                placeholder="Confirm New Password"
                                 ref="confirmPass"
                                 :type="showConfirm ? 'text' : 'password'"
                                 :class="[
