@@ -201,7 +201,6 @@ const modal = (() => {
                             type="text"
                             placeholder="Enter the token"
                             @input="clearError('token')"
-                            @keydown.enter="$refs.newPass.focus()"
                             :class="[
                                 'w-full px-4 py-3 rounded-lg border text-gray-700 bg-white transition placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent',
                                 errors.token
@@ -222,7 +221,6 @@ const modal = (() => {
                             ref="newPass"
                             placeholder="New Password"
                             :type="showPassword ? 'text' : 'password'"
-                            @keydown.enter="$refs.confirmPass.focus()"
                             @input="clearError('password')"
                             :class="[
                                 'w-full px-4 py-3 pr-11 rounded-lg border text-gray-700 bg-white text-sm placeholder-gray-400 transition focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent',
