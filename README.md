@@ -29,6 +29,7 @@ It is recommended to optimise the system, particularly in:
 3. Data compression or backup for old tasks.
 4. Code reusability, especially in the Projects, Tasks, and Subtasks.
 5. Performance. Avoid utilizing Virtual DOM and render everything using Direct DOM if possible.
+6. Security. Add Cloudflare captcha for small upgrade to security.
 
 ## Project Setup
 
