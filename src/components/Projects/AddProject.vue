@@ -34,15 +34,20 @@ const submitForm = async () => {
     try {
         if (!newProject.value.name.trim())
             throw new Error("Title is required.");
+        const cleanedProject = Object.fromEntries(
+            Object.entries(newProject.value).filter(
+                ([_, value]) => value !== null && value !== "",
+            ),
+        );
 
         let request = null;
         if (props.preFill)
             request = projectStore.updateProjects({
-                project: { ...newProject.value },
+                project: cleanedProject,
             });
         else
             request = projectStore.insertProjects({
-                project: { ...newProject.value },
+                project: cleanedProject,
             });
 
         const response = await request;

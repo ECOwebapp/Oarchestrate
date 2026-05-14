@@ -152,16 +152,22 @@ const onFilePickEdit = (e) => {
 };
 
 const loadRevisions = async () => {
+    if (!props.item) return;
     loadingRevs.value = true;
-    if (Object.hasOwn(props.item, "designApproval"))
-        revisions.value =
-            (await subtaskStore.fetchRevisions(props.item?.id)) || [];
-    else
-        revisions.value =
-            (await taskStore.fetchRevisions(props.item?.id)) || [];
-    loadingRevs.value = false;
-    await nextTick();
-    chatBottom.value?.scrollIntoView({ behavior: "smooth" });
+    try {
+        if (Object.hasOwn(props.item, "designApproval"))
+            revisions.value =
+                (await subtaskStore.fetchRevisions(props.item?.id)) || [];
+        else
+            revisions.value =
+                (await taskStore.fetchRevisions(props.item?.id)) || [];
+    } catch (error) {
+        console.error("Failed to load revisions:", error);
+    } finally {
+        loadingRevs.value = false;
+        await nextTick();
+        chatBottom.value?.scrollIntoView({ behavior: "smooth" });
+    }
 };
 
 const filteredRevisions = computed(() => {
@@ -233,19 +239,27 @@ const canApproveAsUnitHead = computed(() => {
 // For regular tasks: Director can only approve AFTER unit head approves
 // For design tasks: Depends on the design approval chain
 const canApproveAsDirector = computed(() => {
-    if (!auth.isDirector || props.item?.director || !props.item?.outputLink)
+    if (!auth.isDirector || !props.item?.outputLink) return false;
+
+    if (
+        props.item?.director === true ||
+        props.item?.designApproval?.director === true
+    )
         return false;
 
     // Regular item: requires unit_head approval first
-    if (!props.item?.design) {
-        return props.item?.unitHead === true;
+    if (
+        Object.hasOwn(props.item, "designApproval") &&
+        props.item?.design &&
+        props.item?.type !== "Insertion"
+    ) {
+        return props.item?.designApproval?.unit_head === true;
     }
 
+    if (props.item?.assigneeRole === 4) return true;
+
     // Design item: director can approve only after unit_head approves
-    return (
-        props.item?.designApproval?.unit_head === true &&
-        props.item?.designApproval?.director === false
-    );
+    return props.item?.unitHead === true;
 });
 
 // Design-specific approval logic based on user position
