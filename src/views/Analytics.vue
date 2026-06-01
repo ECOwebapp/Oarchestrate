@@ -8,11 +8,15 @@ import IndividualAccomplishmentReport from "@/components/Analytics/IndividualAcc
 import ReportGeneratorElement from "@/components/Analytics/ReportGeneratorElement.vue";
 import ReportPicker from "@/components/Analytics/ReportPicker.vue";
 import { useTaskStore } from "@/stores/tasks.js";
+import { useSubtaskStore } from "@/stores/subtasks";
 import { useAuthStore } from "@/stores/useAuthStore.js";
 
 const taskStore = useTaskStore();
+const subtaskStore = useSubtaskStore();
 const auth = useAuthStore();
-const { loading } = storeToRefs(taskStore);
+const { subtasks } = storeToRefs(subtaskStore);
+const { tasks, loading } = storeToRefs(taskStore);
+const items = computed(() => [...tasks.value, ...subtasks.value]);
 const MIN_SKELETON_MS = 450;
 const initialLoading = ref(true);
 
@@ -20,7 +24,7 @@ const showSkeleton = computed(() => initialLoading.value || loading.value);
 
 onMounted(async () => {
     const start = Date.now();
-    await taskStore.fetchTasks();
+    await Promise.all([taskStore.fetchTasks()], subtaskStore.fetchSubTasks());
     const elapsed = Date.now() - start;
     const wait = Math.max(0, MIN_SKELETON_MS - elapsed);
     if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
@@ -83,20 +87,21 @@ const monthLabels = [
 
 const activeUnitHeadId = computed(() => {
     const headRole = (auth.positions || []).find((p) => Number(p.pos_id) === 4);
-    return headRole?.unit_id ?? null;
+    return headRole?.unit_id || null;
 });
 
 const analyticsTasks = computed(() => {
-    if (auth.isDirector) return taskStore.tasks;
+    console.log(items.value);
+    if (auth.isDirector) return items.value;
 
     // Unit Head analytics should only show staff/tasks from their own unit.
     if (auth.isUnitHead && activeUnitHeadId.value) {
-        return taskStore.tasks.filter(
+        return items.value.filter(
             (t) => Number(t.assigneeUnitId) === Number(activeUnitHeadId.value),
         );
     }
 
-    return taskStore.tasks.filter((t) => t.assignee === auth.userID);
+    return items.value.filter((t) => t.assignee === auth.userID);
 });
 
 // ── Helpers ────────────────────────────────────────────────
@@ -660,7 +665,11 @@ const areaSeries = computed(() =>
                         </button>
                     </div>
                     <div class="min-h-0 flex-1 overflow-hidden">
-                        <svg viewBox="0 0 500 215" preserveAspectRatio="xMidYMid meet" class="w-full h-full">
+                        <svg
+                            viewBox="0 0 500 215"
+                            preserveAspectRatio="xMidYMid meet"
+                            class="w-full h-full"
+                        >
                             <!-- Axes -->
                             <line
                                 x1="35"
@@ -754,7 +763,11 @@ const areaSeries = computed(() =>
                         </button>
                     </div>
                     <div class="min-h-0 flex-1 overflow-hidden">
-                        <svg viewBox="0 0 500 200" preserveAspectRatio="xMidYMid meet" class="w-full h-full">
+                        <svg
+                            viewBox="0 0 500 200"
+                            preserveAspectRatio="xMidYMid meet"
+                            class="w-full h-full"
+                        >
                             <!-- Axes -->
                             <line
                                 x1="35"

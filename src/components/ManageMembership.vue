@@ -291,7 +291,7 @@ const removeMember = async () => {
             >
                 <div class="mb-4 border-b border-gray-100 pb-3 sm:mb-5">
                     <h2 class="text-base font-bold text-gray-800 sm:text-lg">
-                        Change Position
+                        Change Executive Position
                     </h2>
                     <p class="mt-1 text-xs text-gray-500">
                         Update a member's role and unit assignment.
@@ -338,7 +338,7 @@ const removeMember = async () => {
                         <div v-if="changePosMembers.user_id">
                             <label
                                 class="block text-sm font-semibold text-gray-700 mb-2"
-                                >Position:</label
+                                >Role:</label
                             >
                             <select
                                 v-model="changePosMembers.pos_id"
@@ -346,10 +346,13 @@ const removeMember = async () => {
                                 :disabled="loading?.update"
                             >
                                 <option disabled selected :value="null">
-                                    -- Select position --
+                                    -- Select Role --
                                 </option>
                                 <option
-                                    v-for="role in roles"
+                                    v-for="role in [
+                                        ...roles,
+                                        { pos_id: 0, pos_name: 'Unit Member' },
+                                    ]"
                                     :key="role.pos_id"
                                     :value="role.pos_id"
                                 >
